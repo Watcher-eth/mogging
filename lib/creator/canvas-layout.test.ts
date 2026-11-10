@@ -1,4 +1,4 @@
-import { videoTickerMotion, videoBrandFrame, videoBrandSafeArea } from './video-branding'
+import { isVideoInvitation, videoTickerMotion, videoBrandFrame, videoBrandSafeArea } from './video-branding'
 import { expect, test } from 'bun:test'
 import { videoSize, featureStageLayout } from './video-layout'
 import { createCanvasPainter, type CanvasEffect, type CanvasElement, type CanvasNode } from './canvas-layout'
@@ -301,6 +301,8 @@ test('TikTok branding stays centered, clear of facial features, and above the in
   const eyes = { x: 300, y: 1050, width: 480, height: 180, weight: 100 }
   const cta = videoBrandFrame(true, [face, eyes])
   expect(cta.x+cta.width/2).toBe(videoSize.width/2)
+  expect(videoBrandFrame(true).y).toBe(88)
+  expect(videoBrandFrame(false).y).toBe(560)
   expect(cta.y+cta.height).toBeLessThanOrEqual(face.y)
   for (const cta of [true,false]) {
     const frame = videoBrandFrame(cta,[face,eyes])
@@ -327,4 +329,14 @@ test('the scan ticker repeats on the video clock with a readable hold and quiet 
     expect(videoTickerMotion(start+5000)).toBeNull()
     expect(videoTickerMotion(start+100,true)).toEqual({opacity:1,offset:0,blur:0})
   }
+})
+
+
+test('closing invitations show the normal end CTA without branding every takeaway as an invitation', () => {
+  expect(isVideoInvitation({text:'Explore how your own nose, jaw and proportions fit together on Mogging.com.',section:{role:'takeaway'}})).toBe(true)
+  expect(isVideoInvitation({text:'Try Mogging.com to compare your brows and jaw.',section:{role:'takeaway'}})).toBe(true)
+  expect(isVideoInvitation({text:'Compare your eye area on Mogging.com.',section:{role:'takeaway'}})).toBe(true)
+  expect(isVideoInvitation({text:'Mogging shows how the brows and jaw balance.',section:{role:'takeaway'}})).toBe(false)
+  expect(isVideoInvitation({text:'The jaw uses its width to balance the brows on Mogging.',section:{role:'takeaway'}})).toBe(false)
+  expect(isVideoInvitation({text:'Try a closer crop for the eye area.',section:{role:'takeaway'}})).toBe(false)
 })

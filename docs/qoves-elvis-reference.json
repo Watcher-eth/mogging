@@ -1,0 +1,952 @@
+{
+  "sourceUrl": "https://www.tiktok.com/@qovesstudio/video/7704341383821217045",
+  "sourceTitle": "Clavicular says Elvis is a 5?",
+  "reviewDate": "2026-11-05",
+  "width": 576,
+  "height": 1024,
+  "fps": 24,
+  "frameCount": 939,
+  "durationSeconds": 39.125,
+  "method": "All 939 source frames decoded and indexed; 79 half-second overview samples plus dense 125ms transition boards visually reviewed. Shot boundaries are review landmarks, generally within a few frames, not recovered project keyframes. Narration timing is machine recognition with visible-caption cross-checks. Full source audio/transcript remain internal; the report paraphrases the script.",
+  "shots": [
+    {
+      "id": "hook-entry",
+      "startFrame": 0,
+      "endFrame": 8,
+      "startSeconds": 0,
+      "endSeconds": 0.333,
+      "title": "Immediate attributed provocation",
+      "observedVisual": "Elvis is already large and recognizable on the first frame. A circular avatar, tiny identity label and white quote chip settle above him; the lower italic caption begins immediately. Short garbled/settling micro-label characters are visible. No logo introduction delays the premise.",
+      "interpretation": "The claim is attributed visually instead of being presented as the narrator’s own score.",
+      "primitives": [
+        "cutout-stage",
+        "identity-label",
+        "claim-chip",
+        "caption-clock"
+      ]
+    },
+    {
+      "id": "hook-hold",
+      "startFrame": 8,
+      "endFrame": 47,
+      "startSeconds": 0.333,
+      "endSeconds": 1.958,
+      "title": "Let the contradiction register",
+      "observedVisual": "Hold the same monochrome cutout against a flat muted blue-grey field. The face occupies the lower majority; the claim floats in negative space. Fine identity labels are subordinate to the face and sentence.",
+      "interpretation": "Recognition plus a specific unexpected rating creates the question. This is an editorial counterexample, not a hidden-edit guessing game.",
+      "primitives": [
+        "cutout-stage",
+        "claim-chip",
+        "caption-clock"
+      ]
+    },
+    {
+      "id": "hero-card",
+      "startFrame": 47,
+      "endFrame": 65,
+      "startSeconds": 1.958,
+      "endSeconds": 2.708,
+      "title": "The hero becomes a card",
+      "observedVisual": "A faint rectangular boundary appears. The exact same portrait shrinks continuously toward a small rounded card around the middle; its shoulders disappear under the changing mask rather than through a new portrait cut. Caption and claim retain independent tracks.",
+      "interpretation": "Spatial continuity lets the viewer follow one subject while the composition gains room for a second reference. The observed move takes roughly three quarters of a second; an exact easing curve cannot be recovered from rendered frames alone.",
+      "primitives": [
+        "shared-card-morph",
+        "rounded-mask"
+      ]
+    },
+    {
+      "id": "comparison-arrival",
+      "startFrame": 65,
+      "endFrame": 78,
+      "startSeconds": 2.708,
+      "endSeconds": 3.25,
+      "title": "Add the second reference on the comparison",
+      "observedVisual": "The Elvis card travels left while the Trump card appears from the right into a matched two-column row. The quote chip’s text changes with a light dissolve/settle. Names resolve below their respective cards.",
+      "interpretation": "The named comparison receives a visible second person at the relevant spoken beat; it is not a decorative second face.",
+      "primitives": [
+        "comparison-row",
+        "claim-replacement",
+        "identity-label"
+      ]
+    },
+    {
+      "id": "comparison-hold",
+      "startFrame": 78,
+      "endFrame": 116,
+      "startSeconds": 3.25,
+      "endSeconds": 4.833,
+      "title": "Readable paired comparison",
+      "observedVisual": "Two rounded portraits hold on one baseline, with a small dark circular chevron badge in the gap. The source claim stays above both images, and the caption remains below them.",
+      "interpretation": "The hierarchy separates attribution, subjects and narration. Equal card sizes are presentation, not a controlled photographic attractiveness experiment.",
+      "primitives": [
+        "comparison-row",
+        "comparison-badge"
+      ]
+    },
+    {
+      "id": "archive-arrival",
+      "startFrame": 116,
+      "endFrame": 134,
+      "startSeconds": 4.833,
+      "endSeconds": 5.583,
+      "title": "Convert comparison into contextual evidence",
+      "observedVisual": "The left Elvis card persists. The right comparison is replaced through a pale, slanted masked panel with archival reaction footage. An editorial headline resolves above the left card.",
+      "interpretation": "The visual answer starts before the long explanation. A change of evidence type supplies novelty while the persistent portrait maintains orientation.",
+      "primitives": [
+        "reference-inset",
+        "slanted-reveal",
+        "editorial-headline"
+      ]
+    },
+    {
+      "id": "archive-reaction",
+      "startFrame": 134,
+      "endFrame": 161,
+      "startSeconds": 5.583,
+      "endSeconds": 6.708,
+      "title": "First moving proof insert",
+      "observedVisual": "A reaction/crowd clip plays inside the larger right-hand rounded frame. The left reference and quote remain still. The moving insert, not a whole-screen transition, owns attention.",
+      "interpretation": "Different motion budgets keep the composition readable. The footage illustrates historical celebrity reception, but does not by itself prove a single cause of Elvis’s fame.",
+      "primitives": [
+        "reference-inset",
+        "source-video"
+      ]
+    },
+    {
+      "id": "archive-performance",
+      "startFrame": 161,
+      "endFrame": 200,
+      "startSeconds": 6.708,
+      "endSeconds": 8.333,
+      "title": "Cut inside the inset",
+      "observedVisual": "The right window cuts to Elvis performing with another person; the window shape and left reference remain fixed. The lower caption advances over the same layout.",
+      "interpretation": "A hard content cut can feel smooth when its container and surrounding objects persist.",
+      "primitives": [
+        "source-video",
+        "contained-cut"
+      ]
+    },
+    {
+      "id": "question-reset",
+      "startFrame": 200,
+      "endFrame": 218,
+      "startSeconds": 8.333,
+      "endSeconds": 9.083,
+      "title": "A short question creates the hinge",
+      "observedVisual": "The contextual insert leaves and the remaining portrait regroups near centre. The narration briefly asks for an explanation, then immediately begins its thesis.",
+      "interpretation": "There is one concise question-to-explanation pivot. It does not restart the hook or delay every answer until the midpoint.",
+      "primitives": [
+        "shared-card-morph",
+        "caption-clock"
+      ]
+    },
+    {
+      "id": "orbit-entry",
+      "startFrame": 218,
+      "endFrame": 236,
+      "startSeconds": 9.083,
+      "endSeconds": 9.833,
+      "title": "Grow into the analytical image",
+      "observedVisual": "The small card enlarges into a nearly full-height subject. The figure begins turning from three-quarter toward profile, and the quoted claim changes into a cloud-like thought bubble. Thin target brackets acquire the moving subject.",
+      "interpretation": "The thought bubble represents a proposition under criticism. It must not become our diagnosis or an unsourced allegation about somebody’s actual words.",
+      "primitives": [
+        "source-orbit",
+        "assumption-bubble",
+        "focus-brackets"
+      ]
+    },
+    {
+      "id": "orbit",
+      "startFrame": 236,
+      "endFrame": 284,
+      "startSeconds": 9.833,
+      "endSeconds": 11.833,
+      "title": "A full-view turning subject",
+      "observedVisual": "The subject turns through profile, rear and opposite profile. Sparse white corner brackets, tiny coordinate-like text and a faint translucent cone/wedge accompany the movement. The wedge projects across the face area; it is distinct from the thin tracking lines.",
+      "interpretation": "This is visibly a changing view of the figure, not a 2D guide rotating over a still face. Whether the source production used a generated turntable or a true 3D scene is not established by the exported pixels.",
+      "primitives": [
+        "source-orbit",
+        "tracking-marks",
+        "view-cone"
+      ]
+    },
+    {
+      "id": "orbit-settle",
+      "startFrame": 284,
+      "endFrame": 306,
+      "startSeconds": 11.833,
+      "endSeconds": 12.75,
+      "title": "Return to the recognizable source pose",
+      "observedVisual": "The figure completes its turn and settles back toward the frontal three-quarter pose. Some frames are softer during the turn. The same coat, hand and medallion regain their original arrangement.",
+      "interpretation": "The turn has an endpoint; continuous idle spinning would weaken the return to the explanation.",
+      "primitives": [
+        "source-orbit",
+        "tracking-marks"
+      ]
+    },
+    {
+      "id": "geometry",
+      "startFrame": 306,
+      "endFrame": 389,
+      "startSeconds": 12.75,
+      "endSeconds": 16.208,
+      "title": "Make the reductive method visible",
+      "observedVisual": "A denser web of white lines spans the forehead, nose, eyes and jaw, with small brackets and coordinate-style labels. The faint wedge remains behind/across the face, while the face is still monochrome. Lines differ in opacity and apparent weight.",
+      "interpretation": "The busy quantitative imagery supports the criticism of mechanical feature checking. It is not evidence that these numbers are valid measurements of attractiveness.",
+      "primitives": [
+        "landmark-links",
+        "tracking-marks",
+        "view-cone"
+      ]
+    },
+    {
+      "id": "colour-turn",
+      "startFrame": 389,
+      "endFrame": 470,
+      "startSeconds": 16.208,
+      "endSeconds": 19.583,
+      "title": "Paint back qualitative information",
+      "observedVisual": "An irregular diagonal/brush-like boundary restores colour to the same registered portrait. The face becomes natural colour first, while pale monochrome patches remain lower on the hand and clothing for longer. Most of the dense mesh clears. The floating claim remains until the next transition.",
+      "interpretation": "The material change coincides with the argument moving from angles to qualitative appearance. This is a restoration of the same picture, not a beauty warp or an exposure-lifting filter.",
+      "primitives": [
+        "original-colour-brush",
+        "overlay-clear"
+      ]
+    },
+    {
+      "id": "lashes",
+      "startFrame": 470,
+      "endFrame": 488,
+      "startSeconds": 19.583,
+      "endSeconds": 20.333,
+      "title": "First feature marker and citation",
+      "observedVisual": "The claim chip exits upward. A small circular marker lands at an eye and a dark translucent research card appears to the left. The face remains large and in colour.",
+      "interpretation": "A cited source arrives on a specific claim rather than after an unrelated general montage. The reference’s tiny card text is too small to use as our readability target.",
+      "primitives": [
+        "anchor-ring",
+        "research-stack"
+      ]
+    },
+    {
+      "id": "skin",
+      "startFrame": 488,
+      "endFrame": 521,
+      "startSeconds": 20.333,
+      "endSeconds": 21.708,
+      "title": "A region window joins the proof",
+      "observedVisual": "A thin rounded square appears on the cheek. A second research card joins the left column while the eye ring remains visible. The portrait repositions slightly to protect room for the stack.",
+      "interpretation": "Point observations and region observations use different marks. Do not use a face outline to pretend that a texture patch is a measured cheekbone boundary.",
+      "primitives": [
+        "region-patch",
+        "research-stack"
+      ]
+    },
+    {
+      "id": "hair",
+      "startFrame": 521,
+      "endFrame": 547,
+      "startSeconds": 21.708,
+      "endSeconds": 22.792,
+      "title": "Add a second point marker",
+      "observedVisual": "A small ring marks the hair at the temple. A third citation card enters the growing left stack. The cheek square and eye marker hold rather than bouncing repeatedly.",
+      "interpretation": "Accumulation makes the list visible. Our generator should cap clutter and clear old marks when they no longer explain the current sentence.",
+      "primitives": [
+        "anchor-ring",
+        "research-stack"
+      ]
+    },
+    {
+      "id": "contrast",
+      "startFrame": 547,
+      "endFrame": 580,
+      "startSeconds": 22.792,
+      "endSeconds": 24.167,
+      "title": "Continue the evidence column",
+      "observedVisual": "A fourth compact citation card joins below the earlier ones as the narration moves to contrast. Fine white marker strokes remain much lighter than the portrait.",
+      "interpretation": "The visual grammar stays stable while the claim changes. The paper itself still needs independent review before we reuse a scientific assertion.",
+      "primitives": [
+        "research-stack"
+      ]
+    },
+    {
+      "id": "soft-tissue",
+      "startFrame": 580,
+      "endFrame": 604,
+      "startSeconds": 24.167,
+      "endSeconds": 25.167,
+      "title": "Complete the evidence column",
+      "observedVisual": "A fifth citation card completes the stack during the last qualitative example. The portrait, eye ring, hair ring and cheek square remain aligned.",
+      "interpretation": "The repeated card entrance is a list-building mechanism, not a reason to insert a new photo or transition on every sentence.",
+      "primitives": [
+        "research-stack"
+      ]
+    },
+    {
+      "id": "evidence-hold",
+      "startFrame": 604,
+      "endFrame": 662,
+      "startSeconds": 25.167,
+      "endSeconds": 27.583,
+      "title": "Read the accumulated argument",
+      "observedVisual": "The five-card column and marked portrait hold while the narration gives its research summary. There is little global camera movement.",
+      "interpretation": "A clean hold is part of the pacing. A source stack can suggest more certainty than it proves; our curated study registry and limitations must remain the authority.",
+      "primitives": [
+        "research-stack",
+        "clean-hold"
+      ]
+    },
+    {
+      "id": "line-art",
+      "startFrame": 662,
+      "endFrame": 686,
+      "startSeconds": 27.583,
+      "endSeconds": 28.583,
+      "title": "Brush away the photograph",
+      "observedVisual": "Irregular painted patches remove the colour photograph from the top down, revealing a registered fine line drawing on the background beneath it. Hair contours appear before the lower face, coat and hand finish clearing. The old study stack retreats out of the composition.",
+      "interpretation": "This is a second use of the brush mask with a different destination layer: photograph to illustration, not monochrome to colour.",
+      "primitives": [
+        "registered-line-art",
+        "brush-layer-reveal"
+      ]
+    },
+    {
+      "id": "tools-arrive",
+      "startFrame": 686,
+      "endFrame": 708,
+      "startSeconds": 28.583,
+      "endSeconds": 29.5,
+      "title": "Literal tools illustrate the metaphor",
+      "observedVisual": "A translucent ruler enters at an angle across the upper face; a protractor sweeps and settles near the cheek. A two-line editorial headline builds above the drawing. Tracking brackets and coordinate-like readouts become denser around the illustrated body and hand.",
+      "interpretation": "The props illustrate the limitations of a measuring-only approach. Their rotation is meaningful object choreography, not a license for randomly spinning anatomical guides.",
+      "primitives": [
+        "measuring-props",
+        "editorial-headline",
+        "tracking-marks"
+      ]
+    },
+    {
+      "id": "tools-hold",
+      "startFrame": 708,
+      "endFrame": 778,
+      "startSeconds": 29.5,
+      "endSeconds": 32.417,
+      "title": "Hold the conceptual recap",
+      "observedVisual": "The registered drawing, ruler and protractor remain visible as the narration finishes the argument. Small tracking marks continue to change. The headline and the lower caption are separate levels of type.",
+      "interpretation": "The recap is a different visual register from the photographic evidence, which helps signal the change from examples to conclusion.",
+      "primitives": [
+        "measuring-props",
+        "registered-line-art",
+        "clean-hold"
+      ]
+    },
+    {
+      "id": "product-entry",
+      "startFrame": 778,
+      "endFrame": 799,
+      "startSeconds": 32.417,
+      "endSeconds": 33.292,
+      "title": "A distinct product chapter",
+      "observedVisual": "The illustrated group translates downward with blur, while a phone enters from the upper right, almost edge-on, rotates toward the viewer and settles upright in the centre.",
+      "interpretation": "The product appears as a demonstration of what the narrator offers. The exported result does not establish the exact 3D rig or easing. Our actual app/report scenes must stay full-screen under our own layout rules.",
+      "primitives": [
+        "product-device",
+        "focus-cut"
+      ]
+    },
+    {
+      "id": "product-score",
+      "startFrame": 799,
+      "endFrame": 835,
+      "startSeconds": 33.292,
+      "endSeconds": 34.792,
+      "title": "Score animation precedes the face wipe",
+      "observedVisual": "The phone shows a real-looking report layout. A displayed number counts upward toward its endpoint; the explanatory product headline finishes building. A comparison handle is visible over the portrait.",
+      "interpretation": "This is a product-demo animation, not evidence that a live assessment improved during playback. Our numeric displays must remain bound to genuine approved values.",
+      "primitives": [
+        "score-count",
+        "editorial-headline"
+      ]
+    },
+    {
+      "id": "product-wipe",
+      "startFrame": 835,
+      "endFrame": 856,
+      "startSeconds": 34.792,
+      "endSeconds": 35.667,
+      "title": "Show the comparison in place",
+      "observedVisual": "The portrait inside the phone changes through a left/right comparison handle. The surrounding browser/report chrome remains still.",
+      "interpretation": "The comparison is easier to follow because its viewport stays registered. Our engine needs an actual matched pair and must not turn a cosmetic change into a fabricated score increase.",
+      "primitives": [
+        "registered-comparison"
+      ]
+    },
+    {
+      "id": "product-scroll",
+      "startFrame": 856,
+      "endFrame": 888,
+      "startSeconds": 35.667,
+      "endSeconds": 37,
+      "title": "Scroll the report inside stable chrome",
+      "observedVisual": "Report contents move upward inside the fixed phone, revealing rows below the face. The device shell and headline remain in the same place.",
+      "interpretation": "A component-level scroll communicates the depth of the report while preserving orientation. In our full-screen report format, the same principle applies to native chrome without shrinking the app into a phone card.",
+      "primitives": [
+        "native-report-scroll"
+      ]
+    },
+    {
+      "id": "domain-entry",
+      "startFrame": 888,
+      "endFrame": 905,
+      "startSeconds": 37,
+      "endSeconds": 37.708,
+      "title": "Cut to an enlarged domain pill",
+      "observedVisual": "A sharp chapter change introduces an oversized, initially soft outlined search/address pill. Letters build as the graphic resolves. The product phone is gone rather than being geometrically proven to morph into the pill.",
+      "interpretation": "Treat this as a focus/cut and new graphic, not an unsupported shared-element morph. Reuse the technique only for our own brand system, not their exact sign-off.",
+      "primitives": [
+        "focus-cut",
+        "domain-pill"
+      ]
+    },
+    {
+      "id": "domain-hold",
+      "startFrame": 905,
+      "endFrame": 939,
+      "startSeconds": 37.708,
+      "endSeconds": 39.125,
+      "title": "Settle the final action",
+      "observedVisual": "The pill resolves to a small centred horizontal address graphic with a search symbol, then holds until the end. Much of the background is empty.",
+      "interpretation": "A readable end-state matters more than perpetual motion. Our existing rounded app-logo invitation remains the identity and safe-area anchor.",
+      "primitives": [
+        "domain-pill",
+        "clean-hold"
+      ]
+    }
+  ],
+  "primitives": [
+    {
+      "id": "cutout-stage",
+      "name": "Extracted photographic subject",
+      "status": "existing building block",
+      "owner": "video-portrait.ts / editorial-posters.ts",
+      "observedSeconds": [
+        0,
+        19.6
+      ],
+      "description": "Separate the person from the scene while preserving hair, coat and hand edges. Let the body reach the bottom; a mask can crop it later.",
+      "integrationRule": "Do not invent a body cutout or add empty lower whitespace."
+    },
+    {
+      "id": "identity-label",
+      "name": "Micro identity labels and settling characters",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / editorialMicroLabel",
+      "observedSeconds": [
+        0,
+        5
+      ],
+      "description": "Small uppercase, tightly stacked name/role labels sit beside the correct person. Some entrance characters visibly settle from garbled forms.",
+      "integrationRule": "Preserve our readable labels and Torph text replacements. A scramble is optional, brief and not a scientific readout."
+    },
+    {
+      "id": "claim-chip",
+      "name": "Attributed avatar and quote chip",
+      "status": "working local renderer; reviewed assets required",
+      "owner": "editorial-scenes.ts / drawEditorialClaim",
+      "observedSeconds": [
+        0,
+        9.6
+      ],
+      "description": "A circular face thumbnail and compact white message pill persist independently of the changing portrait layout.",
+      "integrationRule": "Needs a verified source and correctly attributed words. Never manufacture a quote for a celebrity."
+    },
+    {
+      "id": "claim-replacement",
+      "name": "Replace the claim inside its carrier",
+      "status": "working local renderer; reviewed assets required",
+      "owner": "editorial-scenes.ts / drawEditorialText / Torph",
+      "observedSeconds": [
+        2.7,
+        3.25
+      ],
+      "description": "Old claim text softens out while new wording appears inside the same visual carrier.",
+      "integrationRule": "Keep quote, attribution and visual changes on the aligned phrase clock; do not change the person being quoted silently."
+    },
+    {
+      "id": "assumption-bubble",
+      "name": "Cloud-shaped proposition bubble",
+      "status": "working local renderer; reviewed assets required",
+      "owner": "editorial-scenes.ts / drawEditorialClaim / thought",
+      "observedSeconds": [
+        9.6,
+        19.6
+      ],
+      "description": "The rectangular message becomes a soft scalloped thought carrier while the avatar/author relationship persists.",
+      "integrationRule": "This depicts a proposition under discussion; do not imply access to someone’s actual thoughts."
+    },
+    {
+      "id": "shared-card-morph",
+      "name": "Persistent hero-to-card reframe",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / renderEditorialScene / card-morph",
+      "observedSeconds": [
+        1.958,
+        3.25
+      ],
+      "description": "The same image shrinks, moves and acquires a rounded crop, rather than being replaced by a second unregistered rendering.",
+      "integrationRule": "Move content and mask together; keep captions on their own track and the persistent image opaque."
+    },
+    {
+      "id": "rounded-mask",
+      "name": "Growing or contracting rounded crop",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / photo / rounded clipping",
+      "observedSeconds": [
+        1.958,
+        2.708
+      ],
+      "description": "A faint rectangle resolves into a rounded portrait boundary as the hero becomes a card.",
+      "integrationRule": "Mask corners and portrait placement share a clock; avoid an early shoulder cutoff."
+    },
+    {
+      "id": "comparison-row",
+      "name": "Two-card comparison layout",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / renderEditorialScene / comparison",
+      "observedSeconds": [
+        2.708,
+        4.833
+      ],
+      "description": "Two portraits align to one baseline with controlled spacing and labels beneath.",
+      "integrationRule": "Only choose a second person/state when the narration requires that comparison; do not force two pictures into every style."
+    },
+    {
+      "id": "comparison-badge",
+      "name": "Small directional comparison badge",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / renderEditorialScene / comparison",
+      "observedSeconds": [
+        3.25,
+        4.833
+      ],
+      "description": "A small dark circular chevron sits between the paired cards rather than on the face.",
+      "integrationRule": "A glyph is not an objective greater-than attractiveness verdict; its semantic direction must be authored."
+    },
+    {
+      "id": "reference-inset",
+      "name": "Persistent reference with a larger evidence window",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / renderEditorialScene / reference-inset",
+      "observedSeconds": [
+        4.833,
+        8.333
+      ],
+      "description": "Keep a small identifying portrait on one side while a larger source video plays alongside it.",
+      "integrationRule": "Requires the actual usable clip, crop and in/out points. Freeze surrounding objects while the clip carries motion."
+    },
+    {
+      "id": "slanted-reveal",
+      "name": "Slanted masked inset replacement",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / renderEditorialScene / reference-inset",
+      "observedSeconds": [
+        4.833,
+        5.583
+      ],
+      "description": "A pale diagonal mask exposes the incoming image/video inside its existing rounded window.",
+      "integrationRule": "Use for a change of evidence, not to interrupt a static facial measurement."
+    },
+    {
+      "id": "source-video",
+      "name": "Archival evidence clip",
+      "status": "asset-dependent",
+      "owner": "media-sources.ts / media-asset.ts",
+      "observedSeconds": [
+        5.583,
+        8.333
+      ],
+      "description": "Use movement as evidence of a reaction or historical moment, not just a different stock still.",
+      "integrationRule": "A generated portrait is not documentary evidence. Import/credit the source and bind the exact range before rendering."
+    },
+    {
+      "id": "contained-cut",
+      "name": "Hard cut inside a stable viewport",
+      "status": "existing building block",
+      "owner": "video renderer + existing hard-cut",
+      "observedSeconds": [
+        6.708,
+        8.333
+      ],
+      "description": "Switch the inner clip while keeping the window, labels and reference image still.",
+      "integrationRule": "Not every content cut needs a full-frame transition."
+    },
+    {
+      "id": "caption-clock",
+      "name": "Independent phrase-caption track",
+      "status": "existing; preserve our typography",
+      "owner": "video-captions.ts / video-script.ts",
+      "observedSeconds": [
+        0,
+        32.4
+      ],
+      "description": "Small italic serif captions advance by phrase in a stable lower band; they are independent of the larger editorial headline.",
+      "integrationRule": "Keep our established caption appearance and photo/report positions. Do not copy their low placement blindly into TikTok safe areas."
+    },
+    {
+      "id": "editorial-headline",
+      "name": "Secondary two-line editorial headline",
+      "status": "existing text building blocks",
+      "owner": "line-reveal / word-reveal",
+      "observedSeconds": [
+        5,
+        32.4
+      ],
+      "description": "A short contextual headline builds separately from the verbatim lower caption, then holds.",
+      "integrationRule": "Avoid two competing paragraphs or revealing a mystery answer in the headline too early."
+    },
+    {
+      "id": "source-orbit",
+      "name": "Turning photographic subject",
+      "status": "working local renderer; reviewed assets required",
+      "owner": "editorial-scenes.ts / renderEditorialScene / orbit (provided photographs, not reconstructed 360°)",
+      "observedSeconds": [
+        9.1,
+        12.75
+      ],
+      "description": "The whole subject turns through several views and returns to the starting portrait.",
+      "integrationRule": "Requires a genuine turntable, reviewed generated clip or registered multi-view asset. Do not rotate a flat image or infer hidden anatomy."
+    },
+    {
+      "id": "view-cone",
+      "name": "Faint projected viewing cone",
+      "status": "illustrative attention wedge implemented; calibrated 3D gaze requires a pose source",
+      "owner": "editorial-scenes.ts / view-cone",
+      "observedSeconds": [
+        9.8,
+        19.5
+      ],
+      "description": "A very low-opacity triangular/conical wedge projects from the head and moves with the view.",
+      "integrationRule": "Do not add this to normal facial guides or simulate 3D gaze measurements from an uncalibrated still."
+    },
+    {
+      "id": "focus-brackets",
+      "name": "Corner acquisition brackets",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / drawEditorialAcquisition",
+      "observedSeconds": [
+        9.3,
+        16.2
+      ],
+      "description": "Short white corners acquire a local feature or tracked region. No long diagonal arms sweep through the face.",
+      "integrationRule": "Use current source-image anchors, scale stroke width with projection, and omit unreliable detections."
+    },
+    {
+      "id": "tracking-marks",
+      "name": "Sparse boxes, points and coordinate-like microtext",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / drawEditorialNetwork / tracks layer",
+      "observedSeconds": [
+        9.3,
+        32.4
+      ],
+      "description": "Marks acquire different parts of the moving subject and hand; their sizes, opacity and density vary.",
+      "integrationRule": "Use actual image coordinates/IDs if values are shown. Do not fabricate biometric numbers or spread marks into clothing without a tracker."
+    },
+    {
+      "id": "landmark-links",
+      "name": "Fine, unequal-weight facial network",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / drawEditorialNetwork / links layer",
+      "observedSeconds": [
+        12.75,
+        16.2
+      ],
+      "description": "Thin linked segments describe changing facial regions, with lower-opacity secondary lines behind the stronger accents.",
+      "integrationRule": "Use separately from Scan and Trails; three or four spaced anchors suffice in our quieter style."
+    },
+    {
+      "id": "original-colour-brush",
+      "name": "Registered monochrome-to-original-colour brush",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / drawEditorialColorReveal",
+      "observedSeconds": [
+        16.208,
+        19.583
+      ],
+      "description": "An irregular moving mask restores the original colour pixels to the same pose without shifting the eyes or changing shape.",
+      "integrationRule": "Opt in when the narration explicitly contrasts monochrome and colour; never lift skin exposure or invent colour for a monochrome source."
+    },
+    {
+      "id": "overlay-clear",
+      "name": "Clear the quantitative layer on the argument turn",
+      "status": "existing choreography building block",
+      "owner": "portrait-program.ts / action clock",
+      "observedSeconds": [
+        16.2,
+        19.6
+      ],
+      "description": "Dense lines recede as the photograph regains colour, leaving room for texture observations.",
+      "integrationRule": "Layers must have exits, not accumulate forever. Maintain the same source registration."
+    },
+    {
+      "id": "anchor-ring",
+      "name": "Small registered eye/hair focus ring",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / drawEditorialAcquisition",
+      "observedSeconds": [
+        19.6,
+        27.6
+      ],
+      "description": "A tiny outlined ring names a point observation, with a short acquisition and a readable hold.",
+      "integrationRule": "The automatic feature integration uses reliable eye anchors. Hair placement still requires a verified hair/temple anchor; do not invent one."
+    },
+    {
+      "id": "region-patch",
+      "name": "Frosted rounded observation window",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / drawEditorialAcquisition / region",
+      "observedSeconds": [
+        20.3,
+        27.6
+      ],
+      "description": "A subtle transparent square highlights a patch of cheek texture without claiming to trace a bone.",
+      "integrationRule": "It is a region marker, not a skin smoothing filter. Keep a two-second hold and use no black contour under-stroke."
+    },
+    {
+      "id": "research-stack",
+      "name": "Progressively accumulated source-card column",
+      "status": "working local renderer; reviewed assets required",
+      "owner": "editorial-scenes.ts / drawEditorialResearch / up to five reviewed source cards",
+      "observedSeconds": [
+        19.6,
+        27.6
+      ],
+      "description": "Five small translucent cards arrive in sequence beside the large face, then stay visible as a column.",
+      "integrationRule": "Our engine currently shows a readable curated card, not this exact accumulating column. A stack must retain readable text, exact claim bindings and a three-second reading window."
+    },
+    {
+      "id": "citation-glyph",
+      "name": "Tiny source-document glyph",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / drawEditorialResearch",
+      "observedSeconds": [
+        19.6,
+        27.6
+      ],
+      "description": "A small folded-paper/document mark sits at the source card’s upper right.",
+      "integrationRule": "Use a neutral document symbol; a tiny icon never substitutes for an actual citation."
+    },
+    {
+      "id": "registered-line-art",
+      "name": "Registered drawing destination layer",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / editorialLineArt / current-photo edge extraction",
+      "observedSeconds": [
+        27.6,
+        32.4
+      ],
+      "description": "Fine line art of the same hair, face, hand and coat replaces the photo without moving its geometry.",
+      "integrationRule": "Needs a registered drawing/edge asset. Do not draw a guessed ideal face over a real person."
+    },
+    {
+      "id": "brush-layer-reveal",
+      "name": "Photograph-to-illustration painted replacement",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / drawEditorialBrushLayer",
+      "observedSeconds": [
+        27.6,
+        29.5
+      ],
+      "description": "A second brush pass removes the photographic surface and exposes a background-coloured drawing underneath.",
+      "integrationRule": "Same mask family, different layers. No arbitrary new image crop or face alignment."
+    },
+    {
+      "id": "measuring-props",
+      "name": "Ruler and protractor object choreography",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / drawEditorialDrafting / relative ruler and protractor",
+      "observedSeconds": [
+        28.6,
+        32.4
+      ],
+      "description": "Translucent tools sweep in with rotation, overlap different facial regions and settle while the recap continues.",
+      "integrationRule": "Use only for the narrated concept. Decorative units cannot imply calibrated facial cm/mm, and prop rotation must never leak into normal guides."
+    },
+    {
+      "id": "product-device",
+      "name": "Perspective device entrance and settle",
+      "status": "working local renderer; reviewed assets required",
+      "owner": "editorial-scenes.ts / drawEditorialPerspective / native report surface",
+      "observedSeconds": [
+        32.4,
+        33.3
+      ],
+      "description": "A phone appears nearly edge-on from above/right and rotates to a frontal resting position.",
+      "integrationRule": "Keep our report screens full video size. Use a device prop only in a deliberately selected product-demo scene, not as the default app layout."
+    },
+    {
+      "id": "score-count",
+      "name": "Spoken/result-bound number animation",
+      "status": "existing building block",
+      "owner": "rolling-number.ts / report-motion.ts",
+      "observedSeconds": [
+        33.1,
+        34.8
+      ],
+      "description": "The example report’s number counts to its endpoint while the product headline builds.",
+      "integrationRule": "Never copy the reference’s number into another person. Reach the true displayed value at the spoken number; a warp cannot generate a new grade."
+    },
+    {
+      "id": "registered-comparison",
+      "name": "Handle-driven in-place before/after",
+      "status": "existing building block",
+      "owner": "drawEditorialSplit / registered feature edit",
+      "observedSeconds": [
+        34.8,
+        35.7
+      ],
+      "description": "The comparison changes inside a stationary report viewport while the handle traverses the portrait.",
+      "integrationRule": "Requires an actual registered pair and a valid source binding. Do not promise a computed outcome from an illustrative edit."
+    },
+    {
+      "id": "native-report-scroll",
+      "name": "Contents scroll beneath fixed report chrome",
+      "status": "existing building block",
+      "owner": "report-choreography.ts / scroll-to-section",
+      "observedSeconds": [
+        35.7,
+        37
+      ],
+      "description": "The document scrolls to reveal additional feature rows while its outer container remains still.",
+      "integrationRule": "In our report styles, preserve full-screen UI and bottom captions; never shrink the app to imitate this reference."
+    },
+    {
+      "id": "focus-cut",
+      "name": "Defocused chapter exchange",
+      "status": "existing building block",
+      "owner": "motion-primitives.ts / focus-cut",
+      "observedSeconds": [
+        32.4,
+        37.2
+      ],
+      "description": "The outgoing concept falls away with blur; the final address shot also starts soft before resolving.",
+      "integrationRule": "The evidence supports a blur/cut handoff, not a proven geometric morph between unrelated objects."
+    },
+    {
+      "id": "domain-pill",
+      "name": "Typed address pill and final size settle",
+      "status": "working local renderer",
+      "owner": "editorial-scenes.ts / renderEditorialScene / domain",
+      "observedSeconds": [
+        37,
+        39.125
+      ],
+      "description": "A large outlined address/search carrier types on, then resolves to a small centred resting pill with an icon.",
+      "integrationRule": "Use our own app-logo CTA and tested header anchor. Do not reproduce QOVES’s recognizable branded sign-off."
+    },
+    {
+      "id": "clean-hold",
+      "name": "Deliberately quiet inspection beat",
+      "status": "existing building block",
+      "owner": "hold / portrait-program.ts",
+      "observedSeconds": [
+        25.2,
+        39.125
+      ],
+      "description": "Let the face, sources or final action remain still long enough to be read.",
+      "integrationRule": "A fast video can contain holds. Do not add motion simply because a sentence continues."
+    }
+  ],
+  "scriptAndMotionRules": [
+    {
+      "rule": "Choose the argument before choosing effects",
+      "direction": "Use one person-specific claim, contradiction, timeline or observation. Name the evidence that can answer it. This reference is a counterexample essay; it does not justify turning every future hook into a mystery or face-ranking game."
+    },
+    {
+      "rule": "Build the first visual proof into the opening",
+      "direction": "The first frame should identify the relevant person; the first few seconds should make the claim and its contradiction visible. Avoid biography preambles, app primers and an opening montage that could belong to anyone."
+    },
+    {
+      "rule": "Use a short causal spine",
+      "direction": "Reported claim → contextual counterexample → question → explanatory thesis → several observable examples → recap → relevant app action. Other stories may use a different spine, but each section must advance one argument."
+    },
+    {
+      "rule": "Let the material change on a change of meaning",
+      "direction": "Change from photo to video when motion is evidence. Switch from numerical guides to colour/texture when the explanation changes. Use an illustration for a conceptual recap. Do not run a transition on every sentence boundary."
+    },
+    {
+      "rule": "Plan continuity groups, not isolated caption pages",
+      "direction": "Bind source image, crop, destination frame and independent layers across adjacent sections. A caption split cannot restart the camera, brush or morph. New layers enter while the subject persists; only clear it on an actual source/context change."
+    },
+    {
+      "rule": "Use the recorded word clock",
+      "direction": "Attach a comparison arrival to the named comparator, an emphasis mark to the feature phrase and a source card to its exact reviewed claim anchor. Align after approved narration exists. Do not retime the voice file to hide a bad edit."
+    },
+    {
+      "rule": "Use fewer layers per claim",
+      "direction": "Combine one main observation mark with optional supporting evidence. Keep Tracks, Links, Scan and Trails independent. Retain our two-second overlay hold; make research cards readable for at least three seconds."
+    },
+    {
+      "rule": "Use available evidence and truthful fallbacks",
+      "direction": "A missing source clip means select a different visual, not a fabricated documentary image. A missing hair/cheek contour means omit that trace. Missing quotes, studies and calibration stay production blockers, not invented data."
+    },
+    {
+      "rule": "Preserve our identity and layout",
+      "direction": "White/light photographic guides, natural skin colour, our existing caption typography and tested safe areas. Photographic captions at the top; report captions at the bottom. Reports stay full-frame. The reference’s blue field, serif captions and branded outro are not global defaults."
+    },
+    {
+      "rule": "Vary delivery within a connected read",
+      "direction": "The transcription has 130 recognized word spans over about 39 seconds, around 200 per minute. Treat that as an estimate: momentum comes from syntax, contrasts and synchronized pictures, not merely speeding up every line or adding slang."
+    },
+    {
+      "rule": "Keep score and science claims precise",
+      "direction": "Do not narrate report provenance. Bind the actual image/category/value/scale internally and display the same value the voice says. The reference appears to round a visible 4.75 to five; our engine must show rounding explicitly or avoid that mismatch."
+    },
+    {
+      "rule": "Keep research distinct from visual credibility",
+      "direction": "The source’s citation stack is a presentation technique. It does not verify every causal claim in the voiceover. The caption appears to use heterogeneous skin while the visible citation concerns colour homogeneity; review the primary paper rather than copying that wording."
+    },
+    {
+      "rule": "Keep the closing connected and shorter when appropriate",
+      "direction": "The reference devotes roughly its last seven seconds to a product demonstration and direct action. Borrow the transition from lesson to useful action, not the precise duration or a promise of an unmeasured score improvement."
+    },
+    {
+      "rule": "Preserve modularity through dependencies",
+      "direction": "A hook, its counterexample and the explanatory thesis must keep their order. Independent examples can swap only when their pronouns, cards and visual state remain correct. Each shortened cut must retain a complete argument and its payoff."
+    }
+  ],
+  "implementation": {
+    "integrated": [
+      "identity-label",
+      "claim-chip",
+      "claim-replacement",
+      "assumption-bubble",
+      "shared-card-morph",
+      "rounded-mask",
+      "comparison-row",
+      "comparison-badge",
+      "reference-inset",
+      "slanted-reveal",
+      "source-orbit",
+      "focus-brackets",
+      "tracking-marks",
+      "landmark-links",
+      "original-colour-brush",
+      "anchor-ring",
+      "region-patch",
+      "research-stack",
+      "citation-glyph",
+      "registered-line-art",
+      "brush-layer-reveal",
+      "measuring-props",
+      "product-device",
+      "domain-pill"
+    ],
+    "automaticStyles": [
+      "feature-study",
+      "occasional portrait-audit",
+      "occasional hybrid-story"
+    ],
+    "colorGate": "Only an explicit monochrome/colour narration contrast; no exposure or skin tone lift.",
+    "notClaimed": "No authentic 360-degree head or calibrated 3D gaze is reconstructed from three photos. Source-video playback remains owned by media-asset.ts. Quote carriers and up-to-five-card stacks require reviewed source metadata; the live example uses two curated papers. Photo-derived line art is an edge extraction, not a commissioned drawing."
+  }
+}

@@ -1,15 +1,22 @@
+import { cheekArches, jawCorner } from './facial-detail-guides'
 import { originalVideoContext, isDarkVideoContext } from './video-theme'
-import { overlayOutlineColor } from './glass-overlay'
+import { applyGlassInk } from './glass-overlay'
 import { z } from 'zod'
 import type { GeneratorImage } from './content-generator'
 import { defaultGlassOverlay, type PortraitEffects } from './video-portrait-effects'
 import { revealContour } from './video-face-treatment'
 import { smoothMotion } from './video-layout'
 
-export const profileStudySchema = z.object({ view: z.enum(['three-quarter', 'profile']), side: z.enum(['left', 'right']), feature: z.enum(['jaw', 'cheek', 'angle', 'nose', 'lips', 'chin']) }).strict()
+const profilePoint = z.object({ x:z.number(), y:z.number() }).strict()
+export const profileStudySchema = z.object({ view: z.enum(['three-quarter', 'profile']), side: z.enum(['left', 'right']), feature: z.enum(['jaw', 'cheek', 'under-cheek', 'angle', 'nose', 'lips', 'chin', 'eyes', 'brows']), contours:z.record(z.string(),z.array(profilePoint).min(2)).optional(), angle:z.object({from:profilePoint,vertex:profilePoint,to:profilePoint}).strict().optional() }).strict()
 export type ProfileStudy = z.infer<typeof profileStudySchema>
 type Point = { x: number; y: number }
-export type ProfileGeometry = { contour: Point[]; angle?: { vertex: Point; from: Point; to: Point; degrees: number }; view: ProfileStudy['view'] }
+export type ProfileGeometry = { faceBottom?:number; contour: Point[]; angle?: { vertex: Point; from: Point; to: Point; degrees: number }; view: ProfileStudy['view'] }
+
+export const profileFeatureLabels: Record<ProfileStudy['feature'],string> = {
+  jaw:'Profile jawline',cheek:'Visible cheekbone','under-cheek':'Under cheekbone',angle:'Gonial angle',
+  nose:'Nose profile',lips:'Lip profile',chin:'Chin projection',eyes:'Visible eye',brows:'Visible brow',
+}
 
 export function projectedAngle(from: Point, vertex: Point, to: Point) {
   const first = { x: from.x - vertex.x, y: from.y - vertex.y }, second = { x: to.x - vertex.x, y: to.y - vertex.y }
@@ -18,7 +25,22 @@ export function projectedAngle(from: Point, vertex: Point, to: Point) {
   return Math.acos(Math.max(-1, Math.min(1, (first.x * second.x + first.y * second.y) / denominator))) * 180 / Math.PI
 }
 
+export function registerProfileStudy(study: ProfileStudy, image: {width:number;height:number}, crop: {x:number;y:number;width:number;height:number}): ProfileStudy {
+  if (!study.contours) return study
+  const point = (p:Point) => ({x:(p.x*image.width-crop.x)/crop.width,y:(p.y*image.height-crop.y)/crop.height})
+  return {...study,contours:Object.fromEntries(Object.entries(study.contours).map(([key,path])=>[key,path.map(point)])),angle:study.angle?{from:point(study.angle.from),vertex:point(study.angle.vertex),to:point(study.angle.to)}:undefined}
+}
+
 export function profileGeometry(image: GeneratorImage, study: ProfileStudy): ProfileGeometry {
+  const authored = study.contours?.[study.feature === 'angle' ? 'jaw' : study.feature === 'under-cheek' ? 'cheek' : study.feature]
+  if (authored) {
+    const pixel = (p:Point) => ({x:p.x*image.width,y:p.y*image.height})
+    const path = study.feature === 'under-cheek' ? authored.map(p=>({...p,y:p.y+.018})) : authored
+    const angle = study.feature === 'angle' && study.angle ? {from:pixel(study.angle.from),vertex:pixel(study.angle.vertex),to:pixel(study.angle.to)} : undefined
+    const degrees = angle && projectedAngle(angle.from,angle.vertex,angle.to)
+    return {view:study.view,faceBottom:Math.max(...[...(study.contours?.jaw??[]),...(study.contours?.chin??[]),...authored].map(p=>p.y))*image.height,contour:path.map(pixel),angle:angle&&degrees!=null?{...angle,degrees}:undefined}
+  }
+
   const landmarks = image.landmarks, anchors = landmarks?.anchors
   if (!landmarks || landmarks.confidence < .58 || !anchors?.chin) throw new Error(`${image.name}: profile annotations need reliable detected contours.`)
   const boundary = landmarks.contours?.faceOutline ?? [], jaw = landmarks.contours?.jawline ?? boundary
@@ -38,11 +60,19 @@ export function profileGeometry(image: GeneratorImage, study: ProfileStudy): Pro
   }
   if (study.feature === 'nose') return anchored([anchors.noseBridge, nose, landmarks.contours?.noseBase?.[3]])
   if (study.feature === 'lips') return anchored([anchors.upperLip, anchors.mouthCenter, anchors.lowerLip])
-  if (study.feature === 'cheek') {
-    if (!cheek || !corner || boundary.length < 9) throw new Error(`${image.name}: no reliable visible cheek contour.`)
-    const start = nearest(boundary, cheek), end = nearest(boundary, corner)
-    return { view: study.view, contour: boundary.slice(Math.min(start, end), Math.max(start, end) + 1).map(pixel) }
+  if (study.feature === 'eyes' || study.feature === 'brows') {
+    const key = study.feature === 'eyes' ? side === 'left' ? 'leftEye' : 'rightEye' : side === 'left' ? 'leftBrow' : 'rightBrow'
+    const path = landmarks.contours?.[key]
+    if (!path || path.length < 3) throw new Error(`${image.name}: no reliable visible ${study.feature} contour.`)
+    return {view:study.view,contour:path.map(pixel)}
   }
+  if (study.feature === 'cheek' || study.feature === 'under-cheek') {
+    const arcs=cheekArches(landmarks,study.feature==='under-cheek')
+    if(!arcs.length||!cheek)throw new Error(`${image.name}: no reliable visible cheek contour.`)
+    const arc=arcs.toSorted((a,b)=>Math.min(...a.map(p=>distance(p,cheek)))-Math.min(...b.map(p=>distance(p,cheek))))[0]
+    return {view:study.view,contour:arc.map(pixel)}
+  }
+
   if (!corner || jaw.length < 9) throw new Error(`${image.name}: no reliable visible jaw contour.`)
   const start = nearest(jaw, corner), end = nearest(jaw, anchors.chin)
   const contour = jaw.slice(Math.min(start, end), Math.max(start, end) + 1).map(pixel)
@@ -53,7 +83,9 @@ export function profileGeometry(image: GeneratorImage, study: ProfileStudy): Pro
   }
   if (study.feature !== 'angle') return { view: study.view, contour }
   if (!cheek) return { view: study.view, contour }
-  const vertex = pixel(jaw[start]), from = pixel(cheek), to = pixel(jaw[end])
+  const turn=jawCorner(landmarks,side)
+  if(!turn)return {view:study.view,contour}
+  const vertex=pixel(turn.vertex),from=pixel(turn.from),to=pixel(turn.to)
   const degrees = projectedAngle(from, vertex, to)
   if (degrees === null) return { view: study.view, contour }
   return { view: study.view, contour, angle: { from, vertex, to, degrees } }
@@ -75,7 +107,7 @@ export function drawProfileStudy(ctx: CanvasRenderingContext2D, geometry: Profil
   const exit = reduced || options.durationMs === undefined ? 1 : smoothMotion((options.durationMs - timeMs) / 300)
   const phase = Math.max(0, timeMs), transform = ctx.getTransform(), unit = 1 / Math.max(.01, Math.hypot(transform.a, transform.b))
   const progress = reduced ? 1 : smoothMotion((phase - 80 - lightingLeadMs) / 520)
-  ctx.save(); ctx.globalAlpha *= appearance.opacity * exit * (reduced ? 1 : smoothMotion(phase / 160)); ctx.strokeStyle = appearance.color ?? '#fff'; ctx.fillStyle = appearance.color ?? '#fff'; ctx.lineWidth = unit * (appearance.contrast ? 2.4 : 1.8); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.shadowColor = overlayOutlineColor(appearance.color); ctx.shadowBlur = unit * 1.5
+  ctx.save(); ctx.globalAlpha *= appearance.opacity * exit * (reduced ? 1 : smoothMotion(phase / 160)); applyGlassInk(ctx, unit, appearance.contrast ? 4.4 : 3.6, appearance.color)
   ctx.setLineDash(appearance.pattern === 'dotted' ? [.5 * unit, 4.5 * unit] : appearance.pattern === 'dashed' ? [7 * unit, 5 * unit] : [])
   const path = revealContour(geometry.contour, progress)
   if (!geometry.angle) { ctx.beginPath(); path.forEach((point, index) => index ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y)); ctx.stroke() }

@@ -13,7 +13,7 @@ export type LaunchCampaign = {
   description: string;
   milestones: SprintTerms["milestones"];
   contentRules: { title: string; detail: string }[];
-  examples: { url: string; label: string }[];
+  examples: { url: string; label: string; poster?: string }[];
 };
 export const LAUNCH_CAMPAIGNS: LaunchCampaign[] = [
   {
@@ -234,7 +234,7 @@ export function launchCampaign(terms: SprintTerms) {
 }
 
 export function hasLaunchCampaignBonuses(post: { sprintId?: string | null; sprintTerms?: SprintTerms | null }) {
-  return Boolean(post.sprintId && post.sprintTerms?.bonusBudgetCents && launchCampaign(post.sprintTerms));
+  return Boolean(!post.sprintTerms?.retainer && post.sprintId && post.sprintTerms?.bonusBudgetCents && launchCampaign(post.sprintTerms));
 }
 
 export function launchCampaignTerms(campaign: LaunchCampaign): SprintTerms {

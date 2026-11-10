@@ -13,18 +13,51 @@ function frame(face: FaceLandmarksPayload) {
   const u = { x: dx/span, y: dy/span/ratio }, v = { x: -dy/span, y: dx/span/ratio }
   return { span, move: (p: Point, x: number, y: number): Point => ({ x:p.x+span*(u.x*x+v.x*y), y:p.y+span*(u.y*x+v.y*y) }) }
 }
-function jawSides(face: FaceLandmarksPayload): Path[] {
-  const jaw = face.contours?.jawline, chin = face.anchors.chin
-  if (!jaw || jaw.length < 5 || !chin || !face.anchors.leftCheek || !face.anchors.rightCheek) return []
-  const middle = jaw.reduce((best,p,i) => Math.hypot(p.x-chin.x,p.y-chin.y)<Math.hypot(jaw[best].x-chin.x,jaw[best].y-chin.y)?i:best,0)
-  if (middle===0 || middle===jaw.length-1) return []
-  return [[face.anchors.leftCheek,...jaw.slice(0,middle+1)], [face.anchors.rightCheek,...jaw.slice(middle).reverse()]]
+export function visibleFaceSides(face:FaceLandmarksPayload):Array<'left'|'right'> {
+  const {noseTip,leftCheek,rightCheek}=face.anchors
+  if(Math.abs(face.quality?.yawRadians??0)<.55||!noseTip||!leftCheek||!rightCheek)return ['left','right']
+  const ratio=face.image.height/face.image.width,distance=(p:Point)=>Math.hypot(p.x-noseTip.x,(p.y-noseTip.y)*ratio)
+  return [distance(leftCheek)>distance(rightCheek)?'left':'right']
 }
-function offsetJaw(face: FaceLandmarksPayload): Path[] {
-  const f = frame(face)
-  if (!f) return []
-  // Both traces develop from the back towards one shared, slightly lower chin point.
-  return jawSides(face).map((side,index) => side.map((p,i) => f.move(p,(index?1:-1)*.035*(1-i/(side.length-1)),.035)))
+export function jawOutline(face:FaceLandmarksPayload):Path[] {
+  const sides=visibleFaceSides(face)
+  if(sides.length===2)return face.contours?.jawline?.length?[face.contours.jawline]:[]
+  const path=jawSides(face)[sides[0]==='left'?0:1]
+  return path?[path]:[]
+}
+const visibleJawSides=(face:FaceLandmarksPayload)=>visibleFaceSides(face).flatMap(side=>{const path=jawSides(face)[side==='left'?0:1];return path?[path]:[]})
+export function jawSides(face: FaceLandmarksPayload): Path[] {
+  const jaw=face.contours?.jawline,chin=face.anchors.chin
+  if(!jaw||jaw.length<5||!chin||!jaw.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)))return []
+  const ratio=face.image.height/face.image.width
+  const middle=jaw.reduce((best,p,i)=>Math.hypot(p.x-chin.x,(p.y-chin.y)*ratio)<Math.hypot(jaw[best].x-chin.x,(jaw[best].y-chin.y)*ratio)?i:best,0)
+  if(middle===0||middle===jaw.length-1)return []
+  const sides=[jaw.slice(0,middle+1),jaw.slice(middle).reverse()],left=face.anchors.leftCheek??face.anchors.jawLeft
+  if(left)sides.sort((a,b)=>Math.hypot(a[0].x-left.x,(a[0].y-left.y)*ratio)-Math.hypot(b[0].x-left.x,(b[0].y-left.y)*ratio))
+  return sides
+}
+export function jawCorner(face:FaceLandmarksPayload,side:'left'|'right') {
+  const path=jawSides(face)[side==='left'?0:1],anchor=face.anchors[side==='left'?'jawLeft':'jawRight']
+  if(!path||path.length<5||!anchor)return
+  const ratio=face.image.height/face.image.width,distance=(a:Point,b:Point)=>Math.hypot(a.x-b.x,(a.y-b.y)*ratio)
+  const nearest = path.reduce((best, p, i) => distance(p, anchor) < distance(path[best], anchor) ? i : best, 0)
+  const reach = Math.max(.018, distance(path[0], path.at(-1)!) * .16)
+  let best: { index: number; start: number; end: number; score: number } | undefined
+  for (let index = Math.max(1, nearest - 2); index <= Math.min(path.length - 2, nearest + 2); index++) {
+    const vertex = path[index]
+    let start = index - 1, end = index + 1
+    while (start > 0 && distance(path[start], vertex) < reach) start--
+    while (end < path.length - 1 && distance(path[end], vertex) < reach) end++
+    const before = distance(path[start], vertex), after = distance(path[end], vertex)
+    if (Math.min(before, after) < reach * .55) continue
+    const chord = distance(path[start], path[end])
+    const cosine = (before ** 2 + after ** 2 - chord ** 2) / (2 * before * after)
+    const score = cosine - distance(vertex, anchor) / reach * .55
+    if (!best || score > best.score) best = { index, start, end, score }
+  }
+  if (!best) return
+  const { index, start, end } = best
+  return { from: path[start], vertex: path[index], to: path[end], arms: [path.slice(start, index + 1), path.slice(index, end + 1)] }
 }
 function eyeEdge(face: FaceLandmarksPayload, upper: boolean, offset: number): Path[] {
   const f = frame(face)
@@ -32,27 +65,68 @@ function eyeEdge(face: FaceLandmarksPayload, upper: boolean, offset: number): Pa
   return (['leftEye','rightEye'] as const).flatMap(key => {
     const points = face.contours?.[key] ?? []
     if (points.length < 6) return []
-    const mid = (Math.min(...points.map(p=>p.y))+Math.max(...points.map(p=>p.y)))/2
-    const edge = points.filter(p=>upper?p.y<=mid:p.y>=mid).sort((a,b)=>a.x-b.x)
-    return edge.length>=3 ? [edge.map((p,i)=>f.move(p,0,offset*Math.sin(Math.PI*i/(edge.length-1))))] : []
+    const side = key === 'leftEye' ? 'left' : 'right'
+    const inner = face.anchors[side === 'left' ? 'leftEyeInner' : 'rightEyeInner']
+    const outer = face.anchors[side === 'left' ? 'leftEyeOuter' : 'rightEyeOuter']
+    if (!inner || !outer) return []
+    const ratio = face.image.height / face.image.width
+    const [start, end] = inner.x < outer.x ? [inner, outer] : [outer, inner]
+    const dx = end.x - start.x, dy = (end.y - start.y) * ratio
+    const span = Math.hypot(dx, dy)
+    if (span < .01) return []
+    const horizontal = (p: Point) => ((p.x - start.x) * dx + (p.y - start.y) * ratio * dy) / span
+    const vertical = (p: Point) => (-(p.x - start.x) * dy + (p.y - start.y) * ratio * dx) / span
+    const edge = points.filter(p => upper ? vertical(p) < 0 : vertical(p) > 0)
+      .filter(p => horizontal(p) > 0 && horizontal(p) < span)
+      .sort((a, b) => horizontal(a) - horizontal(b))
+    if (edge.length < 2) return []
+    const margin = span * offset * 2
+    return [[start, ...edge.map(p => {
+      const lift = margin * Math.sin(Math.PI * horizontal(p) / span)
+      return { x: p.x - dy / span * lift, y: p.y + dx / span * lift / ratio }
+    }), end]]
   })
 }
 function gonial(face: FaceLandmarksPayload): Path[] {
-  const f = frame(face), chin = face.anchors.chin
-  if (!f || !chin) return []
-  return (['left','right'] as const).flatMap(side => {
-    const jaw = face.anchors[side==='left'?'jawLeft':'jawRight'], cheek = face.anchors[side==='left'?'leftCheek':'rightCheek']
-    if (!jaw || !cheek) return []
-    const arm = (to: Point) => { const dx=to.x-jaw.x,dy=(to.y-jaw.y)*face.image.height/face.image.width,length=Math.hypot(dx,dy); return length>.001?mix(jaw,to,Math.min(.45,f.span*.24/length)):undefined }
-    const a=arm(cheek),b=arm(chin)
-    return a&&b?[[jaw,a],[jaw,b],curve(mix(jaw,a,.5),mix(a,b,.35),mix(jaw,b,.5))]:[]
+  return visibleFaceSides(face).flatMap(side=>{const corner=jawCorner(face,side);if(!corner)return [];const {from,vertex,to}=corner;return [...corner.arms,curve(mix(vertex,from,.35),mix(from,to,.25),mix(vertex,to,.35))]})
+}
+function cheekPath(face: FaceLandmarksPayload, side: 'left' | 'right', under: boolean): Path {
+  const contours = face.contours
+  const split = contours?.[`${side}${under ? 'Submalar' : 'Cheekbone'}`]
+  const legacy = contours?.cheekbones
+  // The legacy mesh stores both cheeks in one chain. Only read the known ends.
+  const path = split?.length ? split : !under && legacy?.length === 54
+    ? side === 'left' ? legacy.slice(0, 5) : legacy.slice(-4).reverse()
+    : []
+  return path.length >= 3 && path.every(p => Number.isFinite(p.x) && Number.isFinite(p.y)) ? path : []
+}
+
+export function cheekArches(face: FaceLandmarksPayload, under = false): Path[] {
+  return visibleFaceSides(face).map(side => cheekPath(face, side, under)).filter(path => path.length)
+}
+
+export function cheekboneRegions(face: FaceLandmarksPayload) {
+  return visibleFaceSides(face).flatMap(side => {
+    const ridge = cheekPath(face, side, false), lower = cheekPath(face, side, true)
+    if (!ridge.length || !lower.length) return []
+    return [{ id: `${side}-cheek`, points: [...ridge, ...lower.toReversed()] }]
   })
 }
-function cheekArches(face: FaceLandmarksPayload): Path[] {
-  const points = face.contours?.cheekbones ?? []
-  // The detector stores the left and right zygomatic arcs at the ends of this contour.
-  if (points.length < 14) return []
-  return [points.slice(0,7),points.slice(-7).reverse()]
+
+const underCheekArches = (face: FaceLandmarksPayload) => cheekArches(face, true)
+function cheekFrames(face: FaceLandmarksPayload): Path[] {
+  const ratio = face.image.height / face.image.width
+  return cheekArches(face).flatMap(path => {
+    const start = path[0], end = path.at(-1)!
+    const dx = end.x - start.x, dy = (end.y - start.y) * ratio
+    const length = Math.hypot(dx, dy)
+    if (length < .01) return [path]
+    const offset = { x: -dy * .08, y: dx * .08 / ratio }
+    return [path, ...[start, end].map(p => [
+      { x: p.x - offset.x, y: p.y - offset.y },
+      { x: p.x + offset.x, y: p.y + offset.y },
+    ])]
+  })
 }
 function smileLines(face: FaceLandmarksPayload): Path[] {
   const f=frame(face),base=face.contours?.noseBase
@@ -79,7 +153,12 @@ function thirds(face: FaceLandmarksPayload): Path[] {
   return [brow,nose,chin].map(p=>[f.move(p,-.73,0),p,f.move(p,.73,0)]).concat([[f.move(brow,.8,0),f.move(nose,.8,0),f.move(chin,.8,0)]])
 }
 export const facialDetailGuides: DetailGuide[] = [
-  { id:'detail.jaw-offset',category:'jaw',label:'Bilateral jaw trace',detail:'Two dotted traces develop from the back of the jaw and meet just outside the chin.',match:/bilateral jaw|jaw(?:line)? trac\w*|jawline|jaw outline/i,stroke:'dotted',paths:offsetJaw },
+  { id:'detail.jaw-frame',category:'jaw',label:'Jawline frame',detail:'Paired contour frames follow the visible jaw sides toward the detected chin.',match:/jaw(?:line)? fram/i,stroke:'solid',paths:visibleJawSides },
+  { id:'detail.cheek-area',category:'cheeks',label:'Upper cheek area',detail:'Frames the visible cheek surface between the upper and lower mesh tracks.',match:/upper cheek area|cheekbone area/i,stroke:'solid',paths:face=>cheekboneRegions(face).map(({points})=>[...points,points[0]]) },
+  { id:'detail.cheek-frame',category:'cheeks',label:'Cheekbone frame',detail:'Detected cheekbone arcs receive short framing caps at their ends.',match:/cheekbone fram/i,stroke:'solid',paths:cheekFrames },
+  { id:'detail.under-cheekbones',category:'cheeks',label:'Under cheekbone',detail:'A guide below each detected cheekbone arc frames the under-cheekbone region without estimating tissue depth.',match:/under.?cheekbone|submalar/i,stroke:'dashed',paths:underCheekArches },
+  { id:'detail.cheek-levels',category:'cheeks',label:'Cheekbone / lower contour',detail:'Paired upper and lower guides distinguish the cheekbone arc from the region below it.',match:/cheek.*(?:upper and lower|levels)/i,stroke:'dotted',paths:face=>[...cheekArches(face),...underCheekArches(face)] },
+  { id:'detail.jaw-offset',category:'jaw',label:'Bilateral jaw trace',detail:'Two dotted traces follow the detected jaw sides without moving their coordinates.',match:/bilateral jaw|jaw(?:line)? trac\w*|jawline|jaw outline/i,stroke:'dotted',paths:visibleJawSides },
   { id:'detail.under-eyes',category:'eyes',label:'Under-eye contours',detail:'Fine paired curves follow the lower-eye region using the detected eye contours.',match:/eye bags?|under.eye|tear trough/i,stroke:'dotted',paths:face=>eyeEdge(face,false,.12) },
   { id:'detail.gonial',category:'jaw',label:'Jaw-angle outline',detail:'Short arms and a small arc highlight each visible jaw turn; this is a 2D guide.',match:/gonial|jaw angle|angle of the jaw/i,stroke:'solid',paths:gonial },
   { id:'detail.dimorphism',category:'face-shape',label:'Facial shape relationships',detail:'Compares brow, cheek and jaw contours without assigning a gender or an ideal face.',match:/dimorph\w*|masculin\w*|feminin\w*/i,stroke:'dashed',paths:face=>[...cheekArches(face),...jawSides(face),...(face.contours?.leftBrow?[face.contours.leftBrow]:[]),...(face.contours?.rightBrow?[face.contours.rightBrow]:[])] },

@@ -1,0 +1,267 @@
+{
+  "id": "v-round3",
+  "subjectId": "v",
+  "title": "What a close-up hides about V’s jaw",
+  "voice": {
+    "preset": "editorial",
+    "voice": "Puck",
+    "direction": "Independent narrator, never imitate the person pictured. Brisk upbeat conversational English, approximately 185 words per minute. Read the exact transcript only, without introductions, explanations or extra endings. Tell one connected story with natural contractions, purposeful emphasis and distinct energy between the opening, observation, score and payoff. No slow documentary voice, dramatic trailer voice, monotone list or advertising voice. Do not slow down for the product mention. Mogging.com is pronounced Mogging dot com; Clavicular is kluh-VIK-yuh-ler; Zeta is ZAY-tuh. Read digits and scores clearly. Keep pauses brief but let the visual idea land. Brisk, upbeat, conversational Puck. One narrator and one cohesive argument, with distinct energy for setup, evidence and payoff. Do not generate audio before explicit script approval. This complete 135-word story should take about 41 to 45 seconds. Give the crop reveal a natural pause, let the cheek-to-chin explanation breathe, and keep the scores clear. Conversational energy comes from varied intonation rather than racing through the words."
+  },
+  "script": {
+    "version": 1,
+    "revision": "script-d57bcbb80744491f",
+    "promotion": "contextual",
+    "cues": [
+      {
+        "id": "cue-bef7629f5fb3a68c-0",
+        "sourceId": "hook",
+        "text": "Zooming in on V's jaw hides half the story. Pull back, and the cheekbones explain why.",
+        "delivery": {
+          "direction": "Invite the viewer into a visual discovery; curious and conversational, with a small hold for the on-screen change.",
+          "emphasis": [],
+          "paceWpm": 202,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "hook",
+          "title": "Opening",
+          "role": "hook",
+          "priority": 100,
+          "dependsOn": [],
+          "visuals": [
+            {
+              "crop": {
+                "x": 0.2,
+                "y": 0.42,
+                "width": 0.6,
+                "height": 0.2
+              },
+              "treatment": "detail",
+              "imageId": "v-front",
+              "categoryId": "jaw",
+              "focus": "features",
+              "view": "front",
+              "reason": "Open on a lower-face crop of the SAME v-front image, including the full jaw and chin. Immediately pull back to include the cheeks. Do not reshape anatomy or substitute a different photo."
+            },
+            {
+              "treatment": "portrait",
+              "imageId": "v-front",
+              "match": "Pull back",
+              "categoryId": "jaw",
+              "focus": "features",
+              "view": "front",
+              "reason": "Open on a lower-face crop of the SAME v-front image, including the full jaw and chin. Immediately pull back to include the cheeks. Do not reshape anatomy or substitute a different photo."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-0c73e83e0ff01b8c-0",
+        "sourceId": "shape",
+        "text": "His cheekbones give the face width high up. Then the outline cuts inward toward the chin, giving the lower face that really clear taper.",
+        "delivery": {
+          "direction": "Connected, upbeat phrasing. Vary emphasis with the reveal and payoff; say scores clearly and let the visuals carry the pauses.",
+          "emphasis": [],
+          "paceWpm": 196,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "shape",
+          "title": "Shape",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "hook"
+          ],
+          "visuals": [
+            {
+              "treatment": "detail",
+              "imageId": "v-front",
+              "categoryId": "jaw",
+              "focus": "features",
+              "view": "front",
+              "reason": "Hold the full front portrait for cheek width, then one restrained visible cheek-to-chin contour. Preserve native proportions; no measurement labels."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-66fa93f3959074e9-0",
+        "sourceId": "crop",
+        "text": "A jawline close-up cuts that relationship out. You're seeing the edge without the shape that leads into it.",
+        "delivery": {
+          "direction": "Connected, upbeat phrasing. Vary emphasis with the reveal and payoff; say scores clearly and let the visuals carry the pauses.",
+          "emphasis": [],
+          "paceWpm": 198,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "crop",
+          "title": "Crop",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "shape"
+          ],
+          "visuals": [
+            {
+              "crop": {
+                "x": 0.2,
+                "y": 0.42,
+                "width": 0.6,
+                "height": 0.2
+              },
+              "treatment": "detail",
+              "imageId": "v-front",
+              "categoryId": "jaw",
+              "focus": "features",
+              "view": "front",
+              "reason": "Compare the original lower-face crop with the full version of the same image. Keep image scale consistent where possible, so the extra context is the change."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-87e093d620b5342b-0",
+        "sourceId": "score",
+        "text": "His jaw and cheek area each get eight out of ten in this Mogging portrait. The side view shows why that pairing matters.",
+        "delivery": {
+          "direction": "Connected, upbeat phrasing. Vary emphasis with the reveal and payoff; say scores clearly and let the visuals carry the pauses.",
+          "emphasis": [],
+          "paceWpm": 188,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "score",
+          "title": "Score",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "crop"
+          ],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "v-front",
+              "categoryId": "jaw",
+              "focus": "scores",
+              "view": "front",
+              "reason": "Show Jaw and chin 8/10 and Cheek area 8/10 on the exact assessed v-front portrait at the spoken values. Clear scores before the next photo."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-2e942e8b06cb07ed-0",
+        "sourceId": "turn",
+        "text": "At three-quarter, you can follow the transition from cheek to chin. In profile, you can finally see how far the chin projects. Each view adds a piece the first crop was hiding.",
+        "delivery": {
+          "direction": "Connected, upbeat phrasing. Vary emphasis with the reveal and payoff; say scores clearly and let the visuals carry the pauses.",
+          "emphasis": [],
+          "paceWpm": 198,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "turn",
+          "title": "Turn",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "score"
+          ],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "v-three-quarter",
+              "categoryId": "jaw",
+              "focus": "features",
+              "view": "three-quarter",
+              "reason": "Show the existing three-quarter image for the first sentence, then v-profile for the chin projection. These are illustrative alternate views, not calibrated measurements."
+            },
+            {
+              "treatment": "portrait",
+              "imageId": "v-profile",
+              "match": "profile",
+              "categoryId": "jaw",
+              "focus": "features",
+              "view": "three-quarter",
+              "reason": "Show the existing three-quarter image for the first sentence, then v-profile for the chin projection. These are illustrative alternate views, not calibrated measurements."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-a06e2270618b2eb2-0",
+        "sourceId": "outro",
+        "text": "Find what gives your own face definition on Mogging.com. Start with the whole shape, from cheekbones to chin.",
+        "delivery": {
+          "direction": "Connected, upbeat phrasing. Vary emphasis with the reveal and payoff; say scores clearly and let the visuals carry the pauses.",
+          "emphasis": [],
+          "paceWpm": 198,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "outro",
+          "title": "Takeaway",
+          "role": "takeaway",
+          "priority": 100,
+          "dependsOn": [
+            "turn"
+          ],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "v-front",
+              "categoryId": "jaw",
+              "focus": "features",
+              "view": "front",
+              "reason": "Return to the full front portrait with the story-specific Mogging.com invitation. No appended generic catchphrase."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "status": "recorded",
+  "assessmentId": "e6835ff68a0fe1063ab995525f9dc4cb5612faf297319eb8e70d1eef8ef54d8a",
+  "imageIds": [
+    "v-front",
+    "v-three-quarter",
+    "v-profile"
+  ],
+  "defaultLength": 45,
+  "recordedDurationMs": 35640,
+  "audioStatus": "word-aligned",
+  "sections": [
+    {
+      "id": "hook",
+      "startMs": 0,
+      "durationMs": 5050
+    },
+    {
+      "id": "shape",
+      "startMs": 5050,
+      "durationMs": 6400
+    },
+    {
+      "id": "crop",
+      "startMs": 11450,
+      "durationMs": 4650
+    },
+    {
+      "id": "score",
+      "startMs": 16100,
+      "durationMs": 5550
+    },
+    {
+      "id": "turn",
+      "startMs": 21650,
+      "durationMs": 8500
+    },
+    {
+      "id": "outro",
+      "startMs": 30150,
+      "durationMs": 5490
+    }
+  ]
+}

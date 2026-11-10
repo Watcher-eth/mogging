@@ -12,7 +12,7 @@ type Submission = typeof schema.creatorSubmissions.$inferSelect
 // Call with the submission locked, and apply the returned assignment in the
 // same transaction. The old campaign retains its already-approved commitment.
 export async function expiredRereviewAssignment(tx: Transaction, post: Submission, now = new Date()) {
-  if (!post.sprintId || !post.sprintTerms || launchCampaign(post.sprintTerms)) return undefined
+  if (!post.sprintId || !post.sprintTerms || post.sprintTerms.retainer || launchCampaign(post.sprintTerms)) return undefined
   const source = await tx.query.creatorSprints.findFirst({ where: eq(schema.creatorSprints.id, post.sprintId) })
   if (!source || (source.status !== 'ended' && source.endsAt.getTime() > now.getTime())) return undefined
   const active = await tx.query.creatorSprints.findMany({

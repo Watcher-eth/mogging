@@ -4,7 +4,10 @@ export const glassOverlaySchema = z.object({ color: z.string().regex(/^#[0-9a-fA
 export const defaultGlassOverlay = glassOverlaySchema.parse({})
 export type GlassOverlay = z.infer<typeof glassOverlaySchema>
 
-export function overlayOutlineColor(ink = '#FFFFFF') {
-  const brightness = [1, 3, 5].reduce((sum, index) => sum + parseInt(ink.slice(index, index + 2), 16), 0) / 3
-  return brightness < 128 ? '#FFFFFF' : '#111111'
+export function applyGlassInk(ctx: CanvasRenderingContext2D, unit = 1, weight = 2.4, color = 'rgba(255,255,255,.88)') {
+  ctx.strokeStyle = ctx.fillStyle = color
+  ctx.lineWidth = weight * unit
+  ctx.lineCap = ctx.lineJoin = 'round'
+  ctx.shadowColor = 'rgba(231,244,255,.3)'
+  ctx.shadowBlur = 2.5 * unit
 }

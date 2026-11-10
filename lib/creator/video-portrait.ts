@@ -31,7 +31,7 @@ export function portraitContextRegion(image: { width: number; height: number }, 
 export function portraitImageFrame(image: { width: number; height: number }, stage: { width: number; height: number }, focus?: VideoFrame, landmarks?: GeneratorImage['landmarks'], headTop?: number, maximumZoom = 1.45, fillBottom = false): VideoFrame {
   const context = portraitContextRegion(image, landmarks, headTop)
   const fullWidth = stage.width / image.width
-  const base = context ? Math.min(stage.width / context.width, stage.height * .94 / context.height) : fullWidth
+  const base = Math.max(fullWidth, context ? Math.min(stage.width / context.width, stage.height * .94 / context.height) : fullWidth)
   const framingScale = focus ? Math.max(base, Math.min(base * maximumZoom, stage.width * .86 / focus.width, stage.height * .86 / focus.height)) : base
   const scale = fillBottom ? Math.max(framingScale,stage.height/image.height) : framingScale
   const width = image.width * scale, height = image.height * scale
@@ -43,6 +43,13 @@ export function portraitImageFrame(image: { width: number; height: number }, sta
     y: fillBottom ? Math.max(stage.height-height,y) : y,
     width, height,
   }
+}
+
+/** A score overlays the portrait, so the face never needs a shorter stage. */
+export function scorePortraitFrame(image: { width: number; height: number }, stage: { width: number; height: number }, headTop = 0): VideoFrame {
+  const scale = Math.max(stage.width / image.width, stage.height / image.height)
+  const width = image.width * scale, height = image.height * scale
+  return { x: (stage.width - width) / 2, y: Math.max(stage.height - height, stage.height * .11 - headTop * scale), width, height }
 }
 
 export function portraitFadeStart(height: number, protectedBottom = 0) {

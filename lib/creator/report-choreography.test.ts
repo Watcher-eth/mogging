@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 import { videoContent } from './video-layout'
-import { reportEmphasis, drawAppReport, drawFeatureMetric, metricRevealState, reportMetricCues, type AppReportAsset } from './report-choreography'
+import { reportMotion, reportEmphasis, drawAppReport, drawFeatureMetric, metricRevealState, reportMetricCues, type AppReportAsset } from './report-choreography'
 import { createMotionTrack, type VideoScene } from './video-composition'
 import { reportCategories } from './mock-report-data'
 import { mockReportRegions } from './mock-report'
@@ -123,4 +123,13 @@ test('report playback culls offscreen tiles while the measurement pass retains t
   expect(all).toHaveLength(category.features.length)
   expect(visible.length).toBeGreaterThan(0)
   expect(visible.length).toBeLessThan(all.length)
+})
+
+
+test('a photographic report holds its annotation before optional detail scrolling',()=>{
+  const current={...scene('Follow the photographed eye contour.'),framing:'captioned',tracks:[{...createMotionTrack('scroll-to-section','report',1500),section:'features'}]} as VideoScene
+  const asset={initialScroll:0,scrollMax:2000,regions:[{id:'hero',y:0,height:400},{id:'features',y:700,height:900}],portraitHoldMs:2250} as AppReportAsset
+  expect(reportMotion(current,asset,2250).scroll).toBe(0)
+  expect(reportMotion(current,asset,3750).scroll).toBeGreaterThan(0)
+  expect(reportMotion(current,{...asset,portraitHoldMs:0},1500).scroll).toBeGreaterThan(0)
 })

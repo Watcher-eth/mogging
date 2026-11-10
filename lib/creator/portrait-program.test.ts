@@ -1,7 +1,13 @@
+import type { VideoScene, VideoComposition } from './video-composition'
+import { createHash } from 'node:crypto'
+import { profileStudySchema, profileGeometry, registerProfileStudy } from './video-profile'
+import { readFileSync } from 'node:fs'
+import { isVideoCta } from './video-branding'
+import { cheekboneRegions } from './facial-detail-guides'
 import {faceContourPaths,faceContourEdge} from './face-metric-guides'
 import { videoThemeContext } from './video-theme'
 import { expect, test } from 'bun:test'
-import { planPortraitProgram, preparePortraitProgram, samplePortraitProgram, drawPortraitActivity, portraitAnnotation, drawPortraitLabel, portraitLabelLines, portraitAnnotationInk, placePortraitAnnotation } from './portrait-program'
+import { portraitProgramRuns, portraitProgramSchedule, portraitOverlayMinimumMs, narratedPortraitProgram, planPortraitProgram, preparePortraitProgram, samplePortraitProgram, drawPortraitActivity, portraitAnnotation, drawPortraitLabel, portraitLabelLines, portraitAnnotationInk, placePortraitAnnotation } from './portrait-program'
 import { portraitExposureAt, portraitLightingSchema, portraitLightGeometry, samplePortraitLighting } from './video-portrait-effects'
 import { compileProductionVideo, productionVisualPlan, productionTimeline } from './video-production'
 import { createProductionDraft } from './production-drafts'
@@ -102,7 +108,7 @@ test('every creator format schedules action programs for every directed portrait
     const script=createProductionDraft('Clavicular')
     const images=creatorSubjectPhotos(creatorSubjects.find(subject=>subject.id==='clavicular')!)!
     const video=compileProductionVideo(script,input,images,reportCategories,style.id,voiceDirection('editorial'))
-    expect(video.scenes.filter(scene=>scene.source.kind==='portrait').every(scene=>scene.portraitProgram?.actions.length || scene.study?.references.length || scene.featureStudy)).toBe(true)
+    expect(video.scenes.filter(scene=>scene.source.kind==='portrait' && !isVideoCta(video,scene)).every(scene=>scene.portraitProgram?.actions.length || scene.study?.references.length || scene.featureStudy || scene.presentation)).toBe(true)
     expect(video.script!.revision).toBe(script.revision)
     for(const scene of video.scenes.filter(scene=>scene.portraitProgram)) expect(scene.portraitProgram!.actions.length).toBeGreaterThanOrEqual(Math.ceil(scriptTokens(scene.narration).length/6))
   }
@@ -132,7 +138,7 @@ test('lighting develops registered planes instead of introducing unspoken facial
   expect(program.actions.some(action => action.guide.includes('width') || action.guide.includes('midface'))).toBe(false)
 })
 test('contrasting lighting and profile clauses become exact separate visual evidence beats', () => {
-  const script=createProductionDraft('Clavicular'),images=creatorSubjectPhotos(creatorSubjects.find(subject=>subject.id==='clavicular')!)!
+  const script=createProductionDraft('Clavicular'),images=['front','three-quarter','profile'].map(view=>({id:`clavicular-studio-${view}-20261027`,name:view,dataUrl:`/creator/examples/clavicular-studio-20261027/clavicular-${view}-4k.jpg`,width:2160,height:3840,status:'ready' as const,landmarks:null}))
   const plan=productionVisualPlan(script,input,images,reportCategories,'feature-study')
   const lighting=plan.filter(shot=>shot.cue.sourceId==='light')
   expect(lighting.some(shot=>shot.direction.portraitFX?.lighting?.preset==='split')).toBe(true)
@@ -143,13 +149,13 @@ test('contrasting lighting and profile clauses become exact separate visual evid
   for(const section of productionTimeline(script)) expect(plan.filter(shot=>shot.cue.sourceId===section.id).map(shot=>shot.beat.quote).join(' ')).toBe(section.text)
 })
 
- test('recorded overlays dwell for at least 1.8 seconds and short tails do not flash a new guide', () => {
+ test('recorded overlays hold their complete geometry for two seconds and absorb short tails', () => {
   const program = preparePortraitProgram(planPortraitProgram(text,'jaw','feature-study',0,'front'),source)
   const words=scriptTokens(text).map((_,i)=>({startMs:i*140}))
   let previous=samplePortraitProgram(program,0,6000,words)!.to, last=0
   for(let ms=10;ms<6000;ms+=10) {
     const current=samplePortraitProgram(program,ms,6000,words)!
-    if(current.to!==previous) { expect(ms-last).toBeGreaterThanOrEqual(1800); expect(6000-ms).toBeGreaterThanOrEqual(1500); previous=current.to;last=ms }
+    if(current.to!==previous) { expect(ms-last-250).toBeGreaterThanOrEqual(portraitOverlayMinimumMs); expect(6000-ms-250).toBeGreaterThanOrEqual(portraitOverlayMinimumMs); previous=current.to;last=ms }
   }
 })
 test('stroke patterns vary and unrelated guides redraw from a point instead of morphing', () => {
@@ -159,10 +165,10 @@ test('stroke patterns vary and unrelated guides redraw from a point instead of m
   const jaw=prepared.actions.find(action=>action.feature==='jaw')!
   const cheeks={...jaw,feature:'cheeks' as const,word:0}
   const program={...prepared,wordCount:12,actions:[cheeks,{...jaw,word:6}]}
-  const activity=samplePortraitProgram(program,2100,4000)!
+  const activity=samplePortraitProgram(program,2600,5000)!
   expect(activity.from).toBeUndefined(); expect(activity.first).toBe(true)
   expect(activity.phase).toBeLessThan(.1)
-  expect(samplePortraitProgram(program,2100,4000,undefined,true)!.phase).toBe(1)
+  expect(samplePortraitProgram(program,2600,5000,undefined,true)!.phase).toBe(1)
 })
 
 test('annotations quote descriptive words and keep their original narration word offset', () => {
@@ -209,7 +215,7 @@ test('zoomed annotation text stays inside the visible video safe area', () => {
   const prepared=preparePortraitProgram(planPortraitProgram('The arched brow sits slightly higher above the eye.','brows','feature-study',0,'front'),source)
   const activity={...samplePortraitProgram(prepared,1200,4000)!,label:'SLIGHTLY HIGHER',labelPhase:1,phase:.7,treatment:'inset' as const}
   const draws:Array<{x:number,y:number}>=[]
-  const ctx={globalAlpha:1,save(){},restore(){},getTransform(){return{a:2,b:0,c:0,d:2,e:-700,f:-600}},setLineDash(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},fill(){},arc(){},roundRect(){},measureText(text:string){return{width:text.length*8}},fillText(_text:string,x:number,y:number){draws.push({x:2*x-700,y:2*y-600})}} as unknown as CanvasRenderingContext2D
+  const ctx={globalAlpha:1,save(){},restore(){},getTransform(){return{a:2,b:0,c:0,d:2,e:-700,f:-600}},setLineDash(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},fill(){},arc(){},roundRect(){},clip(){},fillRect(){},measureText(text:string){return{width:text.length*8}},fillText(_text:string,x:number,y:number){draws.push({x:2*x-700,y:2*y-600})}} as unknown as CanvasRenderingContext2D
   drawPortraitActivity(ctx,activity,1200,1800)
   expect(draws.length).toBeGreaterThan(0)
   expect(draws.every(p=>p.x>=64&&p.x<=1016&&p.y>=540&&p.y<=1960)).toBe(true)
@@ -223,18 +229,19 @@ test('dark mode never inverts portrait-program strokes or annotation ink', () =>
   const strokes:string[]=[]
   const native={globalAlpha:1,save(){},restore(){},getTransform(){return{a:1,b:0}},setLineDash(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},fill(){},arc(){},roundRect(){},measureText(text:string){return{width:text.length*12}},fillText(){},set strokeStyle(value:string){strokes.push(value)}} as unknown as CanvasRenderingContext2D
   const prepared=preparePortraitProgram(planPortraitProgram(text,'jaw','feature-study',0,'front'),source)
-  const activity={...samplePortraitProgram(prepared,1200,5000)!,phase:.6,labelPhase:1}
+  const activity={...samplePortraitProgram(prepared,1200,5000)!,phase:.6,labelPhase:1,treatment:'trace' as const}
   drawPortraitActivity(videoThemeContext(native,'dark'),activity,1200,1800)
-  expect(strokes).toContain('#fff')
+  expect(strokes).toContain('rgba(248,251,255,.73)')
   expect(strokes.some(color=>color.startsWith('rgba(17,17,17'))).toBe(false)
 })
 
 test('the same spoken brow feature produces genuinely different registered views across variants',()=>{
+  const detected = JSON.parse(readFileSync('public/creator/stories/marlon/story.json','utf8')).images[0] as GeneratorImage
   const text='The arched brow sits slightly higher above the eye and its contour continues toward the outer tail.'
   const guides=new Set<string>(), geometries=new Set<string>(), treatments=new Set<string>()
   for(let variant=0;variant<16;variant++){
     const planned=planPortraitProgram(text,'brows','feature-study',variant,'front')
-    const prepared=preparePortraitProgram(planned,source)
+    const prepared=preparePortraitProgram(planned,detected)
     expect(prepared.actions.length).toBe(planned.actions.length)
     for(const action of prepared.actions){guides.add(action.guide);geometries.add(JSON.stringify(action.overlay.primitives));treatments.add(action.treatment)}
   }
@@ -242,7 +249,7 @@ test('the same spoken brow feature produces genuinely different registered views
   expect(guides.has('detail:brow-outline-right')).toBe(true)
   expect(guides.has('detail:brow-outline')).toBe(true)
   expect(geometries.size).toBeGreaterThanOrEqual(4)
-  expect(treatments.has('inset')).toBe(true);expect(treatments.has('trace')).toBe(true)
+  expect(treatments.has('inset')).toBe(true);expect(treatments.has('trace')).toBe(true);expect(treatments.has('ribbon')).toBe(true)
 })
 test('eye and jaw alternatives change actual anatomy paths while remaining within the narrated feature',()=>{
   for(const [text,feature] of [['Follow this eye shape as the outline draws around the eyelid.','eyes'],['Follow the jaw outline from the lower face toward the chin.','jaw']] as const){
@@ -274,17 +281,24 @@ test('annotation placement moves off a mixed shoulder/background boundary into a
 })
 
 
-test('callout and bracket treatments add no swinging leader or unrelated side rail',()=>{
+test('portrait treatments remain distinct and deterministic on the same registered feature',()=>{
   const prepared=preparePortraitProgram(planPortraitProgram(text,'jaw','portrait-audit',0,'front'),source)
   const activity={...samplePortraitProgram(prepared,1200,5000)!,first:true,elapsedMs:800,labelPhase:1}
   const paths=(treatment:typeof activity.treatment)=>{
-    const lines:number[][]=[]
-    const ctx={globalAlpha:1,save(){},restore(){},getTransform(){return{a:1,b:0}},setLineDash(){},beginPath(){},moveTo(x:number,y:number){lines.push([x,y])},lineTo(x:number,y:number){lines.at(-1)!.push(x,y)},stroke(){},fill(){},arc(){},measureText(text:string){return{width:text.length*8}},fillText(){}} as unknown as CanvasRenderingContext2D
+    const lines:number[][]=[], weights:number[]=[]
+    const ctx={globalAlpha:1,save(){},restore(){},getTransform(){return{a:1,b:0}},setLineDash(){},beginPath(){},moveTo(x:number,y:number){lines.push([x,y])},lineTo(x:number,y:number){lines.at(-1)!.push(x,y)},strokeRect(){},roundRect(){},clip(){},fillRect(){},stroke(this: {lineWidth: number}){weights.push(this.lineWidth)},lineWidth:0,fill(){},arc(){},measureText(text:string){return{width:text.length*8}},fillText(){}} as unknown as CanvasRenderingContext2D
     drawPortraitActivity(ctx,{...activity,treatment},1200,1800)
-    return lines
+    return {lines,weights}
   }
-  expect(paths('callout')).toEqual(paths('trace'))
-  expect(paths('bracket')).toEqual(paths('trace'))
+  for(const treatment of ['callout','arrow','bracket','scribble','note','ribbon','caliper','mesh','ink-callout'] as const) {
+    expect(paths(treatment)).not.toEqual(paths('trace'))
+    expect(paths(treatment)).toEqual(paths(treatment))
+    if (['bracket', 'scribble'].includes(treatment)) expect(paths(treatment).lines[0]).not.toEqual(paths('trace').lines[0])
+    if (treatment === 'caliper') {
+      expect(paths(treatment).lines[0]).toEqual(paths('trace').lines[0])
+      expect(paths(treatment).lines.length).toBeGreaterThan(paths('trace').lines.length)
+    }
+  }
 })
 
 test('open brows preserve all detected vertices and broken contours never bridge missing data',()=>{
@@ -297,17 +311,206 @@ test('open brows preserve all detected vertices and broken contours never bridge
 })
 
 
-test('angle overlays acquire their arms before revealing the curved arc',()=>{
+test('all gonial angle arms and the arc finish revealing within 250ms and stay visible',()=>{
   const program=preparePortraitProgram({wordCount:10,actions:[{word:0,feature:'jaw',guide:'detail.gonial',treatment:'trace',stroke:'solid',label:'Jaw angle'}]},source)
   expect(program.actions[0].overlay.primitives.length).toBeGreaterThanOrEqual(3)
   const activity=samplePortraitProgram(program,0,4000)!
   const pathsAt=(elapsedMs:number)=>{
     const paths:number[][]=[]
     const ctx={globalAlpha:1,save(){},restore(){},getTransform(){return{a:1,b:0}},setLineDash(){},beginPath(){},moveTo(x:number,y:number){paths.push([x,y])},lineTo(x:number,y:number){paths.at(-1)!.push(x,y)},stroke(){},fill(){},arc(){},measureText(){return{width:80}},fillText(){}} as unknown as CanvasRenderingContext2D
-    drawPortraitActivity(ctx,{...activity,elapsedMs},1200,1800)
+    drawPortraitActivity(ctx,{...activity,treatment:'trace',elapsedMs},1200,1800)
     return paths.filter(path=>path.length>2)
   }
-  expect(pathsAt(100)).toHaveLength(1)
-  expect(pathsAt(200)).toHaveLength(2)
-  expect(pathsAt(900).length).toBeGreaterThanOrEqual(3)
+  expect(pathsAt(250).length).toBeGreaterThanOrEqual(3)
+  expect(pathsAt(250)).toEqual(pathsAt(2250))
+})
+
+
+test('editorial variants frame the jaw, gonial corner, cheekbones and lower cheek with distinct registered geometry', () => {
+  const photo = JSON.parse(readFileSync('public/creator/stories/marlon/story.json','utf8')).images[0] as GeneratorImage
+  const guides = new Map<string, ReturnType<typeof preparePortraitProgram>['actions'][number]>()
+  const text = 'The jawline and cheekbones define the shape of the face.'
+  for (let variant=0;variant<8;variant++) {
+    const program = narratedPortraitProgram(text,'portrait-audit',variant)!
+    const prepared = preparePortraitProgram(program,photo)
+    expect(prepared.actions).toHaveLength(program.actions.length)
+    for (const action of prepared.actions) {
+      expect(['jaw','cheeks']).toContain(action.feature)
+      expect(action.word).toBeLessThan(scriptTokens(text).length)
+      guides.set(action.guide,action)
+    }
+  }
+  for (const id of ['jaw-outline','jaw-frame','gonial','jaw-offset','cheeks','cheek-frame','under-cheekbones','cheek-levels']) expect(guides.has(`detail:${id}`)).toBe(true)
+  expect(new Set([...guides.values()].map(action=>JSON.stringify(action.overlay.primitives))).size).toBeGreaterThanOrEqual(6)
+  const centerY = (id:string) => {
+    const points=guides.get(id)!.overlay.primitives.flatMap(primitive=>primitive.kind==='polyline'?primitive.pixelPoints:[])
+    return points.reduce((sum,point)=>sum+point.y,0)/points.length
+  }
+  expect(centerY('detail:under-cheekbones')).toBeGreaterThan(centerY('detail:cheeks'))
+})
+
+
+test('authored profile guides remain registered through the source crop without frontal landmarks', () => {
+  const entry=JSON.parse(readFileSync('public/creator/profile-guides.json','utf8'))['v-profile']
+  expect(createHash('sha256').update(readFileSync(`public${entry.dataUrl}`)).digest('hex')).toBe(entry.sha256)
+  const study=profileStudySchema.parse({view:entry.view,side:entry.side,feature:'chin',contours:entry.contours,angle:entry.angle})
+  const image={...source,width:1296,height:2304,landmarks:null}
+  const original=profileGeometry(image,study)
+  const crop={x:80,y:120,width:1100,height:2000}
+  const registered=registerProfileStudy(study,image,crop)
+  const cropped={...image,width:crop.width,height:crop.height}
+  const geometry=profileGeometry(cropped,registered)
+  expect(geometry.contour[0].x).toBeCloseTo(original.contour[0].x-crop.x)
+  expect(geometry.contour[0].y).toBeCloseTo(original.contour[0].y-crop.y)
+  expect(geometry.faceBottom).toBeCloseTo(original.faceBottom!-crop.y)
+  expect(geometry.faceBottom).toBeGreaterThanOrEqual(Math.max(...geometry.contour.map(point=>point.y)))
+  const prepared=preparePortraitProgram({wordCount:3,view:'profile',actions:[{word:0,feature:'jaw',guide:'profile:chin',label:'Chin projection',treatment:'callout'}]},cropped,registered)
+  expect(prepared.actions).toHaveLength(1)
+  expect(samplePortraitProgram(prepared,1000,3000,undefined,true)?.view).toBe('profile')
+})
+
+test('angled cheek guides trace one visible cheekbone arc', () => {
+  const image=JSON.parse(readFileSync('public/creator/stories/marlon/story.json','utf8')).images[0] as GeneratorImage
+  const geometry=profileGeometry(image,{view:'three-quarter',side:'left',feature:'cheek'})
+  expect(geometry.contour).toHaveLength(5)
+  const below=profileGeometry(image,{view:'three-quarter',side:'left',feature:'under-cheek'})
+  expect(below.contour[3].y).toBeGreaterThan(geometry.contour[3].y)
+})
+
+
+test('cheek regions stay separate and drop the hidden side on a turned portrait', () => {
+  const photo = JSON.parse(readFileSync('public/creator/stories/marlon/story.json', 'utf8')).images[0] as GeneratorImage
+  const face = photo.landmarks!
+  const front = cheekboneRegions({ ...face, quality: { ...face.quality!, yawRadians: 0 } })
+  expect(front.map(region => region.id)).toEqual(['left-cheek', 'right-cheek'])
+  expect(Math.max(...front[0].points.map(point => point.x))).toBeLessThan(Math.min(...front[1].points.map(point => point.x)))
+  const turned = cheekboneRegions({ ...face, quality: { ...face.quality!, yawRadians: .8 } })
+  expect(turned).toHaveLength(1)
+  expect(front).toContainEqual(turned[0])
+})
+
+test('annotation clocks span caption cuts and restart for a new image or crop',()=>{
+  const program=narratedPortraitProgram('Look at the jawline and cheekbones.','feature-study')
+  const scene=(id:string,startMs:number,durationMs:number,imageId='face')=>({id,startMs,durationMs,source:{kind:'portrait',imageId},portraitProgram:program,words:scriptTokens('Look at the jawline and cheekbones.').map((_,i)=>({startMs:i*200}))}) as Parameters<typeof portraitProgramRuns>[0][number]
+  const a=scene('a',0,1200),b=scene('b',1200,1200),c=scene('c',2400,3000,'other'),d={...scene('d',5400,3000,'other'),portraitCrop:{x:.2,y:.3,width:.6,height:.4}}
+  const runs=portraitProgramRuns([a,b,c,d]),run=runs.get('a')!
+  expect(runs.get('b')).toBe(run)
+  expect(run.durationMs).toBe(2400)
+  expect(run.words[program.wordCount].startMs).toBe(1200)
+  const prepared=preparePortraitProgram(run.program,source)
+  expect(samplePortraitProgram(prepared,1100,run.durationMs,run.words)!.to).toBe(samplePortraitProgram(prepared,1300,run.durationMs,run.words)!.to)
+  expect(portraitProgramSchedule(prepared,run.durationMs,run.words)).toHaveLength(1)
+  const shortShot = samplePortraitProgram({ ...prepared, holdShortShot: true }, 800, 1500, run.words)
+  expect(shortShot?.to).toBe(prepared.actions[0].overlay)
+  expect(shortShot?.labelPhase).toBe(1)
+
+  expect(runs.get('c')).not.toBe(run)
+  expect(runs.get('d')).not.toBe(runs.get('c'))
+  expect(samplePortraitProgram(prepared,500,2200)).toBeUndefined()
+})
+
+
+test('a decorative repeat waits for an imminent narrated feature change',()=>{
+  const prepared=preparePortraitProgram(narratedPortraitProgram('The eyes frame the face, then follow the jawline.','portrait-audit'),source)
+  const base=prepared.actions[0],jaw=prepared.actions.find(action=>action.feature==='jaw')!
+  const program={...prepared,actions:[{...base,feature:'eyes' as const,word:0},{...base,feature:'eyes' as const,word:1},{...jaw,word:2}]}
+  const schedule=portraitProgramSchedule(program,6000,[{startMs:0},{startMs:2300},{startMs:3000}])
+  expect(schedule.map(cue=>cue.action.feature)).toEqual(['eyes','jaw'])
+  expect(schedule.map(cue=>cue.start)).toEqual([0,3000])
+})
+
+
+test('controlled morphs keep fixed anatomy, paired timing and one clock across caption cuts', async()=>{
+  const {photoStudyGesture,photoStudyRegions,photoStudyClock}=await import('./video-photo-study')
+  const {warpSourcePoint,warpDestinationPoint}=await import('./video-portrait-effects')
+  const image=JSON.parse(readFileSync('public/creator/stories/marlon/story.json','utf8')).images[0] as GeneratorImage
+  const landmarks=image.landmarks!,study={feature:'cheeks' as const,amount:.2},regions=photoStudyRegions(landmarks,'cheeks')
+  const warp=photoStudyGesture(study,regions,2500,6000,false,landmarks).warp
+  expect(warp.strengths).toEqual([.2,.2])
+  for(const anchor of [landmarks.anchors.leftPupil!,landmarks.anchors.rightPupil!,landmarks.anchors.noseTip!,landmarks.anchors.mouthCenter!])expect(warpDestinationPoint(anchor,warp)).toEqual(anchor)
+  for(const region of regions){const target=warpDestinationPoint(region,warp);expect(target.y).toBeLessThan(region.y);const restored=warpSourcePoint(target,warp);expect(restored.x).toBeCloseTo(region.x,7);expect(restored.y).toBeCloseTo(region.y,7)}
+  const eyeStudy={feature:'eyes' as const,mode:'drag' as const,axis:'x' as const,amount:.1}
+  const eyeWarp=photoStudyGesture(eyeStudy,photoStudyRegions(landmarks,'eyes'),2500,6000,false,landmarks).warp
+  expect(warpDestinationPoint(landmarks.anchors.leftPupil!,eyeWarp).x).toBeGreaterThan(landmarks.anchors.leftPupil!.x)
+  expect(photoStudyGesture(study,regions,0,6000,false,landmarks).warp.strengths).toEqual([0,0])
+  expect(photoStudyGesture(study,regions,6000,6000,false,landmarks).warp.strengths).toEqual([0,0])
+  const scenes=[{cueId:'same',startMs:0,durationMs:3000,source:{imageId:'front'},photoStudy:study},{cueId:'same',startMs:3000,durationMs:3000,source:{imageId:'front'},photoStudy:study}]
+  expect(photoStudyClock(scenes,scenes[1],500)).toEqual({timeMs:3500,durationMs:6000})
+})
+
+test('metric pills bind the active feature to its image and never rerate a simulated edit', async()=>{
+  const {portraitMetricFor,overlayPillEligible}=await import('./portrait-metric')
+  const image=JSON.parse(readFileSync('public/creator/stories/marlon/story.json','utf8')).images[0] as GeneratorImage
+  const scene={cueId:'metrics',source:{kind:'portrait',imageId:image.id,report:{assessmentId:'saved',assessmentImageId:image.id,id:'nose',title:'Nose',score:7}},scoreCallouts:[{label:'Nose',value:7,word:0}],words:[{text:'seven',startMs:0,endMs:500}],narration:'seven',durationMs:5000} as VideoScene
+  const activity={feature:'nose',guide:'nose.test',index:0} as Parameters<typeof portraitMetricFor>[1]
+  expect(portraitMetricFor(scene,activity,image.landmarks,100)?.value).toBe(7)
+  expect(portraitMetricFor({...scene,source:{...scene.source,imageId:'different-photo'}},activity,image.landmarks,100)).toBeUndefined()
+  expect(portraitMetricFor(scene,{...activity!,feature:'brows'},image.landmarks,100)).toBeUndefined()
+  expect(portraitMetricFor(scene,activity,image.landmarks,100,{regions:[],strengths:[.1],mode:'pinch',axis:'x'})).toBeUndefined()
+  const selected=Array.from({length:300},(_,i)=>overlayPillEligible('cue-'+i,'nose.width')).filter(Boolean).length
+  expect(selected).toBeGreaterThan(75);expect(selected).toBeLessThan(125)
+})
+
+test('scientific cards follow a specific claim and do not invalidate approved speech', async()=>{
+  const {scriptSchema,scriptRevision}=await import('./video-script')
+  const {scientificEvidenceAt}=await import('./video-research')
+  const {studyBindingSchema}=await import('./creator-studies')
+  const text='Brow thickness and jaw prominence influence facial attractiveness ratings.'
+  const evidence={studyId:'mogilski-welling-2018' as const,claimId:'feature-salience',anchor:text}
+  const cues=[{id:'claim',sourceId:'claim',text,section:{id:'claim',title:'Feature roles',role:'explanation' as const,priority:50,dependsOn:[],visuals:[{treatment:'detail' as const,categoryId:'jaw',view:'front' as const,reason:'Show the feature discussed by the supported claim.'}],evidence:[evidence]}}]
+  const revision=scriptRevision(cues),script=scriptSchema.parse({version:1,revision,cues})
+  expect(scriptRevision(cues.map(c=>({...c,section:undefined})))).toBe(revision)
+  expect(studyBindingSchema.safeParse({...evidence,claimId:'jaw-score-ten'}).success).toBe(false)
+  expect(studyBindingSchema.safeParse({...evidence,claimId:'constructor'}).success).toBe(false)
+  expect(scriptSchema.safeParse({...script,cues:[{...cues[0],text:'Different words',section:cues[0].section}],revision:scriptRevision([{...cues[0],text:'Different words'}])}).success).toBe(false)
+  const scene={cueId:'claim',scriptRange:{cueId:'claim',startWord:0,wordCount:10,startChar:0,endChar:text.length},startMs:0,durationMs:6000,narration:text,source:{kind:'portrait'}} as VideoScene
+  const composition={script,scenes:[scene]} as VideoComposition
+  expect(scientificEvidenceAt(composition,1000)?.binding.studyId).toBe(evidence.studyId)
+  expect(scientificEvidenceAt({...composition,scenes:[{...scene,source:{...scene.source,kind:'report'}}]},1000)).toBeUndefined()
+  expect(scientificEvidenceAt({...composition,scenes:[{...scene,durationMs:2000}]},1000)).toBeUndefined()
+})
+
+
+test('compact Torph pills fit their content and preserve continuity when retargeted or scrubbed',async()=>{
+  const {createPortraitPillTrack,portraitMetricText,pillMotion}=await import('./video-pill-morph')
+  const metric=(value:number)=>({label:'Nose',value,unit:'/10' as const,basis:'assessment' as const,imageId:'front'})
+  const measure=(text:string)=>text.length*10
+  const track=createPortraitPillTrack(measure,time=>time<500?metric(7):time<700?metric(8.25):time<1400?metric(9):undefined,2000)
+  expect(track.sample(450).width).toBe(measure(portraitMetricText(metric(7)))+pillMotion.padding*2)
+  const first=track.sample(450),fraction=track.sample(600)
+  expect(fraction.width).toBeGreaterThan(first.width)
+  expect(fraction.width).toBeLessThan(measure(portraitMetricText(metric(8.25)))+pillMotion.padding*2)
+  const zero=first.glyphs.find(g=>g.string==='0'&&g.opacity>.99)!
+  expect(fraction.glyphs.some(g=>g.id===zero.id)).toBe(true)
+  expect(Math.abs(track.sample(700).width-track.sample(699.99).width)).toBeLessThan(.02)
+  expect(track.sample(600)).toEqual(fraction)
+  expect(track.sample(1100).width).toBe(measure(portraitMetricText(metric(9)))+pillMotion.padding*2)
+  expect(track.sample(1850).opacity).toBe(0)
+  expect(track.sample(600,true).width).toBe(measure(portraitMetricText(metric(8.25)))+pillMotion.padding*2)
+})
+
+test('the taper reference joins the chin and nose tip in a dotted guide', () => {
+  const action = preparePortraitProgram({
+    wordCount: 1, actions: [{ word: 0, feature: 'whole', guide: 'face.taper', treatment: 'highlight', label: 'Face taper' }],
+  }, source).actions[0]
+  const path = action.overlay.primitives[0]
+  if (path.kind !== 'polyline') throw new Error('Expected a chin-to-nose reference line')
+  const { chin, noseTip } = source.landmarks!.anchors
+  expect(action.stroke).toBe('dotted')
+  expect(path.pixelPoints[0]).toEqual({ x: chin!.x * source.width, y: chin!.y * source.height })
+  expect(path.pixelPoints.at(-1)).toEqual({ x: noseTip!.x * source.width, y: noseTip!.y * source.height })
+})
+
+test('report detail follows the selected eye and connects the brow to its pupil', () => {
+  const photo = JSON.parse(readFileSync('public/creator/stories/marlon/story.json', 'utf8')).images[0] as GeneratorImage
+  const face = photo.landmarks!
+  const registered = { ...photo, landmarks: { ...face, quality: { ...face.quality!, yawRadians: 0 } } }
+  const program = preparePortraitProgram({ wordCount: 1, actions: [
+    { word: 0, feature: 'eyes', guide: 'detail:eye-left', treatment: 'trace', label: 'Eye contour' },
+    { word: 0, feature: 'brows', guide: 'detail:brow-outline-left', treatment: 'trace', label: 'Brow contour' },
+  ] }, registered)
+  const pixel = (point: { x: number; y: number }) => ({ x: point.x * photo.width, y: point.y * photo.height })
+  expect(program.actions[0].reportDetail?.markers).toEqual([pixel(face.anchors.leftEyeOuter!)])
+  expect(program.actions[0].reportDetail?.guides).toEqual([])
+  expect(program.actions[1].reportDetail?.guides).toEqual([[pixel(face.anchors.leftBrow!), pixel(face.anchors.leftPupil!)]])
 })

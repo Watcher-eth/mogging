@@ -1,6 +1,7 @@
 import {
   type AnyPgColumn,
   boolean,
+  date,
   check,
   index,
   integer,
@@ -638,6 +639,8 @@ export const creatorProfiles = pgTable(
     bonusCheckedAt: timestamp('bonus_checked_at', { mode: 'date' }),
     bundledPayouts: boolean('bundled_payouts').notNull().default(false),
     videoStudioAccess: boolean('video_studio_access').notNull().default(false),
+    retainerTerms: jsonb('retainer_terms').$type<import('../creator/retainer').CreatorRetainer>(),
+    studioRequirementsSeenAt: timestamp('studio_requirements_seen_at', { mode: 'date' }),
     authStatus: creatorAuthStatusEnum('auth_status').notNull().default('pending'),
     paymentOption: creatorPaymentOptionEnum('payment_option').notNull().default('paypal'),
     paypalEmail: text('paypal_email'),
@@ -1419,3 +1422,19 @@ export const billingReconciliationState = pgTable('billing_reconciliation_state'
   leaseUntil: timestamp('lease_until', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+
+export const creatorPrivateStudioWorkspaces = pgTable('creator_private_studio_workspaces', {
+  id: text('id').primaryKey(),
+  creatorProfileId: text('creator_profile_id').notNull().unique().references(() => creatorProfiles.id, { onDelete: 'cascade' }),
+})
+export const creatorPrivateCharacters = pgTable('creator_private_characters', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => creatorPrivateStudioWorkspaces.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(), title: text('title').notNull().default(''), avatar: text('avatar').notNull(),
+  status: text('status').$type<'writing'|'draft'|'speaking'|'ready'|'failed'>().notNull(),
+  payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
+  quotaDay: date('quota_day'),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+}, table => ({ workspaceIdx: index('creator_private_characters_workspace_idx').on(table.workspaceId,table.createdAt) }))

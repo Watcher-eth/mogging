@@ -1,5 +1,9 @@
+import { refinePhotographedContours } from './refineFaceContours'
 import type { LandmarkInput } from '@/lib/analysis-v2/measurements'
 import type { FaceLandmarksPayload, NormalizedPoint } from '@/lib/analysis/landmarks'
+
+export const faceContourRevision = 'mediapipe-contours-20261102-v6'
+export const hasCurrentFaceContours = (face?: FaceLandmarksPayload|null) => face?.source==='mediapipe-face-landmarker' && face.detectorRevision===faceContourRevision
 
 const wasmBaseUrl = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm'
 const modelAssetPath = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
@@ -12,7 +16,7 @@ const rightBrowIndices = [336, 296, 334, 293, 300, 276, 283, 282, 295, 285, 336]
 const noseBridgeIndices = [168, 6, 197, 195, 5, 4, 1]
 const noseBaseIndices = [64, 98, 97, 2, 326, 327, 294]
 const mouthIndices = [61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146, 61]
-const jawlineIndices = [172, 136, 150, 149, 176, 148, 152, 377, 400, 378, 379, 365, 397]
+const jawlineIndices = [234, 93, 132, 58, 172, 136, 150, 149, 176, 148, 152, 377, 400, 378, 379, 365, 397, 288, 361, 323, 454]
 const cheekboneIndices = [234, 116, 117, 118, 119, 100, 47, 126, 209, 49, 129, 203, 205, 50, 101, 36, 206, 207, 187, 147, 213, 192, 214, 210, 211, 32, 208, 199, 428, 262, 431, 430, 434, 416, 433, 376, 411, 427, 426, 266, 330, 280, 425, 423, 358, 279, 429, 355, 277, 329, 348, 347, 346, 454]
 
 type FaceLandmarkerInstance = {
@@ -45,6 +49,13 @@ export async function detectWebAnalysisEvidence(dataUrl: string): Promise<{ dete
     const result = landmarker.detect(image)
     const size = { width: image.naturalWidth, height: image.naturalHeight }
     const detection = landmarksFromFaces(result.faceLandmarks ?? [], size)
+    if(detection.status==='detected') {
+      const canvas=document.createElement('canvas'),scale=Math.min(1,1024/Math.max(size.width,size.height))
+      canvas.width=Math.round(size.width*scale);canvas.height=Math.round(size.height*scale)
+      const ctx=canvas.getContext('2d',{willReadFrequently:true})!
+      ctx.drawImage(image,0,0,canvas.width,canvas.height)
+      detection.landmarks=refinePhotographedContours(detection.landmarks,ctx.getImageData(0,0,canvas.width,canvas.height))
+    }
     const points = result.faceLandmarks?.[0]
     const mesh = detection.status === 'detected' && points?.length === 478
       ? { ...size, points: points.map(point => ({ x: point.x, y: point.y, z: point.z ?? 0 })) }
@@ -55,7 +66,7 @@ export async function detectWebAnalysisEvidence(dataUrl: string): Promise<{ dete
   }
 }
 
-export function landmarksFromFaces(faces: Array<Array<{ x: number; y: number }>>, image: { width: number; height: number }): FaceDetectionResult {
+export function landmarksFromFaces(faces: Array<Array<{ x: number; y: number; z?:number }>>, image: { width: number; height: number }): FaceDetectionResult {
   if (faces.length > 1) return { status: 'multiple-faces', message: 'More than one face detected. Crop the image to one person and upload it again.' }
   const face = faces[0]
   if (!face) return { status: 'no-face', message: 'No usable face detected. Try a clear, front-facing photo with the whole face visible.' }
@@ -94,11 +105,17 @@ export function landmarksFromFaces(faces: Array<Array<{ x: number; y: number }>>
     mouth: pickMany(face, mouthIndices),
     jawline: pickMany(face, jawlineIndices),
     cheekbones: pickMany(face, cheekboneIndices),
+    leftCheekbone: pickMany(face,[234,116,117,118,119]),
+    rightCheekbone: pickMany(face,[454,345,346,347,348]),
+    leftSubmalar: pickMany(face,[93,123,50,101]),
+    rightSubmalar: pickMany(face,[323,352,280,330]),
   }
   const quality = computeLandmarkQuality(anchors, contours, image)
+  if(Number.isFinite(face[33]?.z)&&Number.isFinite(face[263]?.z)) quality.yawRadians=Math.atan2(face[263].z!-face[33].z!,Math.hypot(face[263].x-face[33].x,(face[263].y-face[33].y)*image.height/image.width))
 
   return { status: 'detected', landmarks: {
     version: 1,
+    detectorRevision: faceContourRevision,
     source: 'mediapipe-face-landmarker',
     confidence: quality.score,
     image,

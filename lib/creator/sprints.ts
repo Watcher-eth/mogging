@@ -2,18 +2,20 @@ import { campaignBudgetState } from './campaign-budget-state'
 import { campaignAudienceSchema, type CampaignAudience } from './campaign-access'
 import { creatorContentRestriction, SHARED_CONTENT_RESTRICTIONS } from '@/lib/creator/content-policy'
 import { z } from 'zod'
+import { creatorRetainerSchema } from './retainer'
 import { creatorCampaignRule, creatorFormatElement } from './post-guidance'
 import type { CreatorSubmissionFormat } from './formats'
 
 const paragraph = z.string().trim().min(1).max(2000)
 export const sprintTermsSchema = z
   .object({
+    retainer: creatorRetainerSchema.optional(),
     mgcSourceCampaignId: z.string().uuid().optional(),
     bonusBudgetCents: z.number().int().nonnegative().max(100_000_000).optional(),
     milestones: z
       .array(
         z.object({
-          views: z.number().int().positive().max(2_000_000_000),
+          views: z.number().int().nonnegative().max(2_000_000_000),
           amountCents: z.number().int().positive().max(10_000_000),
           audienceRates: z
             .array(
@@ -55,6 +57,16 @@ export const sprintTermsSchema = z
       .max(2),
   })
   .superRefine((value, ctx) => {
+    if (value.retainer) {
+      if (value.minimumTier1Percent !== value.retainer.minimumTier1Percent || value.milestones.length !== 1 ||
+        value.milestones[0].views !== 0 || value.milestones[0].amountCents !== value.retainer.amountCents ||
+        value.milestones[0].audienceRates?.some(rate => rate.amountCents !== value.retainer!.amountCents) ||
+        !value.milestones[0].audienceRates?.length || value.bonusBudgetCents) {
+        ctx.addIssue({ code: 'custom', message: 'Retainer terms require one fixed payout, no view minimum and no campaign bonuses' })
+      }
+    } else if (value.milestones.some(milestone => milestone.views === 0)) {
+      ctx.addIssue({ code: 'custom', message: 'Only retainer agreements can remove the view minimum' })
+    }
     for (const milestone of value.milestones) {
       const rates = milestone.audienceRates
       if (!rates) continue

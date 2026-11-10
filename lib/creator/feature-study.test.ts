@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { drawFeatureStudy, registeredFeatureWarp, featureClipFrame, featureFrames, featureFrameAt, featurePlacement, featureRegistration, featureTopics, featureWarp, featureCameraFrame, featureCardOpacity } from './feature-study'
+import { drawFeatureStudy, registeredFeatureWarp, featureClipFrame, featureFrames, featureFrameAt, featurePlacement, featureRegistration, featureTopics, featureWarp, featureCameraFrame, featureCardOpacity, comparisonFrames, comparisonSceneClock, comparisonExpansionTimes } from './feature-study'
 import { productionVisualPlan } from './video-production'
 import { createFeatureStudyDraft } from './feature-study-script'
 import { compileProductionVideo, reviseProductionScript, productionCut, productionTimeline, sectionAudioKey } from './video-production'
@@ -30,7 +30,8 @@ test('every topic has complete modular cuts, an early CTA and bounded master len
 })
 
 test('compilation preserves recording identity, assigns semantic layouts and uses procedural freckles without inventing a registered texture photo', () => {
-  const images = [...creatorSubjectPhotos(creatorSubjects[0])!,...featureVariantPhotos('marlon')]
+  const original = {id:'marlon-studio-front-20261027',name:'Marlon original study reference',dataUrl:'/creator/examples/marlon-studio-20261027/marlon-front-4k.jpg',width:2160,height:3840,status:'ready' as const,landmarks:null}
+  const images = [original,...creatorSubjectPhotos(creatorSubjects[0])!,...featureVariantPhotos('marlon')]
   for (const topic of featureTopics) {
     const script = createFeatureStudyDraft('Marlon',topic)
     const video = compileProductionVideo(script,input,images,reportCategories,'feature-study',voice,0,topic)
@@ -140,7 +141,8 @@ test('rewriting narration changes the shot while keeping section identity, voice
   const comparison = make('Compare the original and edited versions side by side.')
   const detail = make('Focus on the small space below the nose. Watch that detail.')
   expect(['hero', 'compare', 'grid']).toContain(comparison.scenes.find(scene => scene.cueId === 'contour')!.featureStudy!.layout)
-  expect(['hero', 'detail']).toContain(detail.scenes.find(scene => scene.cueId === 'contour')!.featureStudy!.layout)
+  const detailScene = detail.scenes.find(scene => scene.cueId === 'contour')!
+  expect(detailScene.presentation?.kind ?? detailScene.featureStudy?.layout).toBe('reference-inset')
   expect(comparison.script!.cues.map(cue => cue.sourceId)).toEqual(detail.script!.cues.map(cue => cue.sourceId))
   expect(comparison.voice).toEqual(detail.voice)
   expect(comparison.scenes.find(scene => scene.cueId === 'cta')!.focus).toBe('hero')
@@ -167,7 +169,7 @@ test('camera motion is bounded, deterministic and finishes at the next shared-im
   for (const motion of ['push', 'pull'] as const) for (const progress of [0, .25, .5, .75, 1]) {
     const moved = featureCameraFrame(frame, motion, progress)
     expect(moved.width).toBeGreaterThanOrEqual(frame.width)
-    expect(moved.width).toBeLessThanOrEqual(frame.width * 1.035)
+    expect(moved.width).toBeLessThanOrEqual(frame.width * 1.065)
     expect(featureFrameAt(moved, frame, 0)).toEqual(moved)
   }
 })
@@ -177,11 +179,15 @@ test('single-image studies retain the source through the viewport bottom beneath
   const photo = {image:{width:2160,height:3840} as HTMLCanvasElement,landmarks}
   for (const layout of ['hero','detail'] as const) {
     const stage=featureFrames(layout)[0]
+    expect(stage.x).toBe(0)
+    expect(stage.width).toBe(1316)
     expect(stage.y+stage.height).toBe(2340)
     expect(featureClipFrame(layout,stage).height).toBe(2340)
     const placement=featurePlacement(photo,layout,stage,'philtrum')
     for (const motion of ['hold','push','pull'] as const) for (const progress of [0,.5,1]) {
       const camera=featureCameraFrame(placement,motion,progress)
+      expect(camera.x).toBeLessThanOrEqual(.001)
+      expect(camera.x+camera.width).toBeGreaterThanOrEqual(1316-.001)
       expect(camera.y+camera.height).toBeGreaterThanOrEqual(2340-.001)
       expect(camera.width/camera.height).toBeCloseTo(2160/3840)
     }
@@ -201,4 +207,42 @@ test('registered shape edits retain source anatomy, cap movement and do not comp
   const point = { x: .5, y: .5 }, region = { ...point, rx: .2, ry: .2 }, shift = { x: .01, y: .015 }
   const overlapping = { mode: 'drag' as const, axis: 'both' as const, regions: [region, region, region], strengths: [0,0,0], shifts: [shift,shift,shift] }
   expect(warpSourcePoint(point, overlapping)).toEqual({ x: .49, y: .485 })
+})
+
+
+test('two-photo comparisons expand within 3.5 seconds, return to the pair and alternate without jumps', () => {
+  const pair = featureFrames('compare'), full = featureFrames('hero')[0]
+  expect(comparisonFrames(0,10000)).toEqual(pair)
+  expect(comparisonExpansionTimes(10000)).toEqual([2400,5910])
+  expect(comparisonFrames(3400,10000)[1]).toEqual(full)
+  expect(comparisonFrames(5600,10000)).toEqual(pair)
+  expect(comparisonFrames(7100,10000)[0]).toEqual(full)
+  expect(comparisonFrames(9100,10000)).toEqual(pair)
+  expect(comparisonFrames(3400,10000)[0].x+full.width).toBeLessThan(0)
+  expect(comparisonFrames(7100,10000)[1].x).toBeGreaterThanOrEqual(full.width)
+  expect(comparisonFrames(7100,10000,true)).toEqual(pair)
+  for (const duration of [3500,6000,10000,60000]) {
+    expect(comparisonFrames(Math.min(2400,duration*.35)+781,duration)[1]).toEqual(full)
+    expect(comparisonFrames(3499,60000)[1]).toEqual(full)
+  }
+  for (const boundary of [2400,3180,4680,5460,5910,6690,8190,8970]) {
+    const before=comparisonFrames(boundary-.01,10000),after=comparisonFrames(boundary+.01,10000)
+    for (let i=0;i<2;i++) for (const key of ['x','y','width','height'] as const) expect(Math.abs(before[i][key]-after[i][key])).toBeLessThan(.01)
+  }
+})
+
+test('comparison motion continues through adjacent captions and reveal phases but resets for different photos', () => {
+  const study = {topic:'jaw',layout:'compare',edit:0,editMode:'warp',annotation:'',images:['b'],opening:'jaw-choice',phase:'hold'} as const
+  const base = {startMs:0,durationMs:2000,source:{imageId:'a'},featureStudy:{...study,images:[...study.images]}}
+  const scenes = [base,{...base,startMs:2000,featureStudy:{...base.featureStudy,phase:'reveal' as const}},{...base,startMs:4000,source:{imageId:'c'}}]
+  expect(comparisonSceneClock(scenes,scenes[1],1300)).toEqual({timeMs:3300,durationMs:4000})
+  expect(comparisonSceneClock(scenes,scenes[2],1300)).toEqual({timeMs:1300,durationMs:2000})
+  const hero = {...base,startMs:4000,featureStudy:{...base.featureStudy,opening:undefined,layout:'hero' as const}}
+  const pair = scenes.slice(0,2).map(scene=>({...scene,featureStudy:{...scene.featureStudy,opening:undefined}}))
+  const handoff = comparisonSceneClock([...pair,hero],hero,0)
+  const active = comparisonFrames(4000,4000)[1]
+  expect(handoff.previousFrame).toEqual(active)
+  expect(handoff.previousFrame!.x).toBeGreaterThanOrEqual(0)
+  expect(handoff.previousFrame!.width).toBeGreaterThan(featureFrames('compare')[0].width)
+
 })

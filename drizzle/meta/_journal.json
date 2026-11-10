@@ -484,6 +484,27 @@
       "when": 1793322000000,
       "tag": "0068_creator_studio",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1793408400000,
+      "tag": "0069_studio_requirements_reminder",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1793491189341,
+      "tag": "0070_creator_retainer_terms",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1793510677702,
+      "tag": "0071_creator_private_characters",
+      "breakpoints": true
     }
   ]
 }

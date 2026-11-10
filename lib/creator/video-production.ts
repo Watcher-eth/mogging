@@ -1,3 +1,6 @@
+import { referenceEditorialBrief, referenceEditorialDirection } from './editorial-planning'
+import { scientificWritingBrief } from './creator-studies'
+import { compileDocumentaryVideo } from './video-documentary-plan'
 import { isVideoInvitation } from './video-branding'
 import type { CreatorSubjectAnalysis } from './creator-stories'
 import { mentionsVisualFeature } from './video-semantics'
@@ -16,7 +19,7 @@ import type { ReportCategory } from './mobile-overlay-engine/report-data'
 export const productionLengths = [30, 45, 60, 75] as const
 export type ProductionLength = typeof productionLengths[number]
 export const productionPolicy = { maxSeconds: 75, ctaDeadlineSeconds: 20, ctaTargetSeconds: 3, wordsPerMinute: 165, mentions: '2 in 30/45-second cuts; 3 in 60/75-second cuts', timing: 'Whole sections, never truncate a sentence or speed audio to fit.' } as const
-export const sectionDurationMs = (cue: VideoScript['cues'][number], pace = productionPolicy.wordsPerMinute) => Math.round(scriptTokens(cue.text).length / pace * 60000) + (cue.delivery?.pauseAfterMs ?? 120)
+export const sectionDurationMs = (cue: VideoScript['cues'][number], pace: number = cue.delivery?.paceWpm ?? productionPolicy.wordsPerMinute) => Math.round(scriptTokens(cue.text).length / pace * 60000) + (cue.delivery?.pauseAfterMs ?? 120)
 const earlyScorePromotion = (script: VideoScript) => script.promotion !== 'contextual'
 const mentionsBrand = (text: string) => /\bMogging(?:\.com)?\b/i.test(text)
 
@@ -101,17 +104,20 @@ export function productionVisualPlan(script: VideoScript, input: AnalysisPostInp
   const context = recipe === 'feature-study' && mentionsVisualFeature(hook, topic) ? topic : 'whole'
   return script.cues.flatMap(cue => directVisualBeats(cue.section!, cue.text, recipe, images, reports, input, variant, history, context, amount).map((shot, index) => ({ ...shot, cue, id: `${cue.sourceId}/beat:${index}` })))
 }
-export function compileProductionVideo(script: VideoScript, input: AnalysisPostInput, images: GeneratorImage[], reports: ReportCategory[], recipe: VideoRecipe, voice: VoiceDirection, variant = 0, featureTopic: FeatureTopic = 'philtrum', featureAmount = 1, authoredDirections: Record<string, VideoDirection> = {}): VideoComposition {
+export function compileProductionVideo(script: VideoScript, input: AnalysisPostInput, images: GeneratorImage[], reports: ReportCategory[], recipe: VideoRecipe, voice: VoiceDirection, variant = 0, featureTopic: FeatureTopic = 'philtrum', featureAmount = 1, authoredDirections: Record<string, VideoDirection> = {}, media: import('./media-asset').MediaAsset[] = []): VideoComposition {
   validateProductionScript(script)
+  if (recipe === 'documentary-studio') return parseComposition(compileDocumentaryVideo(script, input, images, reports, voice, variant, script.cues.map(cue => sectionDurationMs(cue))))
   const shots = productionVisualPlan(script, input, images, reports, recipe, variant, featureTopic, featureAmount).map(shot => {
-    const direction = { ...shot.direction, ...authoredDirections[shot.id] }
-    // A direct invitation has its own quiet portrait stage instead of stamping
-    // an app-store lockup over a report's measurements and values.
-    return { ...shot, direction: isVideoInvitation(shot.cue) ? { kind: 'portrait' as const, imageId: direction.imageId ?? images[0]?.id, categoryId: direction.categoryId, focus: 'hero', editorial: 'context' as const } : direction }
+    const authored=authoredDirections[shot.id]
+    const merged = { ...shot.direction, ...authored }
+    if(authored && !authored.presentation)merged.presentation=undefined
+    const direction = recipe === 'editorial-story' ? referenceEditorialDirection(merged,shot.beat,shot.cue.section!,images,(scriptVisualSeed(input.subject,shot.beat.quote)+variant)%10000,shot.decision) : merged
+    // Preserve the authored portrait and its registered guides for the closing invitation.
+    return { ...shot, direction: isVideoInvitation(shot.cue) && !authoredDirections[shot.id]?.closingReport ? { kind: 'portrait' as const, imageId: direction.imageId ?? images[0]?.id, categoryId: direction.categoryId, focus: 'hero', editorial: 'context' as const, ...(direction.portraitProgram ? { portraitProgram: direction.portraitProgram } : {}), ...(direction.profileStudy ? { profileStudy: direction.profileStudy } : {}) } : direction }
   })
   const assetIds = new Set(images.map(image => image.id))
   for (const direction of Object.values(authoredDirections)) {
-    for (const id of [direction.imageId, ...(direction.featureStudy?.images ?? [])]) if (id && !assetIds.has(id)) throw new Error(`Authored visual references a missing image: ${id}`)
+    for (const id of [direction.imageId, ...(direction.featureStudy?.images ?? []), ...(direction.presentation?.imageIds ?? [])]) if (id && !assetIds.has(id)) throw new Error(`Authored visual references a missing image: ${id}`)
   }
   const timeline = productionTimeline(script)
   let start = 0
@@ -125,12 +131,12 @@ export function compileProductionVideo(script: VideoScript, input: AnalysisPostI
   projection.cues = projection.cues.map((cue, index) => ({ ...cue, section: { ...shots[index].cue.section!, semantic: undefined } }))
   const directions = Object.fromEntries(shots.map(shot => [shot.id, { ...shot.direction, delivery: shot.cue.delivery }]))
   const variation = (scriptVisualSeed(images[0]?.id ?? input.subject, recipe) % 10000 + variant) % 10000
-  const compiled = compileAnalysisVideo(plan, input, images.map(image => image.id), 'brand', reports, { recipe, variation, directions, script: projection })
+  const compiled = compileAnalysisVideo(plan, input, images.map(image => image.id), 'brand', reports, { recipe, variation, directions, script: projection, media })
   const originalIds = new Map(shots.map(shot => [shot.id, shot.cue.sourceId]))
   const unscored = ![input.overallScore, input.strongestScore, input.opportunityScore].some(value => value?.trim())
   const scenes = bindScriptScenes(script, compiled.scenes.map(scene => ({ ...scene, source: { ...scene.source, ...(unscored ? { hideScores: true } : {}) }, cueId: originalIds.get(scene.cueId)! }))).map(scene => {
     const invitation = isVideoInvitation(script.cues.find(cue => cue.sourceId === scene.cueId))
-    return { ...scene, ...(invitation ? { source: { ...scene.source, overlay: 'none' as const }, portraitProgram: undefined, portraitFX: undefined, featureStudy: undefined, photoStudy: undefined, profileStudy: undefined, study: undefined, scoreCallouts: [] } : {}),
+    return { ...scene, ...(invitation ? { source: { ...scene.source, overlay: 'none' as const }, portraitFX: undefined, featureStudy: undefined, photoStudy: undefined, profileStudy: undefined, study: undefined, scoreCallouts: [] } : {}),
       tracks: scene.tracks.filter(track => !invitation || track.target !== 'overlay').map(track => ({ ...track, ...(track.wordId ? { wordId: `${scene.scriptRange.cueId}/word:${scene.scriptRange.startWord + (track.wordIndex ?? 0)}` } : {}) })) }
   })
   return parseComposition({ ...compiled, voice, script, scenes })
@@ -177,17 +183,20 @@ export function productionWritingBrief(script: VideoScript, subjectAnalysis?: Cr
   return {
     policy: { ...productionPolicy, ...(script.promotion === 'contextual' ? { promotion: 'contextual', ctaDeadlineSeconds: null, ctaTargetSeconds: null, mentions: 'One useful contextual mention; at most one additional closing invitation. No forced early interruption.' } : { promotion: 'early-score' }) },
     subjectAnalysis, scoreUse: 'Use a saved category score occasionally when it directly advances the argument, with its photo source and /8 or /10 scale. Weave it into the observation naturally, for example On Mogging, followed by the relevant finding. Do not force a score into every story, reveal a mystery early, or rerate edited and profile images as the baseline. Changed narration needs a newly approved recording.',
+    scientificEvidence: scientificWritingBrief,
+    referenceEditorial: referenceEditorialBrief,
     status: 'draft-needs-editorial-approval', script, references: script.references ?? [],
     // Story structure describes the argument; a format describes its visual presentation.
     storyStructures: [
       { id: 'controlled-change', sequence: ['Show the original and one changed variable', 'Ask what changed in the impression', 'Explain the visible mechanism', 'Restore the original and resolve the question'], proof: 'Registered original/edit pair; unchanged crop, expression, light and neighboring features.' },
       { id: 'viewer-choice', sequence: ['Offer a visible choice', 'Let the viewer form a prediction', 'Reveal a counterexample', 'Explain the distinction and return to the choice'], proof: 'Identify both examples; do not present a different person or photograph as a controlled edit.' },
       { id: 'single-feature', sequence: ['Point to an overlooked detail', 'Show its relationship to a neighboring feature', 'Test one change or show a contrasting example', 'Return to the whole face'], proof: 'Exact anchors and an appropriate close-up; terminology alone is not evidence.' },
-      { id: 'data-reveal', sequence: ['Ask a concrete question', 'Introduce the study and what it measured', 'Reveal the relevant chart relationship', 'Explain the result and its limits'], proof: 'Primary source, genuine values, axes and population; never substitute an illustrative score dial.' },
+      { id: 'data-reveal', sequence: ['Ask a concrete question', 'Show the sourced result and what was measured; keep the citation visual', 'Reveal the relevant chart relationship', 'Explain the result and its limits'], proof: 'Primary source, genuine values, axes and population; never substitute an illustrative score dial.' },
       { id: 'tradeoff', sequence: ['Establish a familiar benefit', 'Introduce the overlooked cost or exception', 'Show two pieces of evidence', 'Resolve when the claim applies'], proof: 'Evidence for both sides; distinguish perception, association and causation.' },
       { id: 'example-series', sequence: ['State one visual theme', 'Compare distinct named examples', 'Explain the difference within the theme', 'Close with the shared principle'], proof: 'Actual example assets and independent observations; no ancestry or personality inference from a face.' },
     ],
     guidance: [
+      'Work real scores naturally into the story: His jaw scores seven out of ten on Mogging. Never narrate old/saved reports, photos, portraits, assessment provenance, or that a number describes an image. Keep source details internal. Preserve the story image sequence; do not insert an older score portrait solely to deliver a number. Flag missing assessments internally instead of borrowing another photo’s score.',
       'Start with an asset-backed observation, choice or reversible experiment that can be seen immediately. Write several different hook mechanisms, not synonyms of one question.',
       'Write the answer to the hook before expanding the middle. Each sentence must add evidence, explain a mechanism, answer an objection or advance the resolution.',
       'Use spoken clauses, contractions and concrete verbs: follow, lift, trace, compare. Introduce anatomy only when it helps, and translate it into plain language.',

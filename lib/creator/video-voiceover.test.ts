@@ -77,7 +77,7 @@ test('alignment rejects mismatched scripts, extra words, overlaps and invalid ti
   expect(() => alignVideoVoiceover(source, { words }, 4000)).toThrow('beyond its narration')
 })
 
-test('editorial cards overlap the lower portrait while retaining safe margins and native proportions', () => {
+test('editorial cards clear the portrait and TikTok controls while retaining native proportions', () => {
   for (const layout of ['stacked', 'split', 'portrait'] as const) for (const region of [{ width: 354, height: 145 }, { width: 354, height: 410 }]) {
     const { face, metric } = featureStageLayout(region, layout)
     for (const rect of [face, metric]) {
@@ -86,9 +86,9 @@ test('editorial cards overlap the lower portrait while retaining safe margins an
       expect(rect.x + rect.width).toBeLessThanOrEqual(1316)
       expect(rect.y + rect.height).toBeLessThanOrEqual(videoSize.height - 120)
     }
-    const overlap = face.y + face.height - metric.y
-    expect(overlap).toBeGreaterThanOrEqual(150)
-    expect(overlap).toBeLessThanOrEqual(400)
+    expect(face.y+face.height).toBeLessThanOrEqual(metric.y-40)
+    expect(metric.y+metric.height).toBeLessThanOrEqual(videoSize.height*.78)
+    expect(metric.x+metric.width).toBeLessThanOrEqual(videoSize.width*.85)
     expect(metric.width / metric.height).toBeCloseTo(region.width / region.height)
   }
 })

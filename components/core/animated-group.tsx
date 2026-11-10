@@ -7,11 +7,15 @@ import { motion, useReducedMotion, type Variants } from 'motion/react'
 const container: Variants = {
   visible: { transition: { staggerChildren: 0.045 } },
 }
-const presets: Record<'fade' | 'scale' | 'slide', Variants> = {
+const presets: Record<'fade' | 'scale' | 'slide' | 'swing', Variants> = {
   fade: { hidden: { opacity: 0 }, visible: { opacity: 1 } },
   scale: {
     hidden: { opacity: 0, transform: 'scale(0.96)' },
     visible: { opacity: 1, transform: 'scale(1)' },
+  },
+  swing: {
+    hidden: { opacity: 0, transform: 'perspective(1000px) translateY(14px) rotateY(-5deg)' },
+    visible: { opacity: 1, transform: 'perspective(1000px) translateY(0px) rotateY(0deg)' },
   },
   slide: {
     hidden: { opacity: 0, y: 10 },

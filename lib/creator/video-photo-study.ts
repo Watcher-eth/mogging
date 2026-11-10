@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { FaceLandmarksPayload, NormalizedPoint } from '@/lib/analysis/landmarks'
 import { smoothMotion } from './video-layout'
 import { drawPortraitEffects, warpDestinationPoint, type PortraitWarp, type PortraitLighting, type PortraitEffects, type WarpRegion } from './video-portrait-effects'
+import { faceContourPaths } from './face-metric-guides'
 import { drawFaceTreatment } from './video-face-treatment'
 import type { ReportOverlay } from './report-overlay'
 import { paintCanvasNode, type CanvasPainter } from './canvas-layout'
@@ -12,7 +13,8 @@ export const photoStudySchema = z.object({
   mode: z.enum(['pinch', 'stretch', 'drag']).optional(),
   axis: z.enum(['x', 'y', 'both']).optional(),
   cursor: z.boolean().optional(),
-}).strict()
+  effect: z.enum(['shape','brow-contrast']).optional(),
+}).strict().superRefine((study,ctx)=>{if(study.effect==='brow-contrast' && study.feature!=='brows')ctx.addIssue({code:'custom',message:'Brow contrast requires the detected brow contours.'})})
 export type PhotoStudy = z.infer<typeof photoStudySchema>
 
 export function photoStudyRegions(landmarks: FaceLandmarksPayload | null | undefined, feature: PhotoStudy['feature']): WarpRegion[] {
@@ -37,18 +39,76 @@ export function photoStudyRegions(landmarks: FaceLandmarksPayload | null | undef
   return [{ x: (leftCheek.x + rightCheek.x) / 2, y: (forehead.y + chin.y) / 2, rx: Math.abs(rightCheek.x - leftCheek.x) * .8, ry: (chin.y - forehead.y) * .8 }]
 }
 
-export function photoStudyGesture(study: PhotoStudy, regions: WarpRegion[], timeMs: number, durationMs: number, reduced = false) {
-  const time = reduced ? .6 : Math.max(0, Math.min(1, timeMs / Math.max(1, durationMs)))
-  const restore = 1 - smoothMotion((time - .78) / .17)
-  const warp: PortraitWarp = { regions, strengths: regions.map((_, index) => Math.max(-.08, Math.min(.08, study.amount)) * (reduced ? 1 : smoothMotion((time - .12 - index * .24) / .16) * restore)), mode: study.mode ?? 'pinch', axis: study.axis ?? (['face-width', 'jaw'].includes(study.feature) ? 'x' : 'both') }
-  const handle = (index: number) => ({ x: regions[index].x + (warp.axis === 'y' ? 0 : regions[index].rx * .48), y: regions[index].y + (warp.axis === 'x' ? 0 : regions[index].ry * .18) })
-  const active = regions.length > 1 && time >= .28 ? 1 : 0, grab = handle(active), target = warpDestinationPoint(grab, warp)
-  const start = active ? warpDestinationPoint(handle(0), warp) : { x: grab.x + regions[0].rx * .55, y: grab.y - regions[0].ry * .6 }
-  const approach = smoothMotion((time - (active ? .28 : .04)) / .08)
-  const cursor = { x: start.x + (target.x - start.x) * approach, y: start.y + (target.y - start.y) * approach }
-  const pressed = time >= .12 + active * .24 && time < .28 + active * .24
-  const opacity = reduced || study.cursor === false ? 0 : smoothMotion(time / .04) * (1 - smoothMotion((time - .66) / .1))
-  return { warp, grab, target, cursor, pressed, opacity }
+// Caption cuts share one edit clock; a new caption must not restart the face deformation.
+export function photoStudyClock(scenes: Array<{cueId:string;startMs:number;durationMs:number;source:{imageId:string|null};photoStudy?:PhotoStudy}>, scene: typeof scenes[number], localMs: number) {
+  let first=scenes.findIndex(s=>s.startMs===scene.startMs && s.cueId===scene.cueId),last=first
+  if(first<0)return {timeMs:localMs,durationMs:scene.durationMs}
+  const same=(other:typeof scene|undefined)=>other?.cueId===scene.cueId && other?.source.imageId===scene.source.imageId && JSON.stringify(other?.photoStudy)===JSON.stringify(scene.photoStudy)
+  while(first>0 && same(scenes[first-1]))first--
+  while(last<scenes.length-1 && same(scenes[last+1]))last++
+  return {timeMs:scene.startMs+localMs-scenes[first].startMs,durationMs:scenes[last].startMs+scenes[last].durationMs-scenes[first].startMs}
+}
+
+export function photoStudyGesture(study: PhotoStudy, regions: WarpRegion[], timeMs: number, durationMs: number, reduced = false, landmarks?: FaceLandmarksPayload | null) {
+  const time = Math.max(0, Math.min(1, timeMs / Math.max(1, durationMs)))
+  const envelope = reduced ? 1 : smoothMotion((time-.12)/.18)*(1-smoothMotion((time-.82)/.16))
+  const contrast = study.effect==='brow-contrast' ? study.amount*envelope : 0
+  const strength = study.effect==='brow-contrast' ? 0 : study.amount*envelope
+  const mode=study.mode ?? (['cheeks','jaw','brows'].includes(study.feature)?'drag':'pinch')
+  const axis=study.axis ?? (['cheeks','brows'].includes(study.feature)?'y':study.feature==='eyes'?'both':'x')
+  const a=landmarks?.anchors, ratio=landmarks?.image ? landmarks.image.width/landmarks.image.height : 1
+  const span=a?.leftPupil && a.rightPupil ? Math.abs(a.rightPupil.x-a.leftPupil.x) : 0
+  const fixed=[study.feature==='eyes' && mode==='drag'?undefined:a?.leftPupil,study.feature==='eyes' && mode==='drag'?undefined:a?.rightPupil,study.feature==='lips'?undefined:a?.mouthCenter,study.feature==='nose'?undefined:a?.noseTip].filter((p):p is NormalizedPoint=>Boolean(p))
+  const pins=span>.03?fixed.map(p=>({...p,rx:span*.16,ry:span*.16*ratio})):[]
+  const warp: PortraitWarp={regions,strengths:regions.map(()=>strength),mode,axis,pins,
+    ...(mode==='drag'?{shifts:regions.map((region,index)=>({x:region.rx*strength*(axis==='y'?0:study.feature==='jaw'?(index===0?-1:1):1),y:region.ry*strength*(axis==='x'?0:['cheeks','brows'].includes(study.feature)?-1:1)}))}:{})}
+  const grab={x:regions[0].x+regions[0].rx*.48,y:regions[0].y}, target=warpDestinationPoint(grab,warp)
+  const approach=smoothMotion((time-.03)/.09)
+  const cursor={x:grab.x+regions[0].rx*.55*(1-approach)+(target.x-grab.x)*approach,y:grab.y-regions[0].ry*.6*(1-approach)+(target.y-grab.y)*approach}
+  const opacity=reduced || study.cursor!==true ? 0 : smoothMotion(time/.04)*(1-smoothMotion((time-.65)/.1))
+  return {warp,grab,target,cursor,pressed:time>=.12 && time<.3,opacity,contrast}
+}
+
+// Texture changes use the detected closed brow silhouettes, not stretched skin.
+const browEdits = new WeakMap<HTMLImageElement|HTMLCanvasElement,{landmarks:FaceLandmarksPayload;dark:HTMLCanvasElement;light:HTMLCanvasElement}>()
+export function prepareBrowContrast(image: HTMLImageElement|HTMLCanvasElement, landmarks: FaceLandmarksPayload | null | undefined) {
+  const cached=browEdits.get(image);if(cached && cached.landmarks===landmarks)return cached
+  const contours=(['leftBrow','rightBrow'] as const).map(key=>landmarks?faceContourPaths(landmarks,key).find(path=>path.length>=8 && path[0].x===path.at(-1)!.x && path[0].y===path.at(-1)!.y):undefined)
+  if(!landmarks || landmarks.confidence<.75 || contours.some(points=>!points || points.length<8))throw new Error('Brow contrast needs refined, closed contours for both eyebrows.')
+  const base=document.createElement('canvas');base.width=image.width;base.height=image.height
+  const source=base.getContext('2d',{willReadFrequently:true})!;source.drawImage(image,0,0)
+  const luminance=(data:Uint8ClampedArray,index:number)=>.2126*data[index]+.7152*data[index+1]+.0722*data[index+2]
+  const patches=contours.map(points=>{
+    const xs=points!.map(p=>p.x*image.width),ys=points!.map(p=>p.y*image.height),pad=Math.max(3,(Math.max(...ys)-Math.min(...ys))*.5)
+    const x=Math.max(0,Math.floor(Math.min(...xs)-pad)),y=Math.max(0,Math.floor(Math.min(...ys)-pad))
+    const width=Math.min(image.width-x,Math.ceil(Math.max(...xs)+pad-x)),height=Math.min(image.height-y,Math.ceil(Math.max(...ys)+pad-y))
+    const pixels=source.getImageData(x,y,width,height),values:number[]=[]
+    for(let i=0;i<pixels.data.length;i+=4)if(pixels.data[i+3]>127)values.push(luminance(pixels.data,i))
+    values.sort((a,b)=>a-b)
+    const skin=values[Math.floor(values.length*.85)] ?? 0
+    const mask=document.createElement('canvas');mask.width=width;mask.height=height
+    const m=mask.getContext('2d')!;m.filter=`blur(${Math.max(.5,image.width*.00045)}px)`;m.fillStyle='#fff';m.beginPath()
+    points!.forEach((p,i)=>i?m.lineTo(p.x*image.width-x,p.y*image.height-y):m.moveTo(p.x*image.width-x,p.y*image.height-y));m.closePath();m.fill()
+    return {x,y,pixels,skin,mask:m.getImageData(0,0,width,height).data}
+  })
+  const bake=(exposure:number)=>{
+    const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height
+    const ctx=canvas.getContext('2d')!
+    // Transparent patches preserve every pixel outside the detected brow hairs.
+    for(const patch of patches){
+      const output=ctx.createImageData(patch.pixels.width,patch.pixels.height),data=patch.pixels.data;output.data.set(data)
+      for(let i=0;i<data.length;i+=4){
+        const t=Math.max(0,Math.min(1,(patch.skin*.9-luminance(data,i))/Math.max(1,patch.skin*.6)))
+        const hair=t*t*(3-2*t)*patch.mask[i+3]/255
+        for(let channel=0;channel<3;channel++)output.data[i+channel]=data[i+channel]*exposure
+        output.data[i+3]=data[i+3]*hair
+      }
+      const layer=document.createElement('canvas');layer.width=output.width;layer.height=output.height
+      layer.getContext('2d')!.putImageData(output,0,0);ctx.drawImage(layer,patch.x,patch.y)
+    }
+    return canvas
+  }
+  const result={landmarks,dark:bake(.65),light:bake(1.4)};browEdits.set(image,result);return result
 }
 
 export function warpStudyOverlay(overlay: ReportOverlay, warp: PortraitWarp): ReportOverlay {
@@ -62,9 +122,17 @@ export function warpStudyOverlay(overlay: ReportOverlay, warp: PortraitWarp): Re
 }
 
 export function drawPhotoStudy(ctx: CanvasRenderingContext2D, image: HTMLImageElement | HTMLCanvasElement, landmarks: FaceLandmarksPayload | null | undefined, study: PhotoStudy, timeMs: number, durationMs: number, reduced: boolean, effects: { lighting?: PortraitLighting; mask?: HTMLCanvasElement; overlay?: ReportOverlay | null; appearance?: PortraitEffects['overlay']; paint?: CanvasPainter; measuring?: boolean } = {}) {
-  const gesture = photoStudyGesture(study, photoStudyRegions(landmarks, study.feature), timeMs, durationMs, reduced)
+  const browEdit=study.effect==='brow-contrast'?prepareBrowContrast(image,landmarks):undefined
+  const gesture = photoStudyGesture(study, photoStudyRegions(landmarks, study.feature), timeMs, durationMs, reduced, landmarks)
   if (effects.measuring || !effects.lighting && gesture.warp.strengths.every(strength => Math.abs(strength) < .00001)) ctx.drawImage(image, 0, 0)
   else drawPortraitEffects(ctx, image, { lighting: effects.lighting, mask: effects.mask, landmarks, timeMs, reduced, warp: gesture.warp })
+  if(!effects.measuring && gesture.contrast && browEdit) {
+    const photo=gesture.contrast>0?browEdit.dark:browEdit.light
+    ctx.save();ctx.globalAlpha*=Math.min(1,Math.abs(gesture.contrast)/.25)
+    if(effects.lighting)drawPortraitEffects(ctx,photo,{lighting:effects.lighting,mask:effects.mask,landmarks,timeMs,reduced})
+    else ctx.drawImage(photo,0,0)
+    ctx.restore()
+  }
   if (effects.overlay) (effects.paint ?? paintCanvasNode)(ctx, { id: 'overlay', label: 'Deforming feature outlines', frame: { x: 0, y: 0, width: image.width, height: image.height }, draw: ctx => {
     if (!effects.measuring) drawFaceTreatment(ctx, warpStudyOverlay(effects.overlay!, gesture.warp), image.width, timeMs, reduced, 1, { durationMs, appearance: effects.appearance })
   } })

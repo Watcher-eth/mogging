@@ -7,7 +7,7 @@ import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, us
 import { SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { customSlides, customSlideTemplates, customSlideId, customClipPreviewTime, customLibraryComposition, replaceCustomSlide, updatePortraitInstrument, moveCustomClip, slideCategories, portraitTreatments, portraitTreatment, type PortraitTreatment, type SlideCategory } from '@/lib/creator/custom-video'
-import { prepareVideo, type PreparedVideo } from '@/lib/creator/video-renderer'
+import { disposePreparedVideo, prepareVideo, type PreparedVideo } from '@/lib/creator/video-renderer'
 import type { VideoComposition, VideoScene } from '@/lib/creator/video-composition'
 import type { AnalysisPostInput } from '@/lib/creator/analysis-post'
 import type { GeneratorImage } from '@/lib/creator/content-generator'
@@ -51,10 +51,10 @@ export function CustomVideoEditor({ composition, prepared, images, input, report
   const [previewError, setPreviewError] = useState('')
   const libraryVideo = previews?.source === library ? previews.video : null
   useEffect(() => {
-    let disposed = false
+    let disposed = false, prepared: PreparedVideo | undefined
     setPreviewError('')
-    void prepareVideo(library, images, 'selection').then(video => { if (!disposed) setPreviews({ source: library, video }) }).catch(reason => { if (!disposed) setPreviewError(reason instanceof Error ? reason.message : 'Could not prepare slide previews') })
-    return () => { disposed = true }
+    void prepareVideo(library, images, 'selection').then(video => { prepared=video;if(disposed)disposePreparedVideo(video);else setPreviews({ source: library, video }) }).catch(reason => { if (!disposed) setPreviewError(reason instanceof Error ? reason.message : 'Could not prepare slide previews') })
+    return () => { disposed = true;prepared && disposePreparedVideo(prepared) }
   }, [library, images])
   return <div className={styles.customEditor}>
     <div className={styles.timelineHeading}><div><h3>1. Choose a clip</h3><p>Tap to edit. Drag a clip to reorder.</p></div><label>Zoom<input aria-label="Timeline zoom" type="range" min=".6" max="2" step=".1" value={zoom} onChange={event => setZoom(Number(event.target.value))} /></label></div>

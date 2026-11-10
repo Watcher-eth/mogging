@@ -18,7 +18,7 @@ const featurePatterns: Array<[SemanticBeat['feature'], RegExp]> = [
   ['ears', /\bears?\b/i], ['symmetry', /\b(?:symmetr\w*|asymmetr\w*|paired|alignment)\b/i],
   ['dimorphism', /\b(?:dimorph\w*|masculin\w*|feminin\w*|brow and lower face)/i],
   ['brows', /\b(?:brows?|eyebrows?)\b/i], ['eyes', /\b(?:eyes?|eyelids?|pupils?|canthal|intercanthal|sclera)\b/i],
-  ['nose', /\b(?:nose|nasal)\b/i], ['lips', /\b(?:lips?|mouth|vermilion|cupid)\b/i], ['jaw', /\b(?:jaw|chin|lower face|gonial|mandibular|mandible)\b/i], ['cheeks', /\b(?:cheek\w*|zygomatic)\b/i], ['whole', /\b(?:whole face|whole portrait|entire face|full portrait)\b/i],
+  ['nose', /\b(?:nose|nasal|nostrils?)\b/i], ['lips', /\b(?:lips?|mouth|vermilion|cupid)\b/i], ['jaw', /\b(?:jaw|chin|lower face|gonial|mandibular|mandible)\b/i], ['cheeks', /\b(?:cheek\w*|zygomatic)\b/i], ['whole', /\b(?:whole face|whole portrait|entire face|full portrait)\b/i],
 ]
 export const mentionsVisualFeature = (text: string, feature: SemanticBeat['feature']) => featurePatterns.find(([name]) => name === feature)?.[1].test(text) ?? false
 const operationPatterns: Array<[SemanticBeat['operation'], RegExp]> = [

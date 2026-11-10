@@ -1,0 +1,302 @@
+{
+  "reviewDate": "2026-11-05",
+  "method": "Both source videos downloaded from their public QOVES posts. Every frame decoded and change-indexed (861 + 1373). Half-second contact sheets visually reviewed across both complete videos; selected source frames additionally reviewed at transition boundaries. Boundaries are editorial landmarks, approximate within several frames, not recovered source-project keyframes. Machine transcription was checked against visible phrase captions for structure; full transcript stays internal. No retention or causal performance claims were measured.",
+  "references": [
+    {
+      "id": "7703401397919747349",
+      "title": "Masculinizing Chalamet",
+      "url": "https://www.tiktok.com/@qovesstudio/video/7703401397919747349",
+      "published": "2026-11-02",
+      "fps": 24,
+      "frameCount": 861,
+      "duration": 35.898,
+      "recognizedWordCount": 134,
+      "shots": [
+        {
+          "start": 0,
+          "end": 1.3,
+          "title": "Outcome preview over a fixed baseline",
+          "observed": "A large frontal portrait stays fixed while a thin vertical comparison boundary crosses the face. The altered state arrives immediately; an eye-like handle sits on the boundary.",
+          "scriptConnection": "The opening promises a visible counterfactual. It does not hide the outcome: subsequent narration explains how the impression is constructed.",
+          "owner": "Registered photo comparison / existing feature-study owner"
+        },
+        {
+          "start": 1.3,
+          "end": 2.5,
+          "title": "Feature crops assemble their own tray",
+          "observed": "Small white-bordered crops appear at their original face locations, then travel upward into a compact three-over-two tray. Each crop has a tiny caption.",
+          "scriptConnection": "The tray previews the variables that the narration will visit. It remains while changes accumulate.",
+          "owner": "feature-tray"
+        },
+        {
+          "start": 2.5,
+          "end": 3.8,
+          "title": "Restore the original before explaining",
+          "observed": "The wipe reverses toward the unaltered state while the tray remains independent. A cursor moves between the thumbnail and the relevant face region.",
+          "scriptConnection": "A controlled baseline is restored before individual changes are described.",
+          "owner": "Existing registered comparison + cursor-tour"
+        },
+        {
+          "start": 3.8,
+          "end": 6.7,
+          "title": "Brow explanation and cursor landing",
+          "observed": "The pointer visits the brow thumbnail, then the brow region. The portrait stays at the same scale and eye line while the local edit develops.",
+          "scriptConnection": "The named feature is targeted rather than making the entire photograph pulse.",
+          "owner": "cursor-tour / existing registered edit"
+        },
+        {
+          "start": 6.7,
+          "end": 11.8,
+          "title": "A material change rather than another shape warp",
+          "observed": "The cursor visits lips and the live portrait changes their fullness and colour/contrast. The tray persists; no global cut interrupts the explanation.",
+          "scriptConnection": "Geometry and colour are different operations. A brow/lip-density or tone change needs appropriate pixels, not stretched skin.",
+          "owner": "Reviewed edited-photo pair; photo samples via swatch-strip"
+        },
+        {
+          "start": 11.8,
+          "end": 15.8,
+          "title": "Cumulative lower-face adjustment",
+          "observed": "The pointer visits the jaw/neck crop and then the lower face. The apparent face/neck width changes over the existing cumulative state.",
+          "scriptConnection": "The narrator describes a relationship: the lower face gives the other features context. Removing this section requires resetting the cumulative state.",
+          "owner": "Existing reviewed edit owner + persistent tray"
+        },
+        {
+          "start": 15.8,
+          "end": 20.8,
+          "title": "Chin and facial-hair contribution",
+          "observed": "The pointer returns to the chin and stubble region, with local changes while the image and tray remain stable.",
+          "scriptConnection": "A changed visible beard edge must not be narrated as a measured skeletal change.",
+          "owner": "Registered texture-photo pair + cursor-tour"
+        },
+        {
+          "start": 20.8,
+          "end": 23.3,
+          "title": "A tool becomes the transition",
+          "observed": "A pale clipper enters from the side, rotates once and sweeps across the upper head. The hair image changes behind its travel; the tool then leaves.",
+          "scriptConnection": "The prop makes the grooming operation tangible. The reveal and prop share one progress clock.",
+          "owner": "drawEditorialTool + existing registered photo wipe"
+        },
+        {
+          "start": 23.3,
+          "end": 25.1,
+          "title": "Label after the grooming reveal",
+          "observed": "A fine hairline contour and compact label arrive after the altered hair is visible. The image does not keep rotating.",
+          "scriptConnection": "Explain the result after the reveal settles; do not invent a hairline from eyebrow geometry.",
+          "owner": "Verified hairline contour required; local label owner"
+        },
+        {
+          "start": 25.1,
+          "end": 27.3,
+          "title": "Hold the cumulative result",
+          "observed": "The completed state and tray remain long enough for the final connecting clause.",
+          "scriptConnection": "A readable hold is part of the composition. More movement would compete with the argument.",
+          "owner": "Shared scene clock / hold"
+        },
+        {
+          "start": 27.3,
+          "end": 28.4,
+          "title": "The tray clears before the conclusion",
+          "observed": "The small cards leave in different directions with slight staggering. The main portrait remains.",
+          "scriptConnection": "The visual mode changes because the explanation is over, rather than because a subtitle changed.",
+          "owner": "feature-tray exit phase"
+        },
+        {
+          "start": 28.4,
+          "end": 31.1,
+          "title": "Return to an explicit comparison",
+          "observed": "The original and altered states share a vertical wipe. Small labels identify each side and the headline distinguishes the altered dimension from overall preference.",
+          "scriptConnection": "The payoff reframes the experiment. It is a tradeoff essay, not a simple improvement claim.",
+          "owner": "Existing registered comparison / native caption owner"
+        },
+        {
+          "start": 31.1,
+          "end": 32.1,
+          "title": "Pull the comparison into a card",
+          "observed": "The large comparison shrinks into a rounded surface as more evidence becomes available.",
+          "scriptConnection": "Spatial continuity tells the viewer that this is the same experiment.",
+          "owner": "card-morph / tile-expand in reverse planning"
+        },
+        {
+          "start": 32.1,
+          "end": 35.898,
+          "title": "Three-way resolution",
+          "observed": "Three distinct portraits arrange into a triangular comparison. Thin highlight frames move between candidates while the narration concludes.",
+          "scriptConnection": "A third, intermediate option tests the false binary. Our engine needs three genuine states; it may not relabel three poses as three controlled edits.",
+          "owner": "evidence-fan / source-bound comparison assets"
+        }
+      ],
+      "frameIndex": "../../work/qoves-round2/7703401397919747349/frame-index.json"
+    },
+    {
+      "id": "7703012514316979476",
+      "title": "Lipstick Theory",
+      "url": "https://www.tiktok.com/@qovesstudio/video/7703012514316979476",
+      "published": "2026-11-01",
+      "fps": 30,
+      "frameCount": 1373,
+      "duration": 45.767,
+      "recognizedWordCount": 147,
+      "shots": [
+        {
+          "start": 0,
+          "end": 2.7,
+          "title": "An actual prediction surface",
+          "observed": "Four matched portraits are already visible in a two-by-two grid, with the same pose and different lip colours. A short question arrives above them.",
+          "scriptConnection": "The hook asks a concrete question while providing the evidence to make a prediction.",
+          "owner": "focus-grid with reviewed variants"
+        },
+        {
+          "start": 2.7,
+          "end": 7.3,
+          "title": "Give the choice time to register",
+          "observed": "A small white circular indicator moves near the grid intersection and changes its sector/rotation. The portraits stay legible and still.",
+          "scriptConnection": "The mechanism adds quiet anticipation while the viewer compares. It is not a percentage or a score.",
+          "owner": "focus-grid selection indicator"
+        },
+        {
+          "start": 7.3,
+          "end": 8.9,
+          "title": "The selected tile becomes the stage",
+          "observed": "One tile detaches from its grid position and expands toward full-frame scale. Other tiles leave instead of cross-fading on top of it.",
+          "scriptConnection": "The answer arrives through the evidence itself. The image identity is preserved through the move.",
+          "owner": "tile-expand"
+        },
+        {
+          "start": 8.9,
+          "end": 11.4,
+          "title": "Source page enters alongside the face",
+          "observed": "A research page slides in near the portrait, with a visibly folded corner and a small perspective change before settling.",
+          "scriptConnection": "The document arrives on the research claim. Its display is not independent verification of the study.",
+          "owner": "document-lift; reviewed document asset required"
+        },
+        {
+          "start": 11.4,
+          "end": 14.8,
+          "title": "A colour variable is made explicit",
+          "observed": "A segmented strip of shades sits above the head. Labels change with the named condition while the lip colour changes in the portrait.",
+          "scriptConnection": "The strip represents conditions. Our sample strip shows only actual photograph pixels unless supplied, reviewed condition colours are authored.",
+          "owner": "swatch-strip + reviewed image variants"
+        },
+        {
+          "start": 14.8,
+          "end": 15.7,
+          "title": "Context enters as a hinged surface",
+          "observed": "The portrait leaves and a rectangular film insert appears from a narrow side-facing edge, rotating into a readable plane.",
+          "scriptConnection": "The argument changes from a controlled portrait to context; the source surface changes with it.",
+          "owner": "reference-hinge + existing source-video owner"
+        },
+        {
+          "start": 15.7,
+          "end": 19.5,
+          "title": "Footage holds while the method is described",
+          "observed": "A short source clip remains in one fixed inset. A minimal source credit sits below it.",
+          "scriptConnection": "Do not fake a new scene with unrelated face movement; actual footage supplies context.",
+          "owner": "Existing media-asset video playback; source rights/credit required"
+        },
+        {
+          "start": 19.5,
+          "end": 23.9,
+          "title": "Freeze before a targeted illustration",
+          "observed": "A pause glyph is visible while the source image is held; a lip treatment is isolated and a short visual relation replaces the prior heading.",
+          "scriptConnection": "The visual comparison is synchronized to the result sentence. Do not alter the source person and call it an authentic frame.",
+          "owner": "Source-frame hold + reviewed edit + Torph text replacement"
+        },
+        {
+          "start": 23.9,
+          "end": 25.5,
+          "title": "Change the kind of evidence",
+          "observed": "A side exchange introduces a compact matrix of labelled circular swatches. It briefly loses focus as the next surface arrives.",
+          "scriptConnection": "The narration qualifies the first result: the colour category contains meaningful differences.",
+          "owner": "swatch-strip matrix variation / existing focus-cut"
+        },
+        {
+          "start": 25.5,
+          "end": 27.3,
+          "title": "Lift the underlying page",
+          "observed": "A source page containing a colour array and plots replaces the simplified swatches, then leaves upward.",
+          "scriptConnection": "Show where the conditions came from, but do not redraw a research graph with invented values.",
+          "owner": "document-lift / genuine reviewed page"
+        },
+        {
+          "start": 27.3,
+          "end": 28.7,
+          "title": "Introduce a second recognizable example",
+          "observed": "A new large portrait arrives from below the source page. Three small circular choices align near one side of the face.",
+          "scriptConnection": "The second example applies the same variable in a new identity and styling context.",
+          "owner": "Full-frame portrait exchange + swatch-strip vertical adaptation"
+        },
+        {
+          "start": 28.7,
+          "end": 32.9,
+          "title": "Select, demonstrate, restore",
+          "observed": "A cursor moves between the circular choices and the lip region. Different colour states appear with the same crop and expression.",
+          "scriptConnection": "The image tests the exact named distinction. A controlled edit remains separate from a change in pose.",
+          "owner": "cursor-tour + reviewed variants"
+        },
+        {
+          "start": 32.9,
+          "end": 33.8,
+          "title": "Use a counterpoint rather than another feature list",
+          "observed": "The portrait leaves. A smaller vertical creator clip enters with a short two-line contrast above it.",
+          "scriptConnection": "The story turns from an observed response to the person making the styling choice. This is an argumentative pivot.",
+          "owner": "reference-hinge + Torph text replacement"
+        },
+        {
+          "start": 33.8,
+          "end": 41.3,
+          "title": "Let the counterpoint breathe",
+          "observed": "The genuine creator clip plays while the explanation continues. The surface stays stable rather than receiving unrelated face guides.",
+          "scriptConnection": "The counterpoint qualifies the first finding. A shorter cut must preserve it if removing it would reverse the argument.",
+          "owner": "Existing source-video playback / clean hold"
+        },
+        {
+          "start": 41.3,
+          "end": 44.3,
+          "title": "Product evidence follows delivered value",
+          "observed": "A large report surface arrives, and its own page content changes through several real examples.",
+          "scriptConnection": "The product is shown as a useful continuation of the explanation, rather than a generic early interruption. Our native reports stay full-screen.",
+          "owner": "Native report renderer / section scroll / component transitions"
+        },
+        {
+          "start": 44.3,
+          "end": 45.767,
+          "title": "Small resolved invitation",
+          "observed": "A compact domain carrier resolves after the product proof.",
+          "scriptConnection": "The closing invitation is brief and related to the value already shown. We retain Mogging\u2019s own branding and CTA placement.",
+          "owner": "Existing Mogging invitation / domain text owner"
+        }
+      ],
+      "frameIndex": "../../work/qoves-round2/7703012514316979476/frame-index.json"
+    }
+  ],
+  "engine": {
+    "newFamilies": [
+      "feature-tray",
+      "cursor-tour",
+      "focus-grid",
+      "tile-expand",
+      "evidence-fan",
+      "swatch-strip",
+      "document-lift",
+      "reference-hinge",
+      "tool-sweep"
+    ],
+    "sharedOwners": [
+      "registered photo edits and wipe: feature-study.ts",
+      "source video: context-video.ts shared by photographic insets and Documentary Studio",
+      "word/caption clock: video-script.ts",
+      "report UI and scroll: mock-report.ts / report-choreography.ts",
+      "text replacement: Torph"
+    ],
+    "generation": "Qoves content style now defaults to editorial-story, alongside the retained feature-study recipe. referenceEditorialDirection is applied after saved-story directions, with asset/score/edit ownership retained. Authored presentations can select every family. Runtime phrase anchors resolve from the actual caption word times.",
+    "scriptAndCut": "The shared editorial-planning.ts brief reaches productionWritingBrief and the private story generation request. It distinguishes cumulative tradeoff, prediction/context and claim/counterexample structures. Independent examples can move; cumulative edits, revealed answers, qualifications and resolutions remain dependency-bound.",
+    "limitations": [
+      "No new science claims have been approved from these videos. Reviewed scientific registry remains authoritative.",
+      "No QOVES footage, celebrity voice or branded outro is used in generated posts by default.",
+      "Photograph swatches are actual sampled pixels, not a shade recommendation or a skin-lightening filter.",
+      "The prop does not edit pixels. Texture/grooming transformations need a reviewed registered pair.",
+      "Genuine context footage uses one shared loader/seek owner for both Qoves insets and Documentary Studio. Source offsets, held frames and separate preview/export decoders are supported; source review and native crop resolution are checked before rendering.",
+      "Three angles are not three levels of an edit. A three-state controlled experiment needs three genuine reviewed states."
+    ]
+  }
+}

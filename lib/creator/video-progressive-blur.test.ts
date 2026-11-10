@@ -1,11 +1,13 @@
 import { expect, test } from 'bun:test'
+import { videoSize } from './video-layout'
 import { brandBackdrop, captionBackdrop, reportBackdrop, drawCaptionBackdrop } from './video-progressive-blur'
 
 test('progressive blur reuses small canvas surfaces and never paints a white wash on the video', () => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'document')
   let allocations = 0, videoFills = 0
+  const widths:number[]=[]
   const context = (video = false) => new Proxy({ canvas: { width: 1080, height: 1920 } }, {
-    get: (target, key) => key === 'canvas' ? target.canvas : key === 'globalAlpha' ? 1 : key === 'createLinearGradient' ? () => ({ addColorStop() {} }) : key === 'fillRect' ? () => { if (video) videoFills++ } : () => {},
+    get: (target, key) => key === 'canvas' ? target.canvas : key === 'globalAlpha' ? 1 : key === 'createLinearGradient' ? () => ({ addColorStop() {} }) : key === 'fillRect' ? () => { if (video) videoFills++ } : key === 'drawImage' ? (_image:unknown,_x:number,_y:number,width:number)=>{if(video)widths.push(width)} : () => {},
     set: () => true,
   }) as CanvasRenderingContext2D
   Object.defineProperty(globalThis, 'document', { configurable: true, value: { createElement: () => { allocations++; return { width: 0, height: 0, getContext: () => context() } } } })
@@ -28,6 +30,8 @@ test('progressive blur reuses small canvas surfaces and never paints a white was
     expect(captionBackdrop.width).toBeLessThan(540)
     expect(captionBackdrop.height).toBeLessThan(400)
     expect(videoFills).toBe(0)
+    expect(widths.length).toBeGreaterThan(0)
+    expect(widths.every(width=>width===videoSize.width)).toBe(true)
   } finally {
     if (descriptor) Object.defineProperty(globalThis, 'document', descriptor)
     else Reflect.deleteProperty(globalThis, 'document')

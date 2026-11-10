@@ -1,0 +1,237 @@
+{
+  "id": "zeta-round3",
+  "subjectId": "zeta",
+  "title": "Zeta’s eyes versus the higher score",
+  "voice": {
+    "preset": "editorial",
+    "voice": "Orus",
+    "direction": "Independent narrator, never imitate the person pictured. Brisk upbeat conversational English, approximately 205 words per minute. Read the exact transcript only, without introductions, explanations or extra endings. Tell one connected story with natural contractions, purposeful emphasis and distinct energy between the opening, observation, score and payoff. No slow documentary voice, dramatic trailer voice, monotone list or advertising voice. Do not slow down for the product mention. Mogging.com is pronounced Mogging dot com; Clavicular is kluh-VIK-yuh-ler; Zeta is ZAY-tuh. Read digits and scores clearly. Keep pauses brief but let the visual idea land. Brisk, upbeat, conversational Orus. One narrator and one cohesive argument, with distinct energy for setup, evidence and payoff. Do not generate audio before explicit script approval."
+  },
+  "script": {
+    "version": 1,
+    "revision": "script-e77c1819702346da",
+    "promotion": "contextual",
+    "cues": [
+      {
+        "id": "cue-b33fefc2975f2643-0",
+        "sourceId": "hook",
+        "text": "Look at Zeta for a second. Which feature did you notice first?",
+        "delivery": {
+          "direction": "Invite the viewer into a visual discovery; curious and conversational, with a small hold for the on-screen change.",
+          "emphasis": [],
+          "paceWpm": 202,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "hook",
+          "title": "Opening",
+          "role": "hook",
+          "priority": 100,
+          "dependsOn": [],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "zeta-front",
+              "categoryId": "eyes",
+              "focus": "features",
+              "view": "front",
+              "reason": "Show the clean full portrait without scores. Allow a brief first-look hold before the next cue; do not display the answer in captions ahead of speech."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-f861f936d530e4c7-0",
+        "sourceId": "score",
+        "text": "If it was the eyes, here's the twist: his jaw actually scores higher. The eye area gets seven point five out of ten in this Mogging portrait. The jaw gets an eight.",
+        "delivery": {
+          "direction": "Connected, upbeat phrasing. Vary emphasis with the reveal and payoff; say scores clearly and let the visuals carry the pauses.",
+          "emphasis": [],
+          "paceWpm": 188,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "score",
+          "title": "Score",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "hook"
+          ],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "zeta-front",
+              "categoryId": "eyes",
+              "focus": "scores",
+              "view": "front",
+              "reason": "Reveal Eye area 7.5/10 and Jaw and chin 8/10 on the exact assessed zeta-front as each is spoken. Preserve the conditional if-it-was-the-eyes wording: no measured audience attention claim."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-93021989cd0afd75-0",
+        "sourceId": "frame",
+        "text": "But your first impression doesn't read a scorecard. The dark fringe sits close to the brows, creating a frame around the lighter eyes. That contrast makes the gaze hard to miss.",
+        "delivery": {
+          "direction": "Connected, upbeat phrasing. Vary emphasis with the reveal and payoff; say scores clearly and let the visuals carry the pauses.",
+          "emphasis": [],
+          "paceWpm": 206,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "frame",
+          "title": "Frame",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "score"
+          ],
+          "visuals": [
+            {
+              "treatment": "detail",
+              "imageId": "zeta-front",
+              "categoryId": "eyes",
+              "focus": "features",
+              "view": "front",
+              "reason": "Clear scores, keep the fringe and brows visible, and guide attention to the actual hair/brow contrast around the eyes. No iris or skin edits."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-f55b91fbad92f7a0-0",
+        "sourceId": "contrast",
+        "text": "The fuller lips then give your attention somewhere else to land. Moving between the eyes and mouth, you get a different impression from looking at either feature alone.",
+        "delivery": {
+          "direction": "Connected, upbeat phrasing. Vary emphasis with the reveal and payoff; say scores clearly and let the visuals carry the pauses.",
+          "emphasis": [],
+          "paceWpm": 206,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "contrast",
+          "title": "Contrast",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "frame"
+          ],
+          "visuals": [
+            {
+              "treatment": "detail",
+              "imageId": "zeta-three-quarter",
+              "categoryId": "eyes",
+              "focus": "features",
+              "view": "three-quarter",
+              "reason": "Cut to the existing three-quarter image. Briefly guide from the eye area toward the mouth, with the actual cheek contour connecting them. Clear overlays for a clean hold."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-cdca674937507e47-0",
+        "sourceId": "meaning",
+        "text": "That's why the highest score doesn't automatically tell you what will stand out in a portrait.",
+        "delivery": {
+          "direction": "Connected, upbeat phrasing. Vary emphasis with the reveal and payoff; say scores clearly and let the visuals carry the pauses.",
+          "emphasis": [],
+          "paceWpm": 206,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "meaning",
+          "title": "Meaning",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "contrast"
+          ],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "zeta-front",
+              "categoryId": "eyes",
+              "focus": "features",
+              "view": "front",
+              "reason": "Return to the clean full portrait, without numbers. Treat the attention reading as visual commentary, not an experiment."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-a979913d1599d0e6-0",
+        "sourceId": "outro",
+        "text": "See where your own eye area and jaw land on Mogging.com. Then look at the whole face, because the highest number only tells part of the story.",
+        "delivery": {
+          "direction": "Connected, upbeat phrasing. Vary emphasis with the reveal and payoff; say scores clearly and let the visuals carry the pauses.",
+          "emphasis": [],
+          "paceWpm": 206,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "outro",
+          "title": "Takeaway",
+          "role": "takeaway",
+          "priority": 100,
+          "dependsOn": [
+            "meaning"
+          ],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "zeta-front",
+              "categoryId": "eyes",
+              "focus": "features",
+              "view": "front",
+              "reason": "Finish with the eye-area/jaw invitation and the whole portrait visible. No generic tagline after the final thought."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "status": "recorded",
+  "assessmentId": "10ac822fe76463748711b3d103e797f89632213a891130c725ed3ef27d08e373",
+  "imageIds": [
+    "zeta-front",
+    "zeta-three-quarter",
+    "zeta-profile"
+  ],
+  "defaultLength": 45,
+  "recordedDurationMs": 39920,
+  "audioStatus": "word-aligned",
+  "sections": [
+    {
+      "id": "hook",
+      "startMs": 0,
+      "durationMs": 3600
+    },
+    {
+      "id": "score",
+      "startMs": 3600,
+      "durationMs": 9150
+    },
+    {
+      "id": "frame",
+      "startMs": 12750,
+      "durationMs": 8400
+    },
+    {
+      "id": "contrast",
+      "startMs": 21150,
+      "durationMs": 7150
+    },
+    {
+      "id": "meaning",
+      "startMs": 28300,
+      "durationMs": 4300
+    },
+    {
+      "id": "outro",
+      "startMs": 32600,
+      "durationMs": 7320
+    }
+  ]
+}

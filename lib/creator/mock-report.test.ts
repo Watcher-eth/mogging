@@ -46,7 +46,7 @@ test('iPhone export dimensions support H.264 and preserve the hero crop ratio', 
   expect(mockReportFormat.width % 2).toBe(0)
   expect(mockReportFormat.height % 2).toBe(0)
   expect(mockReportFormat.width / mockReportFormat.height).toBe(mockReportSize.width / mockReportSize.height)
-  expect(mockReportHeroHeight).toBe(Math.round(mockReportSize.height * .55))
+  expect(mockReportHeroHeight).toBe(Math.round(mockReportSize.height * .48))
 })
 
 test('every mobile report category draws its complete feature grid and growth section through the export renderer', () => {

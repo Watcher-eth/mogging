@@ -1,3 +1,4 @@
+import { creatorRetainerTerms } from './retainer'
 import { lockCampaignBudget } from './campaign-budget-service'
 import { campaignAccessSql } from './campaign-access-sql'
 import { canSeeCampaign, DEFAULT_CAMPAIGN_AUDIENCE } from './campaign-access'
@@ -38,7 +39,8 @@ export async function listCreatorSprints(
   admin = false,
   userId?: string,
 ): Promise<CreatorSprint[]> {
-  const profile = !admin && userId ? await db.query.creatorProfiles.findFirst({ columns: { id: true }, where: eq(schema.creatorProfiles.userId, userId) }) : undefined
+  const now = new Date()
+  const profile = !admin && userId ? await db.query.creatorProfiles.findFirst({ columns: { id: true, retainerTerms: true }, where: eq(schema.creatorProfiles.userId, userId) }) : undefined
   const rows = await db
     .select()
     .from(schema.creatorSprints)
@@ -100,7 +102,7 @@ export async function listCreatorSprints(
       ...row,
       audience: admin ? row.audience : undefined,
       budgetCents: spendingById.get(row.id)?.budgetCents ?? row.budgetCents,
-      terms: { ...row.terms, bonusBudgetCents: spendingById.get(row.id)?.bonusBudgetCents ?? row.terms.bonusBudgetCents },
+      terms: creatorRetainerTerms({ ...row.terms, bonusBudgetCents: spendingById.get(row.id)?.bonusBudgetCents ?? row.terms.bonusBudgetCents }, row.status === 'published' && row.startsAt <= now && row.endsAt > now ? profile?.retainerTerms : undefined, now),
       pendingCents: spendingById.get(row.id)?.pendingCents ?? 0,
       budgetPoolId: spendingById.get(row.id)?.poolId,
       budgetPoolName: spendingById.get(row.id)?.poolName,
@@ -122,7 +124,7 @@ export async function sprintApprovedSubmissions(
   const sprint = await db.query.creatorSprints.findFirst({
     where: eq(schema.creatorSprints.id, sprintId),
   })
-  const profile = userId ? await db.query.creatorProfiles.findFirst({ columns: { id: true }, where: eq(schema.creatorProfiles.userId, userId) }) : undefined
+  const profile = userId ? await db.query.creatorProfiles.findFirst({ columns: { id: true, retainerTerms: true }, where: eq(schema.creatorProfiles.userId, userId) }) : undefined
   if (!sprint || sprint.status === 'draft' || !canSeeCampaign(sprint.audience, profile?.id))
     throw new ApiError(404, 'Campaign not found')
   const rows = await db

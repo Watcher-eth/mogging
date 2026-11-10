@@ -5,6 +5,7 @@ export type ReportFeature = z.infer<typeof reportFeatureSchema>
 
 export type ReportCategory = {
   assessmentId?: string;
+  assessmentImageId?: string;
   id: string;
   title: string;
   subtitle: string;

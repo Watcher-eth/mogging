@@ -1,0 +1,211 @@
+{
+  "id": "marlon-round3",
+  "subjectId": "marlon",
+  "title": "Marlon’s outline changes as he turns",
+  "voice": {
+    "preset": "editorial",
+    "voice": "Puck",
+    "direction": "Independent narrator, never imitate the person pictured. Brisk upbeat conversational English, approximately 205 words per minute. Read the exact transcript only, without introductions, explanations or extra endings. Tell one connected story with natural contractions, purposeful emphasis and distinct energy between the opening, observation, score and payoff. No slow documentary voice, dramatic trailer voice, monotone list or advertising voice. Do not slow down for the product mention. Mogging.com is pronounced Mogging dot com; Clavicular is kluh-VIK-yuh-ler; Zeta is ZAY-tuh. Read digits and scores clearly. Keep pauses brief but let the visual idea land. Brisk, upbeat, conversational Puck. One narrator and one cohesive argument, with distinct energy for setup, evidence and payoff. Do not generate audio before explicit script approval."
+  },
+  "script": {
+    "version": 1,
+    "revision": "script-1e0a8b34e6d8c969",
+    "promotion": "contextual",
+    "cues": [
+      {
+        "id": "cue-d9e5c0b043194c6e-0",
+        "sourceId": "hook",
+        "text": "Marlon's face looks cleanly outlined from the front. Turn it, and you can see which parts are doing the work.",
+        "delivery": {
+          "direction": "Open with upbeat curiosity and a connected thought; no dramatic trailer voice.",
+          "emphasis": [],
+          "paceWpm": 202,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "hook",
+          "title": "Opening",
+          "role": "hook",
+          "priority": 100,
+          "dependsOn": [],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "marlon-front",
+              "categoryId": "jaw",
+              "focus": "features",
+              "view": "front",
+              "reason": "Open on the existing intact front portrait, not runway footage."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-c425b444ced8a064-0",
+        "sourceId": "outline",
+        "text": "The short blond hair leaves the temples exposed, while the darker brows frame the eyes. Below them, the cheeks narrow into the jaw and chin.",
+        "delivery": {
+          "direction": "Explain the visible relationship naturally; vary emphasis and leave a clean visual hold.",
+          "emphasis": [],
+          "paceWpm": 190,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "outline",
+          "title": "Outline",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "hook"
+          ],
+          "visuals": [
+            {
+              "treatment": "detail",
+              "imageId": "marlon-front",
+              "categoryId": "jaw",
+              "focus": "features",
+              "view": "front",
+              "reason": "Keep the full hair and shoulders visible. Briefly trace the actual cheek-to-chin edge; no feature edits."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-bcecdfba9738a4fb-0",
+        "sourceId": "score",
+        "text": "His jaw scores seven out of ten in this saved Mogging portrait. The three-quarter view adds something the number can't show: how that outline sits in depth.",
+        "delivery": {
+          "direction": "Say each score clearly, then carry the same thought forward. Do not turn the number into a verdict.",
+          "emphasis": [],
+          "paceWpm": 188,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "score",
+          "title": "Score",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "outline"
+          ],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "marlon-front",
+              "categoryId": "jaw",
+              "focus": "scores",
+              "view": "front",
+              "reason": "Show Jaw and chin on the exact saved front portrait. Clear the score before the next image."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-7ed87fc1c527ed1b-0",
+        "sourceId": "turn",
+        "text": "The cheek contour, jaw edge and chin stop overlapping as much. It's the same face, with more of the shape visible.",
+        "delivery": {
+          "direction": "Explain the visible relationship naturally; vary emphasis and leave a clean visual hold.",
+          "emphasis": [],
+          "paceWpm": 194,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "turn",
+          "title": "Turn",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "score"
+          ],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "marlon-studio-three-quarter-20261027",
+              "categoryId": "jaw",
+              "focus": "features",
+              "view": "three-quarter",
+              "reason": "Cut to the existing three-quarter studio image, then briefly the available profile. No motion or genuine expression claim."
+            },
+            {
+              "treatment": "portrait",
+              "imageId": "marlon-studio-profile-20261027",
+              "match": "profile",
+              "categoryId": "jaw",
+              "focus": "features",
+              "view": "three-quarter",
+              "reason": "Cut to the existing three-quarter studio image, then briefly the available profile. No motion or genuine expression claim."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-b278ff99054c04f1-0",
+        "sourceId": "outro",
+        "text": "Want to understand what gives your own face its outline? Explore your jaw and facial proportions on Mogging.com.",
+        "delivery": {
+          "direction": "Resolve the story through the invitation; warm, direct and conversational, with no extra tagline.",
+          "emphasis": [],
+          "paceWpm": 198,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "outro",
+          "title": "Takeaway",
+          "role": "takeaway",
+          "priority": 100,
+          "dependsOn": [
+            "turn"
+          ],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "marlon-front",
+              "categoryId": "jaw",
+              "focus": "features",
+              "view": "front",
+              "reason": "Return to the clean front view and end with the contextual Mogging.com lockup."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "status": "recorded",
+  "assessmentId": "c4152310307db2cdfb65e66b2b8970bc4dfa8b0a20c89a3d556ea455203eda76",
+  "imageIds": [
+    "marlon-front",
+    "marlon-studio-three-quarter-20261027",
+    "marlon-studio-profile-20261027"
+  ],
+  "defaultLength": 45,
+  "recordedDurationMs": 30680,
+  "audioStatus": "word-aligned",
+  "sections": [
+    {
+      "id": "hook",
+      "startMs": 0,
+      "durationMs": 5200
+    },
+    {
+      "id": "outline",
+      "startMs": 5200,
+      "durationMs": 6550
+    },
+    {
+      "id": "score",
+      "startMs": 11750,
+      "durationMs": 7600
+    },
+    {
+      "id": "turn",
+      "startMs": 19350,
+      "durationMs": 6200
+    },
+    {
+      "id": "outro",
+      "startMs": 25550,
+      "durationMs": 5130
+    }
+  ]
+}

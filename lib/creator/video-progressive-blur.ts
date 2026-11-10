@@ -1,8 +1,8 @@
-import { videoSize, smoothMotion } from './video-layout'
+import { videoSize, smoothMotion, reportCaptionFrame } from './video-layout'
 
 export const captionBackdrop = { height: 360, width: 432, layers: 5, blur: 24 } as const
 export const brandBackdrop = { ...captionBackdrop, height: 190, layers: 4, blur: 18 } as const
-export const reportBackdrop = { ...captionBackdrop, height: 558, layers: 6, blur: 44 } as const
+export const reportBackdrop = { ...captionBackdrop, height: 620, layers: 6, blur: 44 } as const
 export const metricBackdrop = { ...captionBackdrop, height: 780, width: 540, layers: 6, blur: 32 } as const
 type BlurSurfaces = { source: HTMLCanvasElement; layer: HTMLCanvasElement; mask: HTMLCanvasElement }
 const surfaces = new WeakMap<CanvasRenderingContext2D, Map<string, BlurSurfaces>>()
@@ -19,16 +19,22 @@ export function drawCaptionBackdrop(ctx: CanvasRenderingContext2D, options: { ed
   if (!cached) {
     const create = () => {
       const canvas = document.createElement('canvas')
-      canvas.width = config.width; canvas.height = Math.round(config.height * canvas.width / 1080)
+      canvas.width = config.width; canvas.height = Math.round(config.height * canvas.width / videoSize.width)
       return canvas
     }
     cached = { source: create(), layer: create(), mask: create() }
     const maskCtx = cached.mask.getContext('2d')!
     const gradient = maskCtx.createLinearGradient(0, 0, 0, cached.mask.height)
-    if (role === 'metric' || role === 'report') {
+    if (role === 'report' && edge === 'bottom') {
+      const clearCaption = Math.max(0, Math.min(.95, (videoSize.height - reportCaptionFrame.y + 24) / config.height))
+      gradient.addColorStop(0, '#fff')
+      gradient.addColorStop(clearCaption, '#fff')
+      gradient.addColorStop(clearCaption + (1 - clearCaption) * .55, '#ffffff70')
+      gradient.addColorStop(1, '#fff0')
+    } else if (role === 'metric' || role === 'report') {
       for (let step = 0; step <= 16; step++) {
         const position = step / 16
-        gradient.addColorStop(position, `rgba(255,255,255,${1 - smoothMotion(Math.max(0, (position - (role === 'report' ? .35 : .58)) / (role === 'report' ? .65 : .42)))})`)
+        gradient.addColorStop(position, `rgba(255,255,255,${1 - smoothMotion(Math.max(0, (position - (role === 'report' ? .9 : .58)) / (role === 'report' ? .1 : .42)))})`)
       }
     } else { gradient.addColorStop(0, '#fff'); gradient.addColorStop(.48, '#fff'); gradient.addColorStop(1, '#fff0') }
     maskCtx.fillStyle = gradient; maskCtx.fillRect(0, 0, cached.mask.width, cached.mask.height)
@@ -37,7 +43,7 @@ export function drawCaptionBackdrop(ctx: CanvasRenderingContext2D, options: { ed
   const { source, layer, mask } = cached
   const sourceCtx = source.getContext('2d')!, layerCtx = layer.getContext('2d')!
   sourceCtx.clearRect(0, 0, source.width, source.height)
-  const cropHeight = config.height * ctx.canvas.width / 1080
+  const cropHeight = config.height * ctx.canvas.width / videoSize.width
   sourceCtx.save()
   if (edge === 'bottom') { sourceCtx.translate(0, source.height); sourceCtx.scale(1, -1) }
   sourceCtx.drawImage(ctx.canvas, 0, edge === 'bottom' ? ctx.canvas.height - cropHeight : 0, ctx.canvas.width, cropHeight, 0, 0, source.width, source.height)
@@ -48,19 +54,19 @@ export function drawCaptionBackdrop(ctx: CanvasRenderingContext2D, options: { ed
     const fraction = (index + 1) / config.layers
     layerCtx.clearRect(0, 0, layer.width, layer.height)
     layerCtx.globalCompositeOperation = 'source-over'
-    layerCtx.filter = `blur(${config.blur * fraction * source.width / 1080}px)`
+    layerCtx.filter = `blur(${config.blur * fraction * source.width / videoSize.width}px)`
     layerCtx.drawImage(source, 0, 0); layerCtx.filter = 'none'
     layerCtx.globalCompositeOperation = 'destination-in'
     const gradient = layerCtx.createLinearGradient(0, 0, 0, layer.height * (1 - index / config.layers))
     gradient.addColorStop(0, '#fff'); gradient.addColorStop(.3, '#fff'); gradient.addColorStop(1, '#fff0')
     layerCtx.fillStyle = gradient; layerCtx.fillRect(0, 0, layer.width, layer.height)
-    ctx.drawImage(layer, 0, 0, 1080, config.height)
+    ctx.drawImage(layer, 0, 0, videoSize.width, config.height)
   }
   if (tint !== 'none') {
     layerCtx.clearRect(0, 0, layer.width, layer.height); layerCtx.globalCompositeOperation = 'source-over'
     layerCtx.fillStyle = tint === 'light' ? options.theme === 'dark' ? '#111111' : '#ffffff' : '#08080873'; layerCtx.fillRect(0, 0, layer.width, layer.height)
     layerCtx.globalCompositeOperation = 'destination-in'; layerCtx.drawImage(mask, 0, 0)
-    ctx.drawImage(layer, 0, 0, 1080, config.height)
+    ctx.drawImage(layer, 0, 0, videoSize.width, config.height)
   }
   ctx.restore()
 }

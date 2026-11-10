@@ -126,3 +126,18 @@ test('consecutive native report views keep one viewport instead of dissolving du
   expect(result.scenes[2].tracks[0].durationMs).toBeLessThanOrEqual(180)
   expect(sharesReport(first, { ...same, source: { ...source, metricScore: 8 } })).toBe(false)
 })
+
+test('photo changes use the selected recipe and variation while report holds stay continuous', async () => {
+  const { choreographVideoTransitions, createMotionTrack } = await import('./video-composition')
+  const first = { id: 'a', cueId: 'first', startMs: 0, durationMs: 3000,
+    source: { kind: 'portrait', imageId: 'front' },
+    tracks: [createMotionTrack('hard-cut', 'content', 3000)] } as import('./video-composition').VideoScene
+  const second = { ...first, id: 'b', cueId: 'second', startMs: 3000, source: { ...first.source, imageId: 'side' } }
+  const transition = (recipe: import('./video-composition').VideoRecipe, variation = 0) =>
+    choreographVideoTransitions({ recipe, variation, scenes: [first, second] } as import('./video-composition').VideoComposition).scenes[1].tracks[0].primitive
+  expect(transition('portrait-audit')).toBe('crossfade')
+  expect(transition('measurement-explainer')).toBe('match-reframe')
+  expect(transition('feature-study')).toBe('focus-cut')
+  expect(transition('hybrid-story')).toBe('wipe-up')
+  expect(transition('hybrid-story', 1)).toBe('wipe-right')
+})

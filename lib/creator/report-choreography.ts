@@ -5,13 +5,13 @@ import type { ContentSlide } from './content-generator'
 import type { ReportOverlay } from './report-overlay'
 import { primitiveProgress, sampleMotionPrimitive } from './motion-primitives'
 import type { VideoScene } from './video-composition'
-import { sceneFrame, elementEntrance, videoContent, type VideoFrame } from './video-layout'
+import { reportCaptionFrame, sceneFrame, elementEntrance, videoContent, type VideoFrame } from './video-layout'
 import { actionMentionEnd, sceneSpeechWords } from './video-voiceover'
 import { drawMetricTimeline, metricTimelineVariant } from './video-timeline'
 import { drawRollingNumber, rollingNumberWidth } from './rolling-number'
 export { appReportFrame } from './video-layout'
 
-export type AppReportAsset = { image: HTMLImageElement | null; overlay: ReportOverlay | null; slide: ContentSlide; regions: ReportRegion[]; scrollMax: number; initialScroll: number; initialFrame?: VideoFrame; entryTimes?: Record<string, number>; continuousReport?: boolean; metricStartMs?: number; narratedMetrics?: boolean }
+export type AppReportAsset = { portraitHoldMs?:number; image: HTMLImageElement | null; overlay: ReportOverlay | null; slide: ContentSlide; regions: ReportRegion[]; scrollMax: number; initialScroll: number; initialFrame?: VideoFrame; entryTimes?: Record<string, number>; continuousReport?: boolean; metricStartMs?: number; narratedMetrics?: boolean }
 
 export function reportMetricCues(chapter: VideoScene[]) {
   const features = chapter.find(scene => scene.source.report)?.source.report?.features ?? []
@@ -151,11 +151,12 @@ export function expandInPlace(rect: VideoFrame, frame: VideoFrame, amount: numbe
 }
 
 export function reportRegion(regions: ReportRegion[], id: string) {
-  return regions.find(region => region.id === id) ?? regions.find(region => region.id === 'features') ?? regions[0]
+  return regions.find(region => region.id === id) ?? (id === 'category-score' ? regions.find(region => region.categorySummary) : undefined) ?? regions.find(region => region.id === 'features') ?? regions[0]
 }
 
 export function sectionScroll(region: ReportRegion, viewportHeight: number, max: number) {
-  if (region.id === 'hero' || region.id === 'scores') return 0
+  if (region.id === 'hero') return 0
+  if (region.id === 'scores' || region.id === 'category-score') return Math.max(0,Math.min(max,region.y+region.height-viewportHeight))
   const desiredTop = region.height < 200 ? Math.max(120, (viewportHeight - Math.min(region.height, 300)) / 2 - 35) : 125
   return Math.max(0, Math.min(max, region.y - desiredTop))
 }
@@ -168,8 +169,9 @@ export function reportMotion(scene: VideoScene, asset: AppReportAsset, localMs: 
   const scrollTrack = scrollTracks.filter(track => localMs >= track.startMs).at(-1)
   const region = reportRegion(asset.regions, scrollTrack?.section ?? scene.focus)
   const from = scrollTrack?.fromScroll ?? asset.initialScroll
-  const to = scrollTrack?.toScroll ?? (scrollTrack?.primitive === 'report-scroll' ? max * Math.min(1, scrollTrack.intensity) : sectionScroll(region, viewportHeight, max))
-  const p = reduced ? 1 : scrollTrack ? primitiveProgress(localMs, scrollTrack.startMs, scrollTrack.durationMs) : scrollTracks.length ? 0 : 1
+  const to = scrollTrack?.toScroll ?? (scrollTrack?.primitive === 'report-scroll' ? max * Math.min(1, scrollTrack.intensity) : sectionScroll(region, Math.min(viewportHeight,reportCaptionFrame.y/frame.width*390-24), max))
+  const hold=asset.portraitHoldMs??0
+  const p = localMs<hold ? 0 : reduced ? 1 : scrollTrack ? primitiveProgress(localMs,scrollTrack.startMs+hold,scrollTrack.durationMs) : scrollTracks.length ? 0 : 1
   const ease = sampleMotionPrimitive('scroll-to-section', p).reveal
   return { frame, viewportHeight, scroll: Math.max(0, Math.min(max, from + (to - from) * ease)) }
 }
@@ -190,7 +192,8 @@ export function reportEmphasis(scene: VideoScene, localMs: number, reduced = fal
     section = scene.focus.startsWith('feature:') ? scene.focus : `feature:${features[index]?.id ?? index}`
   }
   if (!section.startsWith('feature:') && !['scores', 'category-score', 'potential', 'action-plan'].includes(section)) return null
-  const fade = reduced ? 1 : Math.min(elementEntrance(localMs, track.startMs, 160), elementEntrance(track.startMs + track.durationMs - localMs, 0, 180))
+  const focusFadeMs = { enter: 280, exit: 360 }
+  const fade = reduced ? 1 : Math.min(elementEntrance(localMs, track.startMs, focusFadeMs.enter), elementEntrance(track.startMs + track.durationMs - localMs, 0, focusFadeMs.exit))
   return { section, amount: fade * Math.min(1, track.intensity) }
 }
 
