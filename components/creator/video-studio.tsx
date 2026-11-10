@@ -5,24 +5,22 @@ import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import { StudioPostingGuide } from './studio-posting-guide'
 import { TextMorph } from 'torph/react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Download, Loader2, Pencil, RotateCcw, Moon, Sun, Check } from '@/components/ui/mogging-glyphs'
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { bufferToWav } from '@web-kits/audio'
 import { apiGet, apiPost } from '@/lib/api/client'
-import { AnimatedGroup } from '@/components/core/animated-group'
-import { creatorAnalysisInput, creatorAnalysisReports, creatorStoryDirections, creatorStoryOptions, creatorStoryCut, loadSculptureStory, loadCreatorStoryCatalog, loadCreatorStory, type CreatorStory, type CreatorStoryOption, type CreatorSubjectAnalysis } from '@/lib/creator/creator-stories'
-import { creatorSubjects, creatorSubjectPhotos, creatorVideoStyles, creatorContentStyles, creatorContentStyle, contentStyleSupportsScript, chooseCreatorTake, type CreatorTake, type CreatorSubjectId, type CreatorContentStyleId } from '@/lib/creator/creator-catalog'
+import { creatorAnalysisInput, creatorAnalysisReports, creatorStoryDirections, creatorStoryOptions, creatorStoryCut, loadSculptureStory, loadCreatorStoryCatalog, loadCreatorStory, type CreatorStory, type CreatorSubjectAnalysis } from '@/lib/creator/creator-stories'
+import { creatorSubjects, creatorVideoStyles, creatorContentStyles, creatorContentStyle, chooseCreatorTake, type CreatorTake, type CreatorContentStyleId } from '@/lib/creator/creator-catalog'
 import { editorialRatingReports, editorialRatingInput, editorialRatingVisibility, type PrivateCharacterDetail } from '@/lib/creator/private-character'
 import { mixVideoSounds, suggestVideoSounds } from '@/lib/creator/video-sound'
 import { compileAnalysisVideo, type VideoRecipe, type VideoComposition } from '@/lib/creator/video-composition'
-import { disposePreparedVideo, prepareVideo, exportCompositionMp4, type PreparedVideo } from '@/lib/creator/video-renderer'
+import type { PreparedVideo } from '@/lib/creator/video-renderer'
 import { compileProductionVideo, productionCut, productionTimingIssues, assembleProductionAudio, restoreProductionRecording, sectionAudioKey, type SectionAudio } from '@/lib/creator/video-production'
 import { sculptureScripts } from '@/lib/creator/cephra-scripts'
 import { sculptureModels, sculptureModelLabels, sculptureMaterialLabels, sculptureFinishes, type SculptureModel, type SculptureMaterial } from '@/lib/creator/cephra-study'
 import { reportCategories } from '@/lib/creator/mock-report-data'
-import { downloadBlob } from '@/lib/creator/export-slides'
 import { decodeVoiceover, type VideoVoiceover } from '@/lib/creator/video-voiceover'
 import { voiceDirection } from '@/lib/creator/video-speech'
 import type { VideoScript } from '@/lib/creator/video-script'
@@ -30,12 +28,11 @@ import type { AnalysisPostInput, AnalysisPostPlan } from '@/lib/creator/analysis
 import type { GeneratorImage } from '@/lib/creator/content-generator'
 import { videoExportSize } from '@/lib/creator/video-layout'
 import { customClipPreviewTime } from '@/lib/creator/custom-video'
-import { CreatorPortrait } from './creator-portrait'
 import { ContentStylePicker } from './content-style-picker'
 import { StudioPostDialog, type StudioExport } from './studio-post-dialog'
-import { VideoCompositionPlayer } from './video-composition-player'
 import styles from './video-studio.module.css'
 
+const VideoCompositionPlayer = dynamic(() => import('./video-composition-player').then(module => module.VideoCompositionPlayer))
 const PrivateCharacterStudio = dynamic(() => import('./private-character-studio').then(module => module.PrivateCharacterStudio))
 const DocumentarySceneEditor = dynamic(() => import('./documentary-scene-editor').then(module => module.DocumentarySceneEditor))
 const CustomVideoEditor = dynamic(() => import('./custom-video-editor').then(module => module.CustomVideoEditor))
@@ -68,7 +65,6 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   const [lengthChoice,setLengthChoice]=useState<LengthChoice>(defaultLength)
   const [clips,setClips]=useState<ReadonlyMap<string,SectionAudio>>(new Map())
   const [audioCut,setAudioCut]=useState<{source:VideoComposition;composition:VideoComposition;audio:VideoVoiceover}|null>(null)
-  const [storyOptions,setStoryOptions]=useState<Partial<Record<CreatorSubjectId,CreatorStoryOption[]>>>({})
   const [selection,setSelection]=useState<Selection|null>(null)
   const [recipe,setRecipe]=useState<VideoRecipe>('portrait-audit')
   const [themeOverride,setThemeOverride]=useState<'light'|'dark'|null>(null)
@@ -78,7 +74,6 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   const [seekMs,setSeekMs]=useState(0)
   const [playhead,setPlayhead]=useState(0)
   const previewPositionRef=useRef(0)
-  const photoCacheRef=useRef(new Map<string,GeneratorImage>())
   const abortRef=useRef<AbortController|null>(null)
   const [loading,setLoading]=useState(false)
   const [error,setError]=useState('')
@@ -112,36 +107,34 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   },[cut,plan,input,sourceImages,recipe,selection,studioInput,studioReports,variation,voice])
   const draft=customComposition??baseComposition
   const activeAudio=audioCut?.source===draft?audioCut:null
+  const timedComposition=activeAudio?.composition??draft
   const videoTheme=themeOverride??draft.theme
-  const composition=useMemo(()=>({...activeAudio?.composition??draft,theme:videoTheme}),[activeAudio,draft,videoTheme])
+  const composition=useMemo(()=>({...timedComposition,theme:videoTheme}),[timedComposition,videoTheme])
   const renderImages=sourceImages
   const voiceBuffer=activeAudio?.audio.buffer
-  const soundPlan=useMemo(()=>suggestVideoSounds(composition),[composition])
-  const [soundMix,setSoundMix]=useState<{source:typeof composition;voice:AudioBuffer} & ({buffer:AudioBuffer;url:string;error?:never}|{buffer?:never;url?:never;error:true})>()
-  const currentMix=soundMix?.source===composition && soundMix.voice===voiceBuffer?soundMix:undefined
+  const soundPlan=useMemo(()=>suggestVideoSounds(timedComposition),[timedComposition])
+  const [soundMix,setSoundMix]=useState<{source:typeof timedComposition;voice:AudioBuffer} & ({buffer:AudioBuffer;url:string;error?:never}|{buffer?:never;url?:never;error:true})>()
+  const currentMix=soundMix?.source===timedComposition && soundMix.voice===voiceBuffer?soundMix:undefined
   const soundActive=soundPlan.length>0
   const outputAudio=soundActive?currentMix?.buffer:voiceBuffer
-  const timingIssues=activeAudio?productionTimingIssues(composition,length):[]
+  const timingIssues=useMemo(()=>activeAudio?productionTimingIssues(composition,length):[],[activeAudio,composition,length])
   const [preparation,setPreparation]=useState<{source:typeof composition;video:PreparedVideo}|null>(null)
   const prepared=preparation?.source===composition?preparation.video:null
 
   useEffect(()=>{
-    if(step!=='person')return
-    let disposed=false
-    void Promise.allSettled(creatorSubjects.map(async subject=>[subject.id,creatorStoryOptions(await loadCreatorStoryCatalog(subject.id))] as const)).then(results=>{
-      if(!disposed)setStoryOptions(Object.fromEntries(results.flatMap(result=>result.status==='fulfilled'?[result.value]:[])))
-    })
-    return()=>{disposed=true}
-  },[step])
-  useEffect(()=>{
     if(!selection || step!=='preview' || !activeAudio)return
-    let disposed=false,video:PreparedVideo|undefined
+    const controller=new AbortController()
+    let cleanup:(()=>void)|undefined
     setError('');setPreparation(null)
-    void prepareVideo(composition,renderImages).then(result=>{video=result;if(disposed)disposePreparedVideo(result);else setPreparation({source:composition,video:result})}).catch(reason=>{if(!disposed)setError(reason instanceof Error?reason.message:'Could not prepare this video.')})
-    return()=>{disposed=true;if(video)disposePreparedVideo(video)}
+    void import('@/lib/creator/video-renderer').then(async ({prepareVideo,disposePreparedVideo})=>{
+      const video=await prepareVideo(composition,renderImages,'video',{registerPortraits:Boolean(selection.story && !selection.sculpture),signal:controller.signal})
+      if(controller.signal.aborted)disposePreparedVideo(video)
+      else{cleanup=()=>disposePreparedVideo(video);setPreparation({source:composition,video})}
+    }).catch(reason=>{if(!controller.signal.aborted)setError(reason instanceof Error?reason.message:'Could not prepare this video.')})
+    return()=>{controller.abort();cleanup?.()}
   },[selection,step,composition,renderImages,Boolean(activeAudio)])
   useEffect(()=>{
-    if(!clips.size || !draft.script)return
+    if(step!=='preview' || !clips.size || !draft.script)return
     let disposed=false,url:string|undefined
     try{
       const result=assembleProductionAudio(draft,clips)
@@ -151,35 +144,21 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
       }).catch(reason=>{if(!disposed)setError(reason instanceof Error?reason.message:'Could not load the narration.')})
     }catch(reason){setError(reason instanceof Error?reason.message:'Could not align the narration.')}
     return()=>{disposed=true;if(url)URL.revokeObjectURL(url)}
-  },[draft,clips])
+  },[step,draft,clips])
   useEffect(()=>{
-    if(!voiceBuffer || !soundActive)return
+    if(step!=='preview' || !voiceBuffer || !soundActive)return
     let disposed=false,url:string|undefined
-    void mixVideoSounds(composition.durationMs,voiceBuffer,soundPlan,.5).then(buffer=>{
+    void mixVideoSounds(timedComposition.durationMs,voiceBuffer,soundPlan,.5).then(buffer=>{
       if(disposed)return
       if(!buffer)throw new Error('Could not mix this recording.')
       url=URL.createObjectURL(bufferToWav(buffer))
-      setSoundMix({source:composition,voice:voiceBuffer,buffer,url})
-    }).catch(()=>{if(!disposed)setSoundMix({source:composition,voice:voiceBuffer,error:true})})
+      setSoundMix({source:timedComposition,voice:voiceBuffer,buffer,url})
+    }).catch(()=>{if(!disposed)setSoundMix({source:timedComposition,voice:voiceBuffer,error:true})})
     return()=>{disposed=true;if(url)URL.revokeObjectURL(url)}
-  },[composition,voiceBuffer,soundPlan,soundActive])
+  },[step,timedComposition,voiceBuffer,soundPlan,soundActive])
   useEffect(()=>()=>abortRef.current?.abort(),[])
 
   function goTo(next:Step){setBackwards(['style','sculpture','person','preview'].indexOf(next)<['style','sculpture','person','preview'].indexOf(step));setStep(next);setEditing(false)}
-  async function detectPhotos(photos:GeneratorImage[]){
-    const {detectFaceLandmarksFromDataUrl}=await import('@/lib/client/faceLandmarks')
-    const result:GeneratorImage[]=[]
-    for(const photo of photos){
-      const cached=photoCacheRef.current.get(photo.dataUrl)
-      if(cached){result.push({...photo,landmarks:cached.landmarks});continue}
-      if(photo.landmarks){photoCacheRef.current.set(photo.dataUrl,photo);result.push(photo);continue}
-      const detected=await detectFaceLandmarksFromDataUrl(photo.dataUrl)
-      if(detected.status!=='detected' && /profile/.test(photo.id)){result.push({...photo,landmarks:null});continue}
-      if(detected.status!=='detected')throw new Error(`${photo.name}: ${detected.message}`)
-      const ready={...photo,landmarks:detected.landmarks};photoCacheRef.current.set(photo.dataUrl,ready);result.push(ready)
-    }
-    return result
-  }
   async function selectSculpture(model:SculptureModel,material:SculptureMaterial){
     if(requestRef.current || busy)return
     requestRef.current=true;setLoading(true);setError('')
@@ -201,24 +180,23 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
     if(requestRef.current || busy)return
     requestRef.current=true;setLoading(true)
     try{
-      const options=storyOptions[subject.id]??creatorStoryOptions(await loadCreatorStoryCatalog(subject.id))
+      const options=creatorStoryOptions(await loadCreatorStoryCatalog(subject.id))
       const take=chooseCreatorTake(contentStyle.id,options,previousTake(subject.id,contentStyle.id))
       const saved=await loadCreatorStory(subject.id,take.storyId)
-      const photos=await detectPhotos(saved.story.images)
       // Accept longer recordings when the length picker can fall back to Full.
       creatorStoryCut(saved.script,75,saved.story)
       setMaster(saved.script);setVoice(saved.voice);setClips(saved.clips);setRecipe(take.recipe);setVariation(take.variation);setAudioCut(null);setCustomComposition(null);setSeekMs(0);setError('')
-      setSelection({id:subject.id,name:subject.name,images:photos,assets:saved.assets,story:saved.story,analysis:saved.analysis,editorialRatings:saved.story.editorialRatings,})
+      setSelection({id:subject.id,name:subject.name,images:saved.story.images,assets:saved.assets,story:saved.story,analysis:saved.analysis,editorialRatings:saved.story.editorialRatings,})
       rememberTake(subject.id,contentStyle.id,take);goTo('preview')
     }catch(reason){toast.error(reason instanceof Error?reason.message:'Could not create this video.')}
     finally{requestRef.current=false;setLoading(false)}
   }
   async function selectPrivateCharacter(character:PrivateCharacterDetail){
     if(!character.recording)throw new Error('Approve and record this story first.')
-    const saved=restoreProductionRecording(character.recording),photos=await detectPhotos(character.images)
+    const saved=restoreProductionRecording(character.recording)
     productionCut(saved.script,defaultLength)
     setMaster(saved.script);setVoice(saved.voice);setClips(saved.clips);setVariation(Math.floor(Math.random()*10000));setAudioCut(null);setCustomComposition(null);setSeekMs(0)
-    setSelection({id:`private:${character.id}`,name:character.name||'Your person',title:character.title,images:photos,analysis:character.analysis,editorialRatings:character.editorialRatings});goTo('preview')
+    setSelection({id:`private:${character.id}`,name:character.name||'Your person',title:character.title,images:character.images,analysis:character.analysis,editorialRatings:character.editorialRatings});goTo('preview')
   }
   function newVariation(){
     if(!selection || busy)return
@@ -228,10 +206,12 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
     setVariation(current=>current+1);setCustomComposition(null);setSeekMs(0)
   }
   function edit(){if(!customComposition){setCustomComposition(baseComposition);setSeekMs(customClipPreviewTime(baseComposition.scenes[0]))}setEditing(true)}
+  const onPreviewTime=useCallback((time:number)=>{previewPositionRef.current=time;if(editing)setPlayhead(time)},[editing])
   async function downloadVideo() {
     if (!prepared || !outputAudio || busy || timingIssues.length) return
     const controller = new AbortController(); abortRef.current = controller; setProgress(0);setDownloaded(false);setExportStatus('Preparing video…');setRemainingSeconds(null);setSeekMs(previewPositionRef.current)
     try {
+      const [{exportCompositionMp4},{downloadBlob}]=await Promise.all([import('@/lib/creator/video-renderer'),import('@/lib/creator/export-slides')])
       const video = await exportCompositionMp4(prepared, outputAudio, setProgress, controller.signal, undefined, setExportStatus, setRemainingSeconds)
       if (controller.signal.aborted) return
       if (trackExports) {
@@ -262,30 +242,29 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
       <p>{step==='style'?'Pick the feel. We’ll handle the edit.':step==='sculpture'?'Pick a figure and finish. We’ll build the story around it.':step==='person'?`${contentStyle.name} · A story built around them.`:'Made for your feed. Ready to make your own.'}</p>
     </header>
     <AnimatePresence mode="wait" initial={false} custom={backwards} onExitComplete={()=>headingRef.current?.focus({preventScroll:true})}>
-      <motion.div key={step} className={styles.flowStep} custom={backwards} initial={reduced?false:'enter'} animate="visible" exit="exit" variants={{enter:(back:boolean)=>({opacity:0,transform:`perspective(1400px) translateX(${back?-28:28}px) rotateY(${back?-3:3}deg)`}),visible:{opacity:1,transform:'perspective(1400px) translateX(0px) rotateY(0deg)'},exit:(back:boolean)=>({opacity:0,transform:`perspective(1400px) translateX(${back?20:-20}px) rotateY(${back?2:-2}deg)`})}} transition={{duration:reduced?0:.24,ease}}>
+      <motion.div key={step} className={styles.flowStep} custom={backwards} initial={reduced?false:'enter'} animate="visible" exit="exit" variants={{enter:(back:boolean)=>({opacity:0,transform:`perspective(1400px) translateX(${back?-28:28}px) rotateY(${back?-3:3}deg)`}),visible:{opacity:1,transform:'perspective(1400px) translateX(0px) rotateY(0deg)'},exit:(back:boolean)=>({opacity:0,transform:`perspective(1400px) translateX(${back?20:-20}px) rotateY(${back?2:-2}deg)`})}} transition={{duration:reduced?0:.18,ease}}>
         {step==='style'?<div className={styles.styleStep}><ContentStylePicker value={undefined} disabled={busy} previewId={stylePreview} onPreviewChange={setStylePreview} onChange={id=>{if(id==='cephra'){setRecipe('sculpture-study');goTo('sculpture');return}setRecipe(creatorContentStyles.find(style=>style.id===id)!.defaultRecipe);goTo('person')}}/></div>:null}
         {step==='style' && loading?<p className={styles.flowStatus} role="status"><Loader2 size={15} className="animate-spin"/>Lighting the sculpture and bringing your story together…</p>:null}
         {step==='sculpture'?<div className={styles.peopleStep} aria-busy={loading}>
-          <AnimatedGroup className={styles.sculptureCards} preset="swing">{sculptureModels.filter(model=>model==='female' || model==='male').flatMap(model=>sculptureFinishes(model).map(material=><button key={`${model}-${material}`} type="button" disabled={busy} className={styles.personCard} onClick={()=>void selectSculpture(model,material)}>
-            <span className={`${styles.personPhoto} ${styles.sculpturePhoto}`}><img src={`/creator/sculpture/${model}-${material}.webp`} alt={`${sculptureModelLabels[model]} in ${sculptureMaterialLabels[material].toLowerCase()}`} width={720} height={720}/></span>
+          <div className={styles.sculptureCards}>{sculptureModels.filter(model=>model==='female' || model==='male').flatMap(model=>sculptureFinishes(model).map(material=><button key={`${model}-${material}`} type="button" disabled={busy} className={styles.personCard} onClick={()=>void selectSculpture(model,material)}>
+            <span className={`${styles.personPhoto} ${styles.sculpturePhoto}`}><img src={`/creator/sculpture/${model}-${material}.webp`} alt={`${sculptureModelLabels[model]} in ${sculptureMaterialLabels[material].toLowerCase()}`} width={720} height={720} loading="lazy" decoding="async"/></span>
             <strong>{sculptureModelLabels[model]}</strong><span>{sculptureMaterialLabels[material]}</span>
-          </button>))}</AnimatedGroup>
+          </button>))}</div>
           {loading?<p className={styles.flowStatus} role="status"><Loader2 size={15} className="animate-spin"/>Lighting your sculpture and bringing the story together…</p>:null}
         </div>:null}
         {step==='person'?<div className={styles.peopleStep} aria-busy={loading}>
-          <AnimatedGroup className={styles.peopleCards} preset="swing">{creatorSubjects.map(subject=>{
-            const available=storyOptions[subject.id]?.some(story=>story.recording && contentStyleSupportsScript(contentStyle.id,story))
-            return <button key={subject.id} type="button" disabled={busy || available===false} className={styles.personCard} onClick={()=>void selectPerson(subject)}>
-              <span className={styles.personPhoto}>{creatorSubjectPhotos(subject)?.[0]?<CreatorPortrait src={creatorSubjectPhotos(subject)![0].dataUrl} initials={subject.initials}/>:<span>{subject.initials}</span>}</span>
-              <strong>{subject.name}</strong><span>{available===false?'Coming soon':'Create a post'}</span>
+          <div className={styles.peopleCards}>{creatorSubjects.map(subject=>
+            <button key={subject.id} type="button" disabled={busy} className={styles.personCard} onPointerEnter={event=>{if(event.pointerType==='mouse')void loadCreatorStoryCatalog(subject.id).catch(()=>{})}} onClick={()=>void selectPerson(subject)}>
+              <span className={styles.personPhoto}><img src={`/creator/people/${subject.id}.webp`} width={320} height={400} loading="lazy" decoding="async" alt="" draggable={false} onError={event=>{event.currentTarget.hidden=true}}/><span aria-hidden="true">{subject.initials}</span></span>
+              <strong>{subject.name}</strong><span>Create a post</span>
             </button>
-          })}</AnimatedGroup>
+          )}</div>
           <PrivateCharacterStudio enabled={trackExports} preview={privatePreview} selectedId={selection?.id} onSelect={selectPrivateCharacter}/>
           {loading?<p className={styles.flowStatus} role="status"><Loader2 size={15} className="animate-spin"/>Finding their story and bringing the edit together…</p>:null}
         </div>:null}
         {step==='preview' && selection?<div className={styles.result} data-editing={editing}>
           <section className={styles.resultPreview} aria-label="Post preview">
-            <VideoCompositionPlayer prepared={prepared} composition={composition} seekMs={seekMs} audioUrl={soundActive && currentMix?.url?currentMix.url:activeAudio?.audio.url} onTime={time=>{previewPositionRef.current=time;if(customComposition)setPlayhead(time)}}/>
+            <VideoCompositionPlayer prepared={prepared} composition={composition} seekMs={seekMs} audioUrl={soundActive && currentMix?.url?currentMix.url:activeAudio?.audio.url} onTime={onPreviewTime}/>
           </section>
           <aside className={styles.resultDetails}>
             <div><div className={styles.resultHeadingRow}><span className={styles.resultStyle}>{contentStyle.name}</span><button type="button" className={styles.videoThemeToggle} aria-label="Dark mode" aria-pressed={videoTheme==='dark'} title={`Switch to ${videoTheme==='dark'?'light':'dark'} video`} disabled={busy} onClick={()=>{setSeekMs(previewPositionRef.current);setThemeOverride(videoTheme==='dark'?'light':'dark')}}>{videoTheme==='dark'?<Sun size={16}/>:<Moon size={16}/>}</button></div><h2>{selection.name}</h2><div className={styles.resultTitle}><TextMorph style={{whiteSpace:'normal'}}>{selection.title??selection.story?.title??'Your story'}</TextMorph></div><p className={styles.resultMeta}>{Math.round(composition.durationMs/1000)} seconds · {creatorVideoStyles.find(style=>style.id===recipe)?.label}</p></div>

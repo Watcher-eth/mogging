@@ -85,70 +85,70 @@ export function customSlideId(scene: VideoScene): CustomSlideId {
 
 export const customClipPreviewTime = (scene: VideoScene) => scene.startMs + Math.min(600, scene.durationMs * .35)
 
+function customSlideScene(scene: VideoScene, slide: Slide, composition: VideoComposition, input: AnalysisPostInput, reports: ReportCategory[]): VideoScene {
+  const category = slide.categoryId ?? scene.source.categoryId
+  const report = slide.categoryId ? reports.find(item => item.id === category) ?? scene.source.report : scene.source.report
+  const feature = ['eyes', 'brows'].includes(category) ? 'eyes' : category === 'nose' ? 'nose' : category === 'mouth' ? 'lips' : category === 'cheeks' ? 'cheeks' : 'jaw'
+  const image = scene.source.imageId ?? composition.scenes.find(item => item.source.imageId)?.source.imageId ?? null
+  const next: VideoScene = { ...scene, customSlideId: slide.id, label: slide.label, presentation: undefined, sculpture: undefined, graphic: undefined, study: undefined, photoStudy: undefined, profileStudy: undefined, featureStudy: undefined, portraitProgram: undefined, portraitFX: undefined,
+    source: { ...scene.source, kind: 'portrait', imageId: image, secondaryImageId: null, overlay: 'category', categoryId: category, report, metricScore: report?.score ?? scene.source.metricScore }, editorial: 'context', framing: 'captioned', layout: 'portrait', focus: 'hero',
+    tracks: [createMotionTrack('crossfade', 'content', scene.durationMs)] }
+  if (slide.kind === 'portrait' && scene.source.kind === 'portrait' && scene.portraitFX?.print) next.portraitFX = { print: scene.portraitFX.print }
+  if (slide.metricId) {
+    next.focus = `metric:${slide.metricId}`; next.editorial = 'detail'
+    const guide = facialDetailGuides.find(guide => guide.id === slide.metricId)
+    if (guide) next.portraitProgram = { wordCount: Math.max(1,scene.words?.length ?? 1), actions: [{ word: 0, feature: category === 'mouth' ? 'lips' : category === 'proportions' || category === 'face-shape' ? 'whole' : feature, guide: guide.id, stroke: guide.stroke, treatment: 'trace', label: guide.label }] }
+  }
+  if (slide.kind === 'closeup') { next.editorial = 'detail'; if (['overall', 'symmetry', 'proportions', 'face-shape'].includes(category)) next.source.categoryId = 'jaw' }
+  if (slide.kind === 'measurement') {
+    next.source.kind = 'component'
+    const metric = scene.source.report?.features.find(item => item.visual && item.visual !== 'Text')
+    next.focus = metric ? `feature:${metric.id ?? 0}` : 'category-score'
+  }
+  if (slide.kind === 'report') { next.source.kind = 'report'; next.source.overlay = 'none'; next.editorial = undefined; next.framing = 'full'; next.focus = slide.focus ?? 'scores'; next.tracks.push({ ...createMotionTrack('scroll-to-section', 'report', scene.durationMs), section: next.focus }) }
+  if (slide.kind === 'grid' || slide.kind === 'feature') {
+    next.graphic = slide.kind === 'grid' ? { ...reportScoreGrid(next.source, input, slide.variant ?? 0), timelineStyle: slide.variant } : explainerGraphicSchema.parse({ layout: 'pillars', tone: 'light', items: [{ id: 'feature', label: scene.source.report?.title ?? 'Feature detail', diagram: feature === 'eyes' ? 'orbits' : feature === 'nose' ? 'nasal' : feature === 'lips' ? 'expression' : feature === 'cheeks' ? 'width' : 'contour' }] })
+  }
+  if (slide.kind === 'print') {
+    if (scene.source.kind === 'portrait' && !scene.presentation && !scene.sculpture && !scene.featureStudy) return { ...scene, customSlideId: slide.id, label: slide.label, portraitFX: { ...scene.portraitFX, print: slide.preset as PortraitPrint } }
+    next.portraitFX = { print: slide.preset as PortraitPrint }
+  }
+  if (slide.kind === 'instrument') {
+    next.portraitFX = { instrument: portraitInstrumentSchema.parse(portraitInstruments.find(effect => effect.id === slide.id)!.settings) }; next.source.overlay = 'none'
+    if (slide.id === 'specimen-frame' && scene.source.kind === 'portrait' && !scene.presentation && !scene.sculpture && !scene.featureStudy && !scene.study && !scene.photoStudy && !scene.profileStudy) return { ...scene, customSlideId: slide.id, label: slide.label, portraitFX: { ...scene.portraitFX, ...next.portraitFX } }
+  }
+  if (slide.kind === 'lighting') next.portraitFX = { overlay: glassOverlaySchema.parse({}), lighting: portraitLightingSchema.parse({ target: feature === 'jaw' ? 'jaw' : 'cheeks', ambientEv: -.7, intensity: 1.5, ...(slide.preset === 'rim' ? { preset: 'rim' } : slide.preset === 'split' ? { preset: 'split', color: 'split-mono' } : {}) }) }
+  if (slide.kind === 'comparison') next.photoStudy = { feature: category === 'brows' ? 'brows' : feature, mode: 'stretch', axis: 'x', amount: .12, cursor: true }
+  if (slide.kind === 'profile') {
+    const profile = composition.scenes.map(item => item.source.imageId).find(id => id && /profile/.test(id))
+      ?? composition.scenes.map(item => item.source.imageId).find(id => id && /three-quarter|angle/.test(id))
+      ?? image
+    next.source.imageId = profile
+    next.profileStudy = { view: profile && /profile/.test(profile) ? 'profile' : 'three-quarter', side: 'left', feature: slide.profileFeature! }
+  }
+  if (slide.kind === 'study') {
+    next.study = { id: `custom-${scene.id}`, operation: slide.operation!, references: ['cheeks', 'jaw', 'mouth'].map((categoryId, index) => ({ id: `detail-${index}`, imageId: image!, categoryId, label: ['Upper frame', 'Lower contour', 'Expression'][index] })), activeId: 'detail-0' }
+    next.portraitFX = { overlay: glassOverlaySchema.parse({ regions: slide.operation === 'planes' }) }
+  }
+  if (['edit-natural-freckles','edit-facial-thirds','edit-facial-width'].includes(slide.id)) {
+    next.photoStudy = undefined; next.portraitFX = undefined; next.editorial = 'context'
+    next.featureStudy = featureStudySchema.parse({ topic: slide.id === 'edit-natural-freckles' ? 'freckles' : 'whole', layout: 'hero', editMode: 'warp', edit: .85, motion: 'hold', adjustment: slide.id === 'edit-facial-thirds' ? 'thirds' : slide.id === 'edit-facial-width' ? 'width' : undefined, footnote: '' })
+    if (next.featureStudy.adjustment) next.portraitProgram = { wordCount: Math.max(1,scene.words?.length ?? 1), actions: [{ word: 0, feature: 'whole', guide: next.featureStudy.adjustment === 'thirds' ? 'detail.facial-thirds' : 'proportions.width-hierarchy', stroke: 'dashed', treatment: 'trace', label: next.featureStudy.adjustment === 'thirds' ? 'Facial divisions' : 'Width relationships' }] }
+  }
+  if (slide.kind === 'graphic') {
+    const scores = reportScoreGrid(next.source, input).items
+    const count = report?.features.length ?? 0
+    const items = slide.layout === 'comparison' ? scores.slice(0, 2) : slide.layout === 'pillars' ? scores : slide.layout === 'sequence' ? (report ? buildCategoryActionPlan(report).items : []).slice(0, 4).map((label, index) => ({ id: `step-${index}`, label })) : [{ id: 'main', label: slide.layout === 'calendar' ? 'Weekly routine' : slide.layout === 'constellation' || slide.layout === 'evidence' ? 'Features in this report' : report?.title ?? 'Overall', value: ['constellation', 'evidence'].includes(slide.layout!) ? String(count) : next.source.currentScore.toFixed(1), detail: ['scale', 'dial'].includes(slide.layout!) ? '/ 10' : '' }]
+    next.graphic = explainerGraphicSchema.parse({ layout: slide.layout, tone: 'light', items, ...(slide.layout === 'calendar' ? { days: [] } : {}), ...(slide.layout === 'constellation' ? { count } : {}), ...(slide.layout === 'story' ? { anatomy: { focus: 'whole', action: 'focus' } } : {}) })
+  }
+  if (next.graphic) { next.source.kind = 'explainer'; next.source.overlay = 'none'; next.source.secondaryImageId = image; next.editorial = undefined }
+  return next
+}
+
 export function replaceCustomSlide(composition: VideoComposition, sceneId: string, slideId: CustomSlideId, input: AnalysisPostInput, reports: ReportCategory[] = reportCategories): VideoComposition {
   const slide = customSlides.find(item => item.id === slideId)
   if (!slide) throw new Error('Unknown slide')
-  const imageId = composition.scenes.find(scene => scene.source.imageId)?.source.imageId ?? null
-  const scenes = composition.scenes.map(scene => {
-    if (scene.id !== sceneId) return scene
-    const category = slide.categoryId ?? scene.source.categoryId
-    const report = slide.categoryId ? reports.find(item => item.id === category) ?? scene.source.report : scene.source.report
-    const feature = ['eyes', 'brows'].includes(category) ? 'eyes' : category === 'nose' ? 'nose' : category === 'mouth' ? 'lips' : category === 'cheeks' ? 'cheeks' : 'jaw'
-    const image = scene.source.imageId ?? imageId
-    const next: VideoScene = { ...scene, customSlideId: slide.id, label: slide.label, graphic: undefined, study: undefined, photoStudy: undefined, profileStudy: undefined, featureStudy: undefined, portraitProgram: undefined, portraitFX: undefined,
-      source: { ...scene.source, kind: 'portrait', imageId: image, secondaryImageId: null, overlay: 'category', categoryId: category, report, metricScore: report?.score ?? scene.source.metricScore }, editorial: 'context', framing: 'captioned', layout: 'portrait', focus: 'hero',
-      tracks: [createMotionTrack('crossfade', 'content', scene.durationMs)] }
-    if (slide.kind === 'portrait' && scene.source.kind === 'portrait' && scene.portraitFX?.print) next.portraitFX = { print: scene.portraitFX.print }
-    if (slide.metricId) {
-      next.focus = `metric:${slide.metricId}`; next.editorial = 'detail'
-      const guide = facialDetailGuides.find(guide => guide.id === slide.metricId)
-      if (guide) next.portraitProgram = { wordCount: Math.max(1,scene.words?.length ?? 1), actions: [{ word: 0, feature: category === 'mouth' ? 'lips' : category === 'proportions' || category === 'face-shape' ? 'whole' : feature, guide: guide.id, stroke: guide.stroke, treatment: 'trace', label: guide.label }] }
-    }
-    if (slide.kind === 'closeup') { next.editorial = 'detail'; if (['overall', 'symmetry', 'proportions', 'face-shape'].includes(category)) next.source.categoryId = 'jaw' }
-    if (slide.kind === 'measurement') {
-      next.source.kind = 'component'
-      const metric = scene.source.report?.features.find(item => item.visual && item.visual !== 'Text')
-      next.focus = metric ? `feature:${metric.id ?? 0}` : 'category-score'
-    }
-    if (slide.kind === 'report') { next.source.kind = 'report'; next.source.overlay = 'none'; next.editorial = undefined; next.framing = 'full'; next.focus = slide.focus ?? 'scores'; next.tracks.push({ ...createMotionTrack('scroll-to-section', 'report', scene.durationMs), section: next.focus }) }
-    if (slide.kind === 'grid' || slide.kind === 'feature') {
-      next.graphic = slide.kind === 'grid' ? { ...reportScoreGrid(next.source, input, slide.variant ?? 0), timelineStyle: slide.variant } : explainerGraphicSchema.parse({ layout: 'pillars', tone: 'light', items: [{ id: 'feature', label: scene.source.report?.title ?? 'Feature detail', diagram: feature === 'eyes' ? 'orbits' : feature === 'nose' ? 'nasal' : feature === 'lips' ? 'expression' : feature === 'cheeks' ? 'width' : 'contour' }] })
-    }
-    if (slide.kind === 'print') {
-      if (scene.source.kind === 'portrait') return { ...scene, customSlideId: slide.id, label: slide.label, portraitFX: { ...scene.portraitFX, print: slide.preset as PortraitPrint } }
-      next.portraitFX = { print: slide.preset as PortraitPrint }
-    }
-    if (slide.kind === 'instrument') {
-      next.portraitFX = { instrument: portraitInstrumentSchema.parse(portraitInstruments.find(effect => effect.id === slide.id)!.settings) }; next.source.overlay = 'none'
-      if (slide.id === 'specimen-frame' && scene.source.kind === 'portrait' && !scene.featureStudy && !scene.study && !scene.photoStudy && !scene.profileStudy) return { ...scene, customSlideId: slide.id, label: slide.label, portraitFX: { ...scene.portraitFX, ...next.portraitFX } }
-    }
-    if (slide.kind === 'lighting') next.portraitFX = { overlay: glassOverlaySchema.parse({}), lighting: portraitLightingSchema.parse({ target: feature === 'jaw' ? 'jaw' : 'cheeks', ambientEv: -.7, intensity: 1.5, ...(slide.preset === 'rim' ? { preset: 'rim' } : slide.preset === 'split' ? { preset: 'split', color: 'split-mono' } : {}) }) }
-    if (slide.kind === 'comparison') next.photoStudy = { feature: category === 'brows' ? 'brows' : feature, mode: 'stretch', axis: 'x', amount: .12, cursor: true }
-    if (slide.kind === 'profile') {
-      const profile = composition.scenes.map(item => item.source.imageId).find(id => id && /profile/.test(id))
-        ?? composition.scenes.map(item => item.source.imageId).find(id => id && /three-quarter|angle/.test(id))
-        ?? image
-      next.source.imageId = profile
-      next.profileStudy = { view: profile && /profile/.test(profile) ? 'profile' : 'three-quarter', side: 'left', feature: slide.profileFeature! }
-    }
-    if (slide.kind === 'study') {
-      next.study = { id: `custom-${scene.id}`, operation: slide.operation!, references: ['cheeks', 'jaw', 'mouth'].map((categoryId, index) => ({ id: `detail-${index}`, imageId: image!, categoryId, label: ['Upper frame', 'Lower contour', 'Expression'][index] })), activeId: 'detail-0' }
-      next.portraitFX = { overlay: glassOverlaySchema.parse({ regions: slide.operation === 'planes' }) }
-    }
-    if (['edit-natural-freckles','edit-facial-thirds','edit-facial-width'].includes(slide.id)) {
-      next.photoStudy = undefined; next.portraitFX = undefined; next.editorial = 'context'
-      next.featureStudy = featureStudySchema.parse({ topic: slide.id === 'edit-natural-freckles' ? 'freckles' : 'whole', layout: 'hero', editMode: 'warp', edit: .85, motion: 'hold', adjustment: slide.id === 'edit-facial-thirds' ? 'thirds' : slide.id === 'edit-facial-width' ? 'width' : undefined, footnote: '' })
-      if (next.featureStudy.adjustment) next.portraitProgram = { wordCount: Math.max(1,scene.words?.length ?? 1), actions: [{ word: 0, feature: 'whole', guide: next.featureStudy.adjustment === 'thirds' ? 'detail.facial-thirds' : 'proportions.width-hierarchy', stroke: 'dashed', treatment: 'trace', label: next.featureStudy.adjustment === 'thirds' ? 'Facial divisions' : 'Width relationships' }] }
-    }
-    if (slide.kind === 'graphic') {
-      const scores = reportScoreGrid(next.source, input).items
-      const count = report?.features.length ?? 0
-      const items = slide.layout === 'comparison' ? scores.slice(0, 2) : slide.layout === 'pillars' ? scores : slide.layout === 'sequence' ? (report ? buildCategoryActionPlan(report).items : []).slice(0, 4).map((label, index) => ({ id: `step-${index}`, label })) : [{ id: 'main', label: slide.layout === 'calendar' ? 'Weekly routine' : slide.layout === 'constellation' || slide.layout === 'evidence' ? 'Features in this report' : report?.title ?? 'Overall', value: ['constellation', 'evidence'].includes(slide.layout!) ? String(count) : next.source.currentScore.toFixed(1), detail: ['scale', 'dial'].includes(slide.layout!) ? '/ 10' : '' }]
-      next.graphic = explainerGraphicSchema.parse({ layout: slide.layout, tone: 'light', items, ...(slide.layout === 'calendar' ? { days: [] } : {}), ...(slide.layout === 'constellation' ? { count } : {}), ...(slide.layout === 'story' ? { anatomy: { focus: 'whole', action: 'focus' } } : {}) })
-    }
-    if (next.graphic) { next.source.kind = 'explainer'; next.source.overlay = 'none'; next.source.secondaryImageId = image; next.editorial = undefined }
-    return next
-  })
+  const scenes = composition.scenes.map(scene => scene.id === sceneId ? customSlideScene(scene, slide, composition, input, reports) : scene)
   return parseComposition(choreographVideoTransitions({ ...composition, scenes }))
 }
 
@@ -168,10 +168,9 @@ export function moveCustomClip(composition: VideoComposition, fromId: string, to
 
 export function customLibraryComposition(composition: VideoComposition, sceneId: string, input: AnalysisPostInput, slides: readonly Slide[], reports: ReportCategory[] = reportCategories) {
   const durationMs = Math.min(2000, Math.floor(180000 / Math.max(1, slides.length)))
-  const scenes = slides.map(slide => {
-    const scene = replaceCustomSlide(composition, sceneId, slide.id, input, reports).scenes.find(scene => scene.id === sceneId)!
-    return { ...retimeVideoScene(scene, durationMs), id: slide.id }
-  })
+  const source = composition.scenes.find(scene => scene.id === sceneId)
+  if (!source) throw new Error('Choose a clip before opening its layouts.')
+  const scenes = slides.map(slide => ({ ...retimeVideoScene(customSlideScene(source, slide, composition, input, reports), durationMs), id: slide.id }))
   return arrangeVideoScenes(composition, scenes)
 }
 

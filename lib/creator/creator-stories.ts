@@ -40,8 +40,31 @@ export function creatorStoryOptions(story: CreatorStory): CreatorStoryOption[] {
   return [{ id: story.id, title: story.title, kind: story.kind ?? 'feature-story', recording: story.recording, imageIds: story.imageIds, defaultLength: story.defaultLength, featureOpening: story.featureOpening, directions: story.directions, editorialRatings: story.editorialRatings }, ...story.alternatives ?? []]
     .toSorted((a, b) => Number(b.id === story.id) - Number(a.id === story.id) || Number(b.kind === 'score-walkthrough') - Number(a.kind === 'score-walkthrough'))
 }
-export async function loadCreatorStoryCatalog(subjectId: string): Promise<CreatorStory> {
-  return readJson(`/creator/stories/${subjectId}/story.json`)
+const storyCatalogs = new Map<string, Promise<CreatorStory>>()
+export function loadCreatorStoryCatalog(subjectId: string): Promise<CreatorStory> {
+  let catalog = storyCatalogs.get(subjectId)
+  if (!catalog) {
+    catalog = readJson(`/creator/stories/${subjectId}/story.json`).catch(error => { storyCatalogs.delete(subjectId); throw error })
+    storyCatalogs.set(subjectId, catalog)
+  }
+  return catalog
+}
+// Variations and a return to the same person reuse decoded narration, bounded
+// to a few masters so long recordings can't grow the session indefinitely.
+const recordings = new Map<string, Promise<ReturnType<typeof restoreProductionRecording>>>()
+function loadRecording(url: string) {
+  let pending = recordings.get(url)
+  if (pending) {
+    recordings.delete(url)
+  } else {
+    pending = readJson(url).then(restoreProductionRecording).catch(error => {
+      if (recordings.get(url) === pending) recordings.delete(url)
+      throw error
+    })
+  }
+  recordings.set(url, pending)
+  if (recordings.size > 3) recordings.delete(recordings.keys().next().value!)
+  return pending
 }
 export async function loadCreatorStory(subjectId: string, storyId?: string) {
   const base = await loadCreatorStoryCatalog(subjectId)
@@ -49,10 +72,14 @@ export async function loadCreatorStory(subjectId: string, storyId?: string) {
   const option = stories.find(option => option.id === (storyId ?? stories[0]?.id))
   if (!option || Boolean(option.recording) === Boolean(option.draft)) throw new Error('Choose an available story for this person.')
   const story = { ...base, ...option, featureOpening: option.featureOpening, directions: option.directions, editorialRatings: option.editorialRatings, recording: option.recording, draft: option.draft, images: option.imageIds ? option.imageIds.map(id => { const image = base.images.find(image => image.id === id); if (!image) throw new Error('A story image is missing.'); return image }) : base.images }
-  const [resource, analysis] = await Promise.all([readJson(option.recording ?? option.draft!), base.analysis ? readJson(base.analysis).then(value => creatorSubjectAnalysisSchema.parse(value)) : undefined])
+  const [recording, draft, analysis] = await Promise.all([
+    option.recording ? loadRecording(option.recording) : undefined,
+    option.draft ? readJson(option.draft) : undefined,
+    base.analysis ? readJson(base.analysis).then(value => creatorSubjectAnalysisSchema.parse(value)) : undefined,
+  ])
   if (analysis && (analysis.subjectId !== subjectId || analysis.source.imageId !== base.images[0]?.id)) throw new Error('The saved analysis does not match this person’s source portrait.')
-  if (option.draft && (resource.subjectId !== subjectId || resource.assessmentId !== analysis?.source.sha256)) throw new Error('Review this score story against the current saved portrait assessment before using it.')
-  const saved = option.recording ? restoreProductionRecording(resource) : { script: validateProductionScript(resource.script), voice: voiceDirectionSchema.parse(option.voice), clips: new Map<string, SectionAudio>() }
+  if (option.draft && (draft.subjectId !== subjectId || draft.assessmentId !== analysis?.source.sha256)) throw new Error('Review this score story against the current saved portrait assessment before using it.')
+  const saved = recording ?? { script: validateProductionScript(draft.script), voice: voiceDirectionSchema.parse(option.voice), clips: new Map<string, SectionAudio>() }
   return { story, stories, assets: base.images, analysis, ...saved }
 }
 
@@ -76,7 +103,7 @@ export function creatorStoryCut(master: VideoScript, seconds: ProductionLength, 
 export async function loadSculptureStory(scriptId: string, material: SculptureMaterial = 'matte', figure?: SculptureModel) {
   const sculpture = sculptureScripts.find(script => script.id === scriptId);
   if (!sculpture) throw new Error('This sculpture story is unavailable.');
-  const resource = await readJson(`/creator/sculpture/voices/${sculpture.id}-recording.json`);
+  const recording = await loadRecording(`/creator/sculpture/voices/${sculpture.id}-recording.json`);
   const model = figure ?? sculpture.model;
   const photo: GeneratorImage = {id:`sculpture-${model}-${material}`,name:sculptureModelLabels[model],
     dataUrl:`/creator/sculpture/${model}-${material}.webp`,width:720,height:720,landmarks:null,status:'ready'};
@@ -85,7 +112,7 @@ export async function loadSculptureStory(scriptId: string, material: SculptureMa
     recording: `/creator/sculpture/voices/${sculpture.id}-recording.json`, images: [photo],
     evidence: { baselineId: photo.id, comparisonId: photo.id, topic: 'whole', revealLabel: '' },
   };
-  return { story, ...restoreProductionRecording(resource) };
+  return { story, ...recording };
 }
 
 // Use only the saved provider observations: no preview values or guessed missing metrics.

@@ -436,6 +436,25 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
   const dark = isDarkVideoContext(ctx), ink = dark ? '#f2eee5' : '#171717', panel = dark ? '#1b1b1b' : '#f5f4f1'
   ctx = originalVideoContext(ctx)
   if (study.layout === 'evidence') {
+    if (!variants.length) {
+      // A published comparison can arrive as one plate with multiple faces.
+      // Keep both halves and the original framing instead of registering it.
+      const source = photo.original ?? photo.image
+      const width = videoSize.width - 88, height = width * source.height / source.width
+      const top = Math.max(540, 1150 - height / 2)
+      ctx.save()
+      ctx.beginPath(); ctx.roundRect(44, top, width, height, 22); ctx.clip()
+      ctx.drawImage(source, 44, top, width, height)
+      ctx.restore()
+      ctx.save(); ctx.fillStyle = dark ? '#b6b6b6' : '#70757b'; ctx.textAlign = 'center'
+      ctx.font = '500 26px "Mogging Share",Arial,sans-serif'
+      study.labels?.slice(0, 2).forEach((label, index) => ctx.fillText(label, 44 + width * (.25 + .5 * index), top + height + 50))
+      ctx.font = '400 19px "Mogging Share",Arial,sans-serif'
+      if (study.footnote) ctx.fillText(study.footnote, videoSize.width / 2, top + height + 94, width)
+      ctx.restore()
+      return
+    }
+
     if (comparisonClock.revealMs !== undefined) {
       const age = localMs - comparisonClock.revealMs
       const progress = reduced ? Number(age >= 0) : smoothMotion(age / 520)

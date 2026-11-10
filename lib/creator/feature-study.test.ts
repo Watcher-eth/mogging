@@ -88,6 +88,21 @@ test('local shape edits protect distant anatomy and never fake texture with a wa
   expect(()=>featureWarp({...landmarks,confidence:.2},'ears',1)).toThrow('clear front portrait')
 })
 
+test('a published two-face comparison renders as one uncropped source with both dates', () => {
+  const image = { width: 1600, height: 960 } as HTMLImageElement
+  const frames: number[][] = [], labels: string[] = []
+  const ctx = {
+    save() {}, restore() {}, beginPath() {}, roundRect() {}, clip() {},
+    drawImage(source: HTMLImageElement, ...frame: number[]) { expect(source).toBe(image); frames.push(frame) },
+    fillText(text: string) { labels.push(text) },
+  } as unknown as CanvasRenderingContext2D
+  drawFeatureStudy(ctx, { topic: 'whole', layout: 'evidence', edit: 0, editMode: 'photo', annotation: '', images: [], labels: ['2020', '2023'] }, { image, landmarks: null }, [], 500, 3000, false)
+  expect(frames).toHaveLength(1)
+  expect(frames[0]).toHaveLength(4)
+  expect(frames[0][2] / frames[0][3]).toBeCloseTo(image.width / image.height)
+  expect(labels).toEqual(['2020', '2023'])
+})
+
 test('the persistent face stays opaque while new grid cards arrive, and clip bounds start at the old canvas bounds', () => {
   const photo = { image: { width: 1200, height: 1800 } as HTMLCanvasElement, landmarks }
   const previous = { topic: 'philtrum', layout: 'detail', edit: 0, editMode: 'warp', annotation: '', images: [] } as const

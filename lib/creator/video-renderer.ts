@@ -91,7 +91,8 @@ async function prepareContextForVideo(prepared:PreparedVideo){
 
 /** Preview and export use the same source clock, including explicit source-frame holds. */
 export async function seekPreparedMedia(prepared:PreparedVideo,time:number,signal?:AbortSignal){
-  await prepared.documentary?.seekMedia(time,signal)
+  if (!prepared.documentary && !prepared.sculpture && !prepared.contextVideos?.size) return
+  if (prepared.documentary) await prepared.documentary.seekMedia(time,signal)
   const sculptScene=activeScene(prepared.composition,time)
   if(sculptScene?.sculpture && prepared.sculpture){
     const clock=sculptureSceneClock(prepared.composition.scenes,sculptScene,time-sculptScene.startMs)
@@ -117,6 +118,8 @@ export function disposePreparedVideo(prepared:PreparedVideo){
   prepared.documentary?.dispose()
   prepared.sculpture?.dispose()
   prepared.contextVideos?.forEach(releaseContextVideo)
+  prepared.incoming.width = 0
+  prepared.outgoing.width = 0
 }
 
 function surface() {
@@ -125,53 +128,65 @@ function surface() {
   return canvas
 }
 
-const featureLandmarks = new Map<string, Promise<FaceLandmarksPayload>>()
-
-export async function prepareVideo(compositionValue: VideoComposition, images: GeneratorImage[], purpose: 'video' | 'selection' = 'video', options: { keepPortraitBackground?: boolean } = {}): Promise<PreparedVideo> {
+export async function prepareVideo(compositionValue: VideoComposition, images: GeneratorImage[], purpose: 'video' | 'selection' = 'video', options: { keepPortraitBackground?: boolean; registerPortraits?: boolean; signal?: AbortSignal } = {}): Promise<PreparedVideo> {
   const composition = parseComposition(compositionValue)
-  const [brand, anatomy] = await Promise.all([loadCreatorBrand(), composition.scenes.some(scene => scene.source.kind === 'explainer' && (scene.graphic?.layout === 'story')) ? import('./video-anatomy').then(module => module.prepareAnatomyRenderer()) : undefined, document.fonts.ready, loadShareFont().then(() => document.fonts.load('400 64px "Mogging Share"'))])
+  const { signal } = options
+  signal?.throwIfAborted()
   const requiredIds = videoImageIds(composition.scenes)
-  // Upgrade older upper-edge-only brow registrations once per immutable image.
-  // Detection runs locally; a failed refresh retains the original usable contours.
-  images = await Promise.all(images.map(async source => {
-    if (!requiredIds.has(source.id) || !(composition.recipe === 'documentary-studio' && !source.landmarks) && (source.landmarks?.source!=='mediapipe-face-landmarker' || source.landmarks.contours?.leftBrow?.length!==5)) return source
-    const {getReportImageLandmarks}=await import('@/lib/client/report-landmarks')
-    const landmarks=await getReportImageLandmarks(source.dataUrl,source.dataUrl)
-    return landmarks ? {...source,landmarks} : source
-  }))
-  const decoded = new Map<string, HTMLImageElement>()
-  await Promise.all([...requiredIds].map(async id => {
-    const source = images.find(image => image.id === id)
+  const imageById = new Map(images.map(source => [source.id, source]))
+  const required = [...requiredIds].map(id => {
+    const source = imageById.get(id)
     if (!source) throw new Error('A video photo or app screen is missing. Add it again or rebuild the video.')
-    const image = new Image()
-    await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error(`Could not load ${source.name}`)); image.src = source.dataUrl })
-    decoded.set(source.id, image)
-  }))
+    return source
+  })
+  const decoded = new Map<string, HTMLImageElement>()
+  const editImageIds = new Set(composition.scenes.flatMap(scene => scene.featureStudy?.edit
+    ? [scene.source.imageId, ...(scene.featureStudy.editMode === 'photo' ? scene.featureStudy.images : [])]
+    : []))
+  const needsRegistration = required.filter(source => source.purpose !== 'reference' && (
+    !source.landmarks && (options.registerPortraits || editImageIds.has(source.id) || composition.recipe === 'documentary-studio')
+    || source.landmarks?.source === 'mediapipe-face-landmarker' && source.landmarks.contours?.leftBrow?.length === 5
+  ))
+  const [brand, anatomy] = await Promise.all([
+    loadCreatorBrand(),
+    composition.scenes.some(scene => scene.source.kind === 'explainer' && scene.graphic?.layout === 'story')
+      ? import('./video-anatomy').then(module => module.prepareAnatomyRenderer()) : undefined,
+    loadShareFont().then(() => document.fonts.load('400 64px "Mogging Share"')),
+    Promise.all(required.map(async source => {
+      const image = new Image()
+      image.src = source.dataUrl
+      await image.decode().catch(() => { throw new Error(`Could not load ${source.name}`) })
+      decoded.set(source.id, image)
+    })),
+    needsRegistration.length ? import('@/lib/client/report-landmarks').then(async ({getReportImageLandmarks}) => {
+      // The detector is synchronous. Yield between images so it doesn't block
+      // painting the preview or responding when the creator changes their cut.
+      for (const source of needsRegistration) {
+        await new Promise<void>(resolve => setTimeout(resolve, 0))
+        signal?.throwIfAborted()
+        const landmarks = await getReportImageLandmarks(source.dataUrl, source.dataUrl, /profile/.test(source.id))
+        if (landmarks) imageById.set(source.id, { ...source, landmarks })
+      }
+    }) : undefined,
+    purpose === 'video' && composition.scenes.some(scene => scene.presentation || scene.featureStudy?.editorial) ? prepareEditorialCursors() : undefined,
+  ])
+  signal?.throwIfAborted()
   if (composition.recipe === 'documentary-studio') {
     const { prepareDocumentary } = await import('./video-documentary')
-    return { composition, brand, scenes: new Map(), incoming: surface(), outgoing: surface(), documentary: await prepareDocumentary(composition, images, decoded, brand) }
+    return { composition, brand, scenes: new Map(), incoming: surface(), outgoing: surface(), documentary: await prepareDocumentary(composition, [...imageById.values()], decoded, brand) }
   }
-  if(purpose==='video' && composition.scenes.some(scene=>scene.presentation || scene.featureStudy?.editorial))await prepareEditorialCursors()
   const featurePhotos = new Map<string, Promise<FeaturePhoto>>()
   const featurePhoto = (id: string) => {
     let pending = featurePhotos.get(id)
     if (!pending) {
       pending = (async () => {
-        let source = images.find(image => image.id === id)!
-        if (!source.landmarks && (!/profile/.test(source.id) || source.retouch)) {
-          let detection = featureLandmarks.get(source.dataUrl)
-          if (!detection) {
-            const url = source.dataUrl, name = source.name
-            detection = import('@/lib/client/faceLandmarks').then(async ({ detectFaceLandmarksFromDataUrl }) => {
-              const result = await detectFaceLandmarksFromDataUrl(url)
-              if (result.status !== 'detected') throw new Error(`Could not register the edited portrait: ${name}`)
-              return result.landmarks
-            })
-            if (featureLandmarks.size >= 24) featureLandmarks.delete(featureLandmarks.keys().next().value!)
-            featureLandmarks.set(url, detection)
-            void detection.catch(() => featureLandmarks.delete(url))
-          }
-          source = { ...source, landmarks: await detection }
+        let source = imageById.get(id)!
+        if (source.purpose === 'reference') return { image: decoded.get(id)!, landmarks: null }
+        if (!source.landmarks && source.retouch) {
+          const {getReportImageLandmarks}=await import('@/lib/client/report-landmarks')
+          const landmarks=await getReportImageLandmarks(source.dataUrl,source.dataUrl)
+          if (!landmarks) throw new Error(`Could not register the edited portrait: ${source.name}`)
+          source = { ...source, landmarks }
         }
         const portrait = await preparePortrait(decoded.get(id)!, source)
         return { image: portrait.canvas, landmarks: portrait.source.landmarks, headTop: portrait.headTop }
@@ -186,7 +201,7 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
     const key = `${reference.imageId}:${reference.categoryId}`
     let cached = studyReferences.get(key)
     if (!cached) {
-      const original = images.find(image => image.id === reference.imageId)!, image = decoded.get(reference.imageId)!
+      const original = imageById.get(reference.imageId)!, image = decoded.get(reference.imageId)!
       const overlay = preciseFaceOverlay({ size: { width: image.width, height: image.height }, primitives: [], dots: [] }, original, reference.categoryId)
       const anchors = original.landmarks?.anchors
       const referenceAnchors = reference.categoryId === 'cheeks' ? [anchors?.leftCheek, anchors?.rightCheek, anchors?.noseBridge] : reference.categoryId === 'jaw' ? [anchors?.jawLeft, anchors?.jawRight, anchors?.chin] : []
@@ -208,8 +223,9 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
   }))
   const programs=new Map<PortraitProgramRun,PreparedPortraitProgram>()
   for (const scene of composition.scenes) {
-    let source = images.find(image => image.id === scene.source.imageId)
-    if (source && scene.featureStudy && scene.featureStudy.edit !== 0 && !source.landmarks) source = { ...source, landmarks: (await featurePhoto(source.id)).landmarks ?? null }
+    signal?.throwIfAborted()
+    let source = scene.source.imageId ? imageById.get(scene.source.imageId) : undefined
+    if (source && source.purpose !== 'reference' && scene.featureStudy?.edit && !source.landmarks) source = { ...source, landmarks: (await featurePhoto(source.id)).landmarks ?? null }
     if (scene.photoStudy) photoStudyRegions(source?.landmarks, scene.photoStudy.feature)
     const slide: ContentSlide = {
       id: scene.id, templateId: 'mock-report', imageId: scene.source.imageId, categoryId: scene.source.categoryId,
@@ -220,10 +236,10 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
       mockReport: { category: scene.source.report ? { ...scene.source.report, score: scene.source.metricScore, features: scene.source.report.features.map(feature => ({ ...feature })) } : buildMockOverallCategory(String(scene.source.currentScore), {}), scroll: 0 },
     }
     const original = source && decoded.get(source.id)
-    const useOriginal = options.keepPortraitBackground || (scene.source.overlay === 'face-map' && !scene.editorial && !scene.study && !scene.photoStudy)
+    const useOriginal = source?.purpose === 'reference' || options.keepPortraitBackground || (scene.source.overlay === 'face-map' && !scene.editorial && !scene.study && !scene.photoStudy)
     // The optional cutout can depend on model assets. Keep the portrait
     // and continue the guide if the model is unavailable or slow to start.
-    const cutout = composition.privateStudy && scene.studyCutout && source && original
+    const cutout = composition.privateStudy && scene.studyCutout && source && source.purpose !== 'reference' && original
       ? await Promise.race([
         preparePortrait(original, source).catch(() => null),
         new Promise<null>(resolve => setTimeout(() => resolve(null), 3500)),
@@ -262,7 +278,7 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
     }
     if (scene.presentation && source) {
       asset.presentationPhotos = [await featurePhoto(source.id), ...await Promise.all(scene.presentation.imageIds.map(async id => {
-        if (['device', 'document-lift', 'reference-hinge'].includes(scene.presentation!.kind)) return { image: decoded.get(id)! }
+        if (['device', 'document-lift', 'reference-hinge'].includes(scene.presentation!.kind)) return { image: decoded.get(id)!, landmarks: null }
         const label = /three-quarter/.test(id) ? 'Three-quarter' : /profile/.test(id) ? 'Profile' : undefined
         return { ...await featurePhoto(id), label }
       }))]
@@ -304,7 +320,7 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
     if (scene.featureStudy) {
       asset.featurePhotos = scene.featureStudy.revealWord === undefined
         ? await Promise.all(scene.featureStudy.images.map(featurePhoto))
-        : scene.featureStudy.images.map(id => ({ image: decoded.get(id)!, landmarks: images.find(image => image.id === id)?.landmarks }))
+        : scene.featureStudy.images.map(id => ({ image: decoded.get(id)!, landmarks: imageById.get(id)?.landmarks }))
       if (scene.featureStudy.editMode === 'photo' && scene.featureStudy.edit && asset.portrait && asset.featurePhotos[0]) prepareFeatureEdit({ image: asset.portrait, landmarks: asset.studyLandmarks }, asset.featurePhotos[0], scene.featureStudy.topic)
     }
     previousScene = scene
@@ -372,7 +388,7 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
       if (source.source.kind === 'report' && !elements.some(element => element.id === 'overlay')) placement.f += reportMotion(source, portrait, source.durationMs).scroll * .18 * W / mockReportSize.width
       const frame = registeredHeadFrame(portrait.overlay, placement)
       if (!frame || Math.min(H, frame.y + frame.height) - Math.max(0, frame.y) < frame.height * .35) continue
-      const orientation = registeredHeadOrientation(images.find(image => image.id === source.source.imageId)?.landmarks)
+      const orientation = registeredHeadOrientation(source.source.imageId ? imageById.get(source.source.imageId)?.landmarks : undefined)
       orientation.roll -= Math.atan2(placement.b, placement.a)
       scenes.get(scene.id)!.anatomyRegistration = { frame, orientation, photo: portrait.portrait && photo ? { image: portrait.portrait, frame: photo.frame } : undefined, reveal: composition.scenes[index - 1]?.graphic?.layout !== 'story' }
       break
@@ -390,13 +406,17 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
     asset.brandFrame = videoBrandFrame(isVideoCta(composition, scene), obstacles)
     layoutCache.get(prepared)?.delete(scene.id)
   }
-  await prepareContextForVideo(prepared)
-  if(composition.scenes.some(scene=>scene.sculpture)){
-    prepared.sculpture=await import('./sculpture-renderer').then(m=>m.prepareSculptureRenderer(false,composition.theme))
-    try { await seekPreparedMedia(prepared,0) }
-    catch(error){disposePreparedVideo(prepared);throw error}
-  }
-  return prepared
+  try {
+    signal?.throwIfAborted()
+    await prepareContextForVideo(prepared)
+    if(composition.scenes.some(scene=>scene.sculpture)){
+      signal?.throwIfAborted()
+      prepared.sculpture=await import('./sculpture-renderer').then(m=>m.prepareSculptureRenderer(false,composition.theme))
+      await seekPreparedMedia(prepared,0,signal)
+    }
+    signal?.throwIfAborted()
+    return prepared
+  } catch(error){disposePreparedVideo(prepared);throw error}
 }
 
 function progress(track: MotionTrack, localMs: number, reduced: boolean) {
@@ -626,7 +646,14 @@ export function drawVideoFrame(ctx: CanvasRenderingContext2D, prepared: Prepared
     const continuedFace = sharesPortrait(previous, scene) && !previous!.photoStudy && !scene.photoStudy && !previous!.profileStudy && !scene.profileStudy
     const previousAsset = previous && prepared.scenes.get(previous.id)
     const from = previousAsset?.overlayCues?.at(-1)?.overlay ?? previousAsset?.overlay, to = scene.source.overlay === 'none' ? undefined : prepared.scenes.get(scene.id)?.overlay
-    renderScene(incoming, prepared, scene, localMs, reducedMotion, createVideoPainter(scene, localMs, reducedMotion, inspect, undefined, prepared.scenes.get(scene.id)?.entryTimes, prepared.scenes.get(scene.id)?.narratedMetrics), continuedFace && from && to ? { from, to, progress: 1 } : undefined, false, featureHandoff, !stationary)
+    const paint = createVideoPainter(scene, localMs, reducedMotion, inspect, undefined, reportAsset?.entryTimes, reportAsset?.narratedMetrics)
+    const morph = continuedFace && from && to ? { from, to, progress: 1 } : undefined
+    if (!inspect && width < videoExportSize.width && (!transition || !previous || reducedMotion || transition.primitive === 'hard-cut') && Math.abs(width / height - W / H) < .001) {
+      renderScene(ctx, prepared, scene, localMs, reducedMotion, paint, morph, false, featureHandoff, true, undefined, width / W, height / H)
+      drawVideoTicker(ctx, prepared, time, reducedMotion, width, height)
+      return
+    }
+    renderScene(incoming, prepared, scene, localMs, reducedMotion, paint, morph, false, featureHandoff, !stationary)
   }
   ctx.save()
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'
@@ -1453,7 +1480,7 @@ export async function exportCompositionMp4(prepared: PreparedVideo, audio: Audio
     if(p===1 || now-lastProgressAt>=100){onProgress?.(completed);lastProgressAt=now}
   }
   reportProgress(.03)
-  const target:PreparedVideo = {...prepared, sculpture, scenes:new Map([...prepared.scenes].map(([id,asset])=>[id,{...asset}])), documentary:footage??prepared.documentary, contextVideos:undefined}
+  const target:PreparedVideo = {...prepared, incoming:surface(), outgoing:surface(), sculpture, scenes:new Map([...prepared.scenes].map(([id,asset])=>[id,{...asset}])), documentary:footage??prepared.documentary, contextVideos:undefined}
   try {
     await prepareContextForVideo(target)
     const video = await encodeCanvasMp4(canvas, async time => {
@@ -1466,7 +1493,10 @@ export async function exportCompositionMp4(prepared: PreparedVideo, audio: Audio
     }, signal, audio, bitrate, onRemaining)
     await saveVideoExport(cacheKey,video)
     return video
-  } finally { sculpture?.dispose();footage?.dispose();target.contextVideos?.forEach(releaseContextVideo) }
+  } finally {
+    sculpture?.dispose(); footage?.dispose(); target.contextVideos?.forEach(releaseContextVideo)
+    target.incoming.width = 0; target.outgoing.width = 0
+  }
 }
 
 export function portraitPrintSweepEdge(width:number,height:number,p:number) {

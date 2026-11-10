@@ -27,6 +27,7 @@ export type GeneratorImage = {
   landmarks: import('@/lib/analysis/landmarks').FaceLandmarksPayload | null
   status: 'loading' | 'detecting' | 'ready' | 'warning' | 'no-face'
   warning?: string
+  purpose?: 'reference'
   retouch?: { feature: import('./video-semantics').SemanticBeat['feature']; operation: import('./video-semantics').SemanticBeat['operation']; baselineImageId: string }
   comparison?: { group: string; state: 'before' | 'after'; feature: string }
 }

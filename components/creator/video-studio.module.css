@@ -147,6 +147,8 @@
 .peopleCards { display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:24px 18px; }
 .personCard { display:grid;width:100%;gap:4px;padding:0;text-align:left;background:transparent;border:0;cursor:pointer;transition:opacity 160ms var(--studio-ease),transform 160ms var(--studio-ease); }
 .personPhoto { display:grid;place-items:center;width:100%;aspect-ratio:4/5;overflow:hidden;border-radius:18px;background:#f4f4f5;color:#96969b; }
+.personPhoto > * { grid-area:1 / 1; }
+.personPhoto > img:not([hidden]) + span { visibility:hidden; }
 .personPhoto img { width:100%;height:100%;object-fit:cover;object-position:50% 28%;transition:transform 240ms var(--studio-ease); }
 .personCard strong { margin-top:8px;font-size:14px;line-height:1.4;font-weight:500;color:#28282c; }
 .personCard > span:last-child { font-size:11px;color:#99999f; }

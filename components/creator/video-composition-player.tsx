@@ -3,11 +3,12 @@ import { SkeletonBox } from 'skullet/react'
 import { useEffect, useRef, useState } from 'react'
 import { BatteryFull, Bookmark, Heart, Home, MessageCircle, Music2, Pause, Play, Plus, RotateCcw, RotateCw, Search, Share2, Signal, UserRound, Users, Wifi } from '@/components/ui/mogging-glyphs'
 import { drawVideoFrame, seekPreparedMedia, type PreparedVideo } from '@/lib/creator/video-renderer'
-import { videoExportSize } from '@/lib/creator/video-layout'
 import { createPreviewRipple } from '@/lib/creator/preview-ripple'
 import type { VideoComposition } from '@/lib/creator/video-composition'
 import styles from './video-studio.module.css'
 
+// Keep a 2× backing surface for the typical Studio panel. Downloads render at 1080 × 1920.
+const previewSize = { width: 720, height: 1280 }
 const playbackTime = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
 
 export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, audioUrl }: { prepared: PreparedVideo | null; composition: VideoComposition; seekMs: number; onTime: (time: number) => void; audioUrl?: string }) {
@@ -56,6 +57,7 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
     const canvas = canvasRef.current, overlay = rippleCanvasRef.current
     const ctx = canvas?.getContext('2d')
     if (!ctx || !prepared || !canvas || !overlay) return
+    const hasTimedMedia=Boolean(prepared.sculpture || prepared.documentary || prepared.contextVideos?.size)
     const previous = displayedRef.current
     const styleChanged = previous && previous.composition.recipe !== prepared.composition.recipe
     if (previous !== prepared) {
@@ -83,7 +85,7 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
         let rippling = false
         if (ripple && !reduced) {
           if (ripple.started === undefined) {
-            await seekPreparedMedia(prepared,positionRef.current,drawAbort.signal)
+            if(hasTimedMedia)await seekPreparedMedia(prepared,positionRef.current,drawAbort.signal)
             if (drawAbort.signal.aborted) return
             drawVideoFrame(ctx, prepared, positionRef.current, canvas.width, canvas.height, reduced)
             canvas.dataset.renderedStyle = prepared.composition.recipe
@@ -100,7 +102,7 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
             positionRef.current = Math.min(prepared.composition.durationMs - 1, audioUrl && audio ? audio.paused ? positionRef.current : audio.currentTime * 1000 : positionRef.current + now - last)
           }
           overlay.style.visibility = 'hidden'
-          await seekPreparedMedia(prepared,positionRef.current,drawAbort.signal)
+          if(hasTimedMedia)await seekPreparedMedia(prepared,positionRef.current,drawAbort.signal)
           if (drawAbort.signal.aborted) return
           drawVideoFrame(ctx, prepared, positionRef.current, canvas.width, canvas.height, reduced)
           canvas.dataset.renderedStyle = prepared.composition.recipe
@@ -147,8 +149,8 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
     <div className={styles.composerFrame} data-theme={composition.theme} aria-label="TikTok feed preview">
       <div className={styles.previewContent}>
         <div className={styles.videoSurface} data-theme={composition.theme}>
-          <canvas ref={canvasRef} width={videoExportSize.width} height={videoExportSize.height} className={styles.videoCanvas} role="img" aria-label={`Video preview: ${composition.title}`} />
-          <canvas ref={rippleCanvasRef} width={videoExportSize.width} height={videoExportSize.height} aria-hidden="true" className={styles.waveCanvas} style={{ visibility: 'hidden' }} />
+          <canvas ref={canvasRef} width={previewSize.width} height={previewSize.height} className={styles.videoCanvas} role="img" aria-label={`Video preview: ${composition.title}`} />
+          <canvas ref={rippleCanvasRef} width={previewSize.width} height={previewSize.height} aria-hidden="true" className={styles.waveCanvas} style={{ visibility: 'hidden' }} />
           <AnimatePresence initial={false}>{(!prepared || paintedVideo!==prepared) && !playbackError?<motion.div key="preview-loading" className={styles.previewSkeleton} role="status" aria-label="Preparing video preview" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:reduced?0:.22}}>
             <div className={styles.skeletonCaption}><SkeletonBox width="88%" height="18px" radius="7px"/><SkeletonBox width="65%" height="18px" radius="7px"/></div>
             <div className={styles.skeletonFigure}><SkeletonBox width="100%" height="100%" radius="46% 46% 20% 20%"/></div>

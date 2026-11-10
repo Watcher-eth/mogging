@@ -99,7 +99,7 @@ export async function cutout(image: HTMLImageElement) {
       baseOptions: { modelAssetPath: '/creator-models/selfie-segmenter.tflite' },
       runningMode: 'IMAGE', outputConfidenceMasks: true, outputCategoryMask: false,
     })
-  })()
+  })().catch(error => { segmenter = undefined; throw error })
   const detector = await segmenter
   const result = detector.segment(image)
   try {
