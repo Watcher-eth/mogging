@@ -1,5 +1,7 @@
-import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
-import { BadgeCheck, Check, ChevronLeft, ChevronRight, Droplet, Dumbbell, Eye, Hand, ScanFace, Settings, Sun, X } from 'lucide-react'
+import { useSystemReducedMotion } from '@/hooks/use-system-reduced-motion'
+import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
+import { MoggingIcon } from '@/components/ui/mogging-icon'
+import { protocolIcon } from '@/lib/design/mogging-icons'
 import Link from 'next/link'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { TextMorph } from 'torph/react'
@@ -11,22 +13,14 @@ type Day = { key: string; day: Date; tasks: ProtocolTask[] }
 const hours = Array.from({ length: 14 }, (_, i) => i + 6)
 const ease = [.22, 1, .36, 1] as const
 const dayLabel = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
-const taskIcons = { skin: Droplet, eyes: Eye, jaw: ScanFace }
 const tone = (task: ProtocolTask) => ({ '--task': task.color } as CSSProperties)
 const buzz = (time = 7) => navigator.vibrate?.(time)
-
-function TaskIcon({ task, size = 22 }: { task: ProtocolTask; size?: number }) {
-  const name = task.icon.ios
-  const Icon = name.includes('sun') ? Sun : name.includes('hand') ? Hand : name.includes('dumbbell') ? Dumbbell
-    : taskIcons[task.focusIds[0] as keyof typeof taskIcons] ?? ScanFace
-  return <Icon size={size} strokeWidth={1.65} aria-hidden="true" />
-}
 
 export function ProtocolSchedule({ desktop, days, date, today, completed, onDay, onToggle, hasEvaluation, minutes, onMinutes }: {
   desktop: boolean; days: Day[]; date: string; today: string; completed: string[]; onDay: (date: string) => void
   onToggle: (key: string) => void; hasEvaluation: boolean; minutes: ProtocolProfile['minutes']; onMinutes: (value: ProtocolProfile['minutes']) => void
 }) {
-  const reduced = useReducedMotion()
+  const reduced = useSystemReducedMotion()
   const [task, setTask] = useState<ProtocolTask | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [direction, setDirection] = useState(1)
@@ -75,11 +69,11 @@ export function ProtocolSchedule({ desktop, days, date, today, completed, onDay,
       <h1>Protocol</h1>
       <div>
         <motion.span className={styles.badge} style={{ background: color }} aria-label={`${done.size} tasks completed`}>
-          <BadgeCheck size={17} aria-hidden="true" />
+          <MoggingIcon name="verified" size={17} />
           {reduced ? done.size : <TextMorph duration={240}>{String(done.size)}</TextMorph>}
           {!reduced && done.size > 0 && <motion.i key={done.size} initial={{ x: '-160%' }} animate={{ x: '400%' }} transition={{ duration: .52, ease }} />}
         </motion.span>
-        <button type="button" aria-label="Protocol options" onClick={() => { setTask(null); setSheetOpen(true) }}><Settings size={18} /></button>
+        <button type="button" aria-label="Protocol options" onClick={() => { setTask(null); setSheetOpen(true) }}><MoggingIcon name="settings" size={18} /></button>
       </div>
     </header>}
     {hasEvaluation ? <>
@@ -101,7 +95,7 @@ export function ProtocolSchedule({ desktop, days, date, today, completed, onDay,
               <span>{key === today ? 'Today' : dayLabel.formatToParts(day).find(part => part.type === 'weekday')?.value.slice(0, 3)}</span>
               <span className={styles.dayDate}>
                 {key === date && <motion.i layoutId={reduced ? undefined : 'protocol-active-day'} transition={{ duration: .27, ease }} />}
-                {finished ? <Check size={15} /> : day.getDate()}
+                {finished ? <MoggingIcon name="check" size={15} /> : day.getDate()}
               </span>
               <i className={styles.dayDot} data-empty={!dayTasks.length || undefined} data-done={finished || undefined} />
             </button>
@@ -109,9 +103,9 @@ export function ProtocolSchedule({ desktop, days, date, today, completed, onDay,
         </motion.div>
       </LayoutGroup>
       {desktop && <div className={styles.dayControls}>
-        <button type="button" onClick={() => select(selected - 1)} disabled={selected <= 0} aria-label="Previous day"><ChevronLeft size={17} /></button>
+        <button type="button" onClick={() => select(selected - 1)} disabled={selected <= 0} aria-label="Previous day"><MoggingIcon name="chevron-left" size={17} /></button>
         <button type="button" onClick={() => select(days.findIndex(day => day.key === today))} disabled={date === today}>Today</button>
-        <button type="button" onClick={() => select(selected + 1)} disabled={selected >= days.length - 1} aria-label="Next day"><ChevronRight size={17} /></button>
+        <button type="button" onClick={() => select(selected + 1)} disabled={selected >= days.length - 1} aria-label="Next day"><MoggingIcon name="chevron-right" size={17} /></button>
       </div>}
       </div>
       <motion.div className={styles.schedule} onPanEnd={(_, { offset, velocity }) => {
@@ -134,12 +128,12 @@ export function ProtocolSchedule({ desktop, days, date, today, completed, onDay,
                 initial={reduced ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: reduced ? 0 : .4, delay: reduced ? 0 : index * .08, ease }}>
                 <button type="button" className={styles.taskBody} onClick={() => { buzz(); setTask(item); setSheetOpen(true) }}>
-                  <span className={styles.taskIcon}><TaskIcon task={item} /></span>
+                  <span className={styles.taskIcon}><MoggingIcon name={protocolIcon(item.icon.ios)} size={22} variant="accent" /></span>
                   <span className={styles.taskTitle}><span>{item.title}<i /></span></span>
                   <span className={styles.taskDetail}>{item.detail}</span>
                 </button>
                 <button type="button" role="checkbox" aria-checked={checked} aria-label={`${checked ? 'Undo completion for' : 'Complete'} ${item.title}`} className={styles.checkbox} onClick={() => toggle(item)}>
-                  <span><AnimatePresence initial={false}>{checked && <motion.i initial={reduced ? false : { scale: .5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}><X size={14} /></motion.i>}</AnimatePresence></span>
+                  <span><AnimatePresence initial={false}>{checked && <motion.i initial={reduced ? false : { scale: .5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}><MoggingIcon name="close" size={14} /></motion.i>}</AnimatePresence></span>
                 </button>
               </motion.div>
             })}
@@ -149,7 +143,7 @@ export function ProtocolSchedule({ desktop, days, date, today, completed, onDay,
       </motion.div>
     </> : <div className={styles.empty}>
       <p>Complete your first evaluation to get a personalized routine.</p>
-      <Link href="/analysis?start=1&from=app">Start an evaluation <ChevronRight size={16} /></Link>
+      <Link href="/analysis?start=1&from=app">Start an evaluation <MoggingIcon name="chevron-right" size={16} /></Link>
     </div>}
     {celebration > 0 && <div key={celebration} className={styles.confetti} aria-hidden="true">
       {Array.from({ length: 24 }, (_, i) => {
@@ -166,18 +160,18 @@ export function ProtocolSchedule({ desktop, days, date, today, completed, onDay,
         <Drawer.Content className={styles.sheet} data-wide={desktop || undefined} aria-describedby={undefined} style={task ? tone(task) : undefined}>
           <Drawer.Handle className={styles.handle} />
           {!task ? <>
-            <div className={styles.sheetHeader}><Drawer.Title>Protocol options</Drawer.Title><Drawer.Close aria-label="Close options"><X size={17} /></Drawer.Close></div>
+            <div className={styles.sheetHeader}><Drawer.Title>Protocol options</Drawer.Title><Drawer.Close aria-label="Close options"><MoggingIcon name="close" size={17} /></Drawer.Close></div>
             <p>Daily time</p>
             <div className={styles.options}>{([5, 15, 30] as const).map(value => <button type="button" key={value} aria-pressed={value === minutes} onClick={() => { buzz(); onMinutes(value) }}>{value} min</button>)}</div>
           </> : <>
-            <div className={styles.sheetHeader}><TaskIcon task={task} size={24} /><Drawer.Title>{task.title}</Drawer.Title><Drawer.Close aria-label="Close task"><X size={17} /></Drawer.Close></div>
+            <div className={styles.sheetHeader}><MoggingIcon key={task.key} name={protocolIcon(task.icon.ios)} size={24} variant="accent" motion="draw" /><Drawer.Title>{task.title}</Drawer.Title><Drawer.Close aria-label="Close task"><MoggingIcon name="close" size={17} /></Drawer.Close></div>
             <div className={styles.sheetBody} data-vaul-no-drag>
             <p>{task.detail}</p>
             {task.reason && <div className={styles.reason}>{task.reason}<small>{task.minutes ?? 2} min{task.evidence ? ` · ${task.evidence}` : ''}</small></div>}
             {task.tips.length > 0 && <div><h3>Tips</h3><ol>{task.tips.map((tip, index) => <li key={tip}><b>{index + 1}</b>{tip}</li>)}</ol></div>}
             </div>
             <button className={styles.complete} type="button" onClick={() => { toggle(task); setSheetOpen(false) }}>
-              {isDone(task) ? <X size={18} /> : <Check size={18} />}
+              {isDone(task) ? <MoggingIcon name="close" size={18} /> : <MoggingIcon name="check" size={18} />}
               {isDone(task) ? 'Mark incomplete' : 'Mark complete'}
             </button>
           </>}

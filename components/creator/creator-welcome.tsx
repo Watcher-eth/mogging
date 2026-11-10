@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { animate, motion, useReducedMotion } from 'motion/react'
-import { ArrowLeft, ArrowRight, Check, Eye, Film } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Eye, Film } from '@/components/ui/mogging-glyphs'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import { Button } from '@/components/ui/button'

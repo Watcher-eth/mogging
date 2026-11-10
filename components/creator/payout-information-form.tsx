@@ -1,7 +1,7 @@
 import { creatorProfileSchema } from '@/lib/creator/validation'
 import { useEffect, useState, type FormEvent } from 'react'
 import Image from 'next/image'
-import { Check, Info, Landmark, Loader2 } from 'lucide-react'
+import { Check, Info, Landmark, Loader2 } from '@/components/ui/mogging-glyphs'
 import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'

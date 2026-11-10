@@ -22,7 +22,7 @@ import { CREATOR_AUDIENCE_BANDS, campaignHasAudienceBands, campaignRegionRates }
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 import useSWR from 'swr'
-import { ArrowLeft, ArrowRight, FileText, Loader2, Plus } from 'lucide-react'
+import { ArrowLeft, ArrowRight, FileText, Loader2, Plus } from '@/components/ui/mogging-glyphs'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

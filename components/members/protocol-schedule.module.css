@@ -29,7 +29,7 @@
 .task { position: absolute; z-index: 1; left: 78px; right: 20px; border-radius: 18px; border: 1px solid #fffc; background: color-mix(in srgb, var(--task) 40%, white); box-shadow: 0 8px 14px color-mix(in srgb, var(--task) 11%, transparent); transition: background 220ms, scale 170ms cubic-bezier(.22,1,.36,1); }
 .task[data-done] { background: color-mix(in srgb, var(--task) 25%, white); }
 .taskBody { display: grid; width: 100%; height: 100%; grid-template-columns: 34px minmax(0, 1fr); align-items: center; align-content: center; gap: 1px 9px; padding: 2px 48px 2px 12px; text-align: left; border-radius: inherit; }
-.taskIcon { grid-row: span 2; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 13px; border: 1px solid #fffc; background: #fff9; color: color-mix(in srgb, var(--task) 70%, #17212d); }
+.taskIcon { grid-row: span 2; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 13px; border: 1px solid #fffc; background: #fff9; color: color-mix(in srgb, var(--task) 45%, #17212d); }
 .taskTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; line-height: 19px; font-weight: 700; }
 .taskTitle > span { position: relative; }
 .taskTitle i { position: absolute; top: 51%; height: 1.5px; inset-inline: 0; background: currentColor; transform: scaleX(0); transform-origin: left; transition: transform 240ms cubic-bezier(.22,1,.36,1); }
@@ -47,7 +47,7 @@
 .sheetHeader, .complete { flex-shrink: 0; }
 .sheetHeader { display: flex; align-items: center; gap: 10px; }
 .sheetHeader h2 { flex: 1; font-size: 25px; line-height: 1.12; font-weight: 700; letter-spacing: -.8px; }
-.sheetHeader > svg { color: var(--task); flex: none; }
+.sheetHeader > svg { color: color-mix(in srgb, var(--task) 45%, #17212d); flex: none; }
 .sheetHeader button { flex: none; background: #f3f3f7; }
 .sheet p { color: #4d4d56; font-size: 15px; line-height: 21px; }
 .reason { display: grid; gap: 5px; padding: 12px; border-radius: 16px; background: #eef8ff; color: #1576a8; font-size: 13px; }

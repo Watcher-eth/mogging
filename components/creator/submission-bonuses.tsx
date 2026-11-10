@@ -1,4 +1,4 @@
-import { Sparkles } from 'lucide-react'
+import { Sparkles } from '@/components/ui/mogging-glyphs'
 import { bonusPaymentStatus, bonusPaymentTotal, type BonusPayment } from '@/lib/creator/bonus-payments'
 
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })

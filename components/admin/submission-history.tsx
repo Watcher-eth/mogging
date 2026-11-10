@@ -1,5 +1,5 @@
 import useSWR from 'swr'
-import { CalendarDays,Check,Clock3,RotateCcw,Wallet } from 'lucide-react'
+import { CalendarDays,Check,Clock3,RotateCcw,Wallet } from '@/components/ui/mogging-glyphs'
 import { apiGet } from '@/lib/api/client'
 import type { SubmissionHistoryEntry } from '@/lib/admin/submission-history'
 import { RecordingAnalytics } from './submission-audience-check'

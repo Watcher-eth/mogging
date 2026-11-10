@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
-import { FileText, Plus, Upload, X } from 'lucide-react'
+import { FileText, Plus, Upload, X } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import { BunnyPlayer } from './bunny-player'
 import { courseRequest, creatorCoursePath, type CourseAsset, CourseRequestError } from '@/lib/courses/client'

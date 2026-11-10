@@ -2,7 +2,7 @@ import { coursePageProps, type CoursePageProps } from '@/lib/courses/pages'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
 import { SkeletonImage } from '@/components/ui/skeleton-image'
-import { ArrowLeft, ArrowUpRight, Check, Play } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Check, Play } from '@/components/ui/mogging-glyphs'
 import {
   CourseHero,
   CourseLayout,

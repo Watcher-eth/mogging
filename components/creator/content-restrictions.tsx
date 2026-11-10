@@ -1,4 +1,4 @@
-import { Ban } from 'lucide-react'
+import { Ban } from '@/components/ui/mogging-glyphs'
 import { CELEBRITY_EDIT_POLICY, creatorRestrictionGroups } from '@/lib/creator/content-policy'
 
 export function ContentRestrictions({ rules }: { rules: readonly string[] }) {

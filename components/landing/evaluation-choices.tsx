@@ -1,6 +1,6 @@
 import { usePhoneLayout } from '@/hooks/use-phone-layout'
 import Link from 'next/link'
-import { ScanFace } from 'lucide-react'
+import { ScanFace } from '@/components/ui/mogging-glyphs'
 import { useTranslation } from 'react-i18next'
 import { appStoreUrl } from '@/lib/seo'
 

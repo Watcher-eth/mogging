@@ -13,9 +13,9 @@ import useSWRImmutable from 'swr/immutable'
 import { apiPost } from '@/lib/api/client'
 import {
   Loader2,
-} from 'lucide-react'
+} from '@/components/ui/mogging-glyphs'
 import { useState, type ReactNode } from 'react'
-import { MoreHorizontal, LogOut, X } from 'lucide-react'
+import { MoreHorizontal, LogOut, X } from '@/components/ui/mogging-glyphs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { CreatorAuthPrompt } from './creator-auth-prompt'
@@ -30,7 +30,7 @@ type CreatorNavItem = { href: string; label: string; asset: CreatorIconName }
 
 const creatorNav: ReadonlyArray<CreatorNavItem> = [
   { href: '/creator', label: 'Overview', asset: 'overview' },
-  { href: '/creator/sprints', label: 'Campaigns', asset: 'submissions' },
+  { href: '/creator/sprints', label: 'Campaigns', asset: 'campaign' },
   { href: '/creator/submissions', label: 'Submissions', asset: 'submissions' },
   { href: '/creator/accounts', label: 'Accounts', asset: 'accounts' },
   { href: '/creator/money', label: 'Money', asset: 'payouts' },

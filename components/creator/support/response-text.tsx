@@ -1,4 +1,4 @@
-import { BadgeCheck, Check, CheckCircle2, CircleDollarSign, Clock3, Download, Eye, Link2, ListChecks, Percent, Sparkles, Users, Wallet, X } from 'lucide-react'
+import { BadgeCheck, Check, CheckCircle2, CircleDollarSign, Clock3, Download, Eye, Link2, ListChecks, Percent, Sparkles, Users, Wallet, X } from '@/components/ui/mogging-glyphs'
 import { highlightedFactParts, type InlineFactKind } from '@/lib/creator/support/inline-facts'
 import styles from './support-chat.module.css'
 

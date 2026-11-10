@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import useSWR from 'swr'
-import { ArrowRight, Link2, Ticket, Send } from 'lucide-react'
+import { ArrowRight, Link2, Ticket, Send } from '@/components/ui/mogging-glyphs'
 import { apiGet } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
 import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'

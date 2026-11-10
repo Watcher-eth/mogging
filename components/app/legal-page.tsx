@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { motion } from 'motion/react'
-import { ArrowUpRight, Mail, ShieldCheck } from 'lucide-react'
+import { ArrowUpRight, Mail, ShieldCheck } from '@/components/ui/mogging-glyphs'
 import { SeoHead } from '@/components/app/seo-head'
 import { cn } from '@/lib/utils'
 

@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { Shuffle } from 'lucide-react'
+import { Shuffle } from '@/components/ui/mogging-glyphs'
 import { Button } from '@/components/ui/button'
 import { fieldClass } from './creator-shell'
 import { scoreRanges, type ScoreRange } from '@/lib/creator/random-scores'

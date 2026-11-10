@@ -1,7 +1,9 @@
+import { MoggingIcon } from '@/components/ui/mogging-icon'
+import { reportCategoryIcon } from '@/lib/design/report-category-icon'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useReducedMotion } from 'motion/react'
-import { Pause, Play, ChevronDown, X, Check, ChartNoAxesColumn, ScanFace, Eye, Waves, Triangle, Ruler, Sparkles, Ear, AlignCenter, Spline, Smile } from 'lucide-react'
+import { Pause, Play, ChevronDown, X, Check } from '@/components/ui/mogging-glyphs'
 import { reportGlassInk } from '@/lib/creator/report-glass'
 import styles from './report-preview.module.css'
 import { reportCategories, buildMockOverallCategory } from '@/lib/creator/mock-report-data'
@@ -16,8 +18,9 @@ import { createReportOverlay } from '@/lib/creator/report-overlay'
 const images: GeneratorImage[] = [{ id: 'example-portrait', name: 'Example portrait', dataUrl: previewPortrait.src, width: previewPortrait.width, height: previewPortrait.height,
   landmarks: { ...previewLandmarks, source: 'apple-vision' }, status: 'ready' }]
 const categories = [...reportCategories].sort((a, b) => a.id === 'overall' ? -1 : b.id === 'overall' ? 1 : 0)
-const categoryIcons: Record<string, typeof ScanFace> = { overall: ChartNoAxesColumn, eyes: Eye, brows: Waves, nose: Triangle, mouth: Smile, jaw: Spline, proportions: Ruler, symmetry: AlignCenter, skin: Sparkles, hair: Waves, ears: Ear }
-function CategoryIcon({ id }: { id: string }) { const Icon = categoryIcons[id] ?? ScanFace; return <Icon size={16} /> }
+function CategoryIcon({ id }: { id: string }) {
+  return <MoggingIcon name={reportCategoryIcon(id)} size={16} />
+}
 type Prepared = Awaited<ReturnType<typeof prepareCanvas>>
 
 export function ReportPreview({ active, startAt = 0, playback = 'auto' }: { active: boolean; startAt?: number; playback?: 'auto' | 'still' }) {

@@ -1,4 +1,5 @@
-import { CalendarDays, Check, ChevronLeft, CircleUserRound, Globe2, Grid2X2, Heart, Mars, ScanFace, Target, UsersRound, Venus, type LucideIcon } from 'lucide-react'
+import { MoggingIcon } from '@/components/ui/mogging-icon'
+import { CalendarDays, Check, ChevronLeft, CircleUserRound, Globe2, Mars, Target, UsersRound, Venus, type MoggingGlyphComponent } from '@/components/ui/mogging-glyphs'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useId, useLayoutEffect, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { TextMorph } from 'torph/react'
@@ -24,18 +25,18 @@ const goalColors = {
 } as const
 
 const focuses = [
-  { id: 'overall', label: 'Better looks', icon: ScanFace, color: goalColors.blue },
-  { id: 'skin', label: 'Clearer skin', symbol: 'drop.fill', color: goalColors.teal },
-  { id: 'symmetry', label: 'Better facial harmony', icon: Grid2X2, color: goalColors.pink },
-  { id: 'higher-psl', label: 'Higher PSL', symbol: 'trophy', color: goalColors.yellow },
-  { id: 'dating-confidence', label: 'More dating confidence', icon: Heart, color: goalColors.pink },
-  { id: 'jaw', label: 'Sharper jawline', drawing: 'jaw', color: goalColors.orange },
-  { id: 'eyes', label: 'More defined eyes', symbol: 'eye.fill', color: goalColors.blue },
-  { id: 'brows', label: 'More defined brows', drawing: 'brows', color: goalColors.teal },
-  { id: 'nose', label: 'A more balanced nose', symbol: 'nose.fill', color: goalColors.orange },
-  { id: 'mouth', label: 'More defined lips', symbol: 'mouth.fill', color: goalColors.pink },
-  { id: 'cheeks', label: 'More defined cheekbones', drawing: 'cheeks', color: goalColors.yellow },
-  { id: 'hair', label: 'Healthier-looking hair', symbol: 'scissors', color: goalColors.teal },
+  { id: 'overall', label: 'Better looks', icon: 'scan', color: goalColors.blue },
+  { id: 'skin', label: 'Clearer skin', icon: 'skin', color: goalColors.teal },
+  { id: 'symmetry', label: 'Better facial harmony', icon: 'harmony', color: goalColors.pink },
+  { id: 'higher-psl', label: 'Higher PSL', icon: 'leaderboard', color: goalColors.yellow },
+  { id: 'dating-confidence', label: 'More dating confidence', icon: 'heart', color: goalColors.pink },
+  { id: 'jaw', label: 'Sharper jawline', icon: 'jaw', color: goalColors.orange },
+  { id: 'eyes', label: 'More defined eyes', icon: 'eyes', color: goalColors.blue },
+  { id: 'brows', label: 'More defined brows', icon: 'brows', color: goalColors.teal },
+  { id: 'nose', label: 'A more balanced nose', icon: 'nose', color: goalColors.orange },
+  { id: 'mouth', label: 'More defined lips', icon: 'mouth', color: goalColors.pink },
+  { id: 'cheeks', label: 'More defined cheekbones', icon: 'cheeks', color: goalColors.yellow },
+  { id: 'hair', label: 'Healthier-looking hair', icon: 'grooming', color: goalColors.teal },
 ] as const
 
 type Goal = typeof focuses[number]
@@ -51,18 +52,8 @@ export function getDesktopReportFocus(preferences: DesktopAnalysisPreferences) {
   return goal === 'higher-psl' || goal === 'dating-confidence' ? 'overall' : goal
 }
 
-const facialDrawings = {
-  jaw: 'M4.5 7.5v4.3c0 2 1 3.9 2.6 5l3.5 2.5c.8.6 2 .6 2.8 0l3.5-2.5a6.2 6.2 0 0 0 2.6-5V7.5M9 16c.8.7 1.8 1 3 1s2.2-.3 3-1',
-  brows: 'M3 10.5c2.2-3.2 5.3-3.4 7.3-1.4m3.4 0c2-2 5.1-1.8 7.3 1.4M4.3 14.2c1.5-1.2 3.2-1.3 4.8-.4m5.8 0c1.6-.9 3.3-.8 4.8.4',
-  cheeks: 'M4 7.5v3.8c0 3.4 2 6.8 5 8.5m11-12.3v3.8c0 3.4-2 6.8-5 8.5M5.5 12c1.8-.3 3.4.3 4.4 1.5m4.2 0c1-1.2 2.6-1.8 4.4-1.5',
-} as const
-
 function GoalIcon({ goal }: { goal: Goal }) {
-  if ('symbol' in goal) return <span aria-hidden="true" className="desktop-goal-symbol"
-    style={{ maskImage: `url(/creator-icons/protocol/${goal.symbol}.png)` }} />
-  if ('drawing' in goal) return <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true"
-    stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d={facialDrawings[goal.drawing]} /></svg>
-  return <goal.icon size={21} strokeWidth={1.65} aria-hidden="true" />
+  return <MoggingIcon name={goal.icon} size={21} variant="accent" />
 }
 
 const headings = {
@@ -90,7 +81,7 @@ export function DesktopStep({ step, direction, title, description, children, med
   onBack?: () => void
   onContinue: () => void
   continueLabel?: string
-  actionIcon?: LucideIcon
+  actionIcon?: MoggingGlyphComponent
   secondaryAction?: ReactNode
   disabled?: boolean
   busy?: boolean
@@ -218,7 +209,7 @@ function GoalPills({ goals }: { goals: Goal[] }) {
       </motion.li>)}
     </AnimatePresence>
     {!goals.length && <li className="desktop-particle-label">
-      <span className="desktop-particle-label-icon"><ScanFace size={15} aria-hidden="true" /></span> Face map
+      <span className="desktop-particle-label-icon"><MoggingIcon name="scan" size={15} /></span> Face map
     </li>}
   </ul>
 }

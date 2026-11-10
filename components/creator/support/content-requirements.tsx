@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowUpRight, ShieldCheck } from 'lucide-react'
+import { ArrowUpRight, ShieldCheck } from '@/components/ui/mogging-glyphs'
 import { useState } from 'react'
 import { CampaignRequirementList } from '@/components/creator/campaign-requirement-list'
 import { CREATOR_SUBMISSION_FORMATS } from '@/lib/creator/formats'

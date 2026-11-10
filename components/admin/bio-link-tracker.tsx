@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, ChevronsUpDown, Minus, Search } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, ChevronsUpDown, Minus, Search } from '@/components/ui/mogging-glyphs'
 import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
 import { accountConsistency, activityDate, bioLinkMonth, buildBioLinkTracker, filterAndSortAccounts, lastActiveLabel, type AccountSort } from '@/lib/admin/bio-link-tracker'
 import { creatorAccountLabel } from '@/components/creator/types'

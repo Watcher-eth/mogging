@@ -28,7 +28,7 @@ import { AcquisitionDashboard } from '@/components/admin/acquisition-dashboard'
 import { CreatorHeader } from '@/components/creator/creator-header'
 import { AnalyticsSelect } from '@/components/admin/analytics-select'
 import { Button } from '@/components/ui/button'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw } from '@/components/ui/mogging-glyphs'
 
 // Same read-only aggregates and cache policy as the authenticated dashboard.
 const getReport = unstable_cache(getAnalyticsDashboard, ['admin-analytics-workspace-preview-v13'], { revalidate: 60 })

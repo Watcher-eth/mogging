@@ -1,4 +1,4 @@
-import { Anchor, ArrowUpRight, Link2, Send } from 'lucide-react'
+import { Anchor, ArrowUpRight, Link2, Send } from '@/components/ui/mogging-glyphs'
 import { motion, useInView, useReducedMotion } from 'motion/react'
 import { useRef } from 'react'
 import { TIKTOK_ANCHOR_INVITE } from '@/lib/creator/tiktok-anchor'

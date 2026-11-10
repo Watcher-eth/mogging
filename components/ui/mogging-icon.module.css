@@ -1,0 +1,18 @@
+@media (prefers-reduced-motion: no-preference) {
+  [data-icon-motion='draw'] > .ink {
+    animation: draw 340ms cubic-bezier(.23, 1, .32, 1) both;
+  }
+
+  [data-icon-motion='draw'] > .accent {
+    animation: reveal 230ms 110ms cubic-bezier(.23, 1, .32, 1) both;
+  }
+}
+
+@keyframes draw {
+  from { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  to { stroke-dasharray: 1; stroke-dashoffset: 0; }
+}
+
+@keyframes reveal {
+  from { opacity: 0; }
+}

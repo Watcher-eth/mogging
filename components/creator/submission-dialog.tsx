@@ -27,7 +27,7 @@ import {
   Users,
   Loader2,
   UploadCloud,
-} from 'lucide-react'
+} from '@/components/ui/mogging-glyphs'
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'

@@ -7,7 +7,7 @@ import { CELEBRITY_EDIT_POLICY } from '@/lib/creator/content-policy'
 import { CREATOR_CTA_GUIDANCE } from '@/lib/creator/post-guidance'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Check, ShieldCheck, TriangleAlert, Video, Type, Captions } from 'lucide-react'
+import { Check, ShieldCheck, TriangleAlert, Video, Type, Captions } from '@/components/ui/mogging-glyphs'
 
 export const accountReviewPolicy = 'Complete any account review requested by the moderation team. Payouts are held until requested evidence is provided and the review is resolved. Confirmed botting on even one video puts all earnings at risk.'
 

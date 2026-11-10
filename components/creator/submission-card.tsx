@@ -1,4 +1,4 @@
-import { CalendarDays, Eye, MessageCircle, Sparkles } from 'lucide-react'
+import { CalendarDays, Eye, MessageCircle, Sparkles } from '@/components/ui/mogging-glyphs'
 import { SubmissionPostPreview, useSubmissionPostPreview } from './submission-post-preview'
 import type { CreatorPayment, CreatorSubmission } from './types'
 import { bonusPaymentTotal, type BonusPayment } from '@/lib/creator/bonus-payments'

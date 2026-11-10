@@ -1,6 +1,6 @@
 import { RenderTimeRemaining } from '@/components/creator/render-time-remaining'
 import { useEffect, useRef, useState } from "react";
-import { Play, Pause, RotateCcw, ArrowRight } from "lucide-react";
+import { Play, Pause, RotateCcw, ArrowRight } from "@/components/ui/mogging-glyphs";
 import {
   prepareSculptureRenderer,
   type SculptureRenderer,

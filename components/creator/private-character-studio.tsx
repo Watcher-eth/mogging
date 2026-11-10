@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState} from 'react'
 import useSWR from 'swr'
 import * as Dialog from '@radix-ui/react-dialog'
-import {ArrowUpRight,Check,Plus,ScanFace,Upload,X} from 'lucide-react'
+import {ArrowUpRight,Check,Plus,ScanFace,Upload,X} from '@/components/ui/mogging-glyphs'
 import {apiGet} from '@/lib/api/client'
 import type {PrivateCharacterDetail,PrivateCharacterEvent,PrivateLibrary} from '@/lib/creator/private-character'
 import type {GeneratorImage} from '@/lib/creator/content-generator'

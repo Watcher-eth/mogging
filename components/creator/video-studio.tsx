@@ -6,7 +6,7 @@ import { StudioPostingGuide } from './studio-posting-guide'
 import { TextMorph } from 'torph/react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, Download, Loader2, PencilLine, RotateCcw, Moon, Sun, Check } from 'lucide-react'
+import { ArrowLeft, Download, Loader2, Pencil, RotateCcw, Moon, Sun, Check } from '@/components/ui/mogging-glyphs'
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { bufferToWav } from '@web-kits/audio'
@@ -297,7 +297,7 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
             {error?<p role="alert" className={styles.flowError}>{error}</p>:null}
             {currentMix?.error?<p role="alert" className={styles.flowError}>Audio effects couldn’t load. Try a new variation.</p>:null}
             <footer className={styles.resultActions}>
-              <div className={styles.secondaryActions}><button type="button" disabled={busy || !prepared} onClick={()=>editing?setEditing(false):edit()}><PencilLine size={16}/>{editing?'Done editing':'Edit'}</button><motion.button type="button" disabled={busy || !ready && !error && !currentMix?.error} aria-busy={!ready && !error} onClick={newVariation} whileTap={reduced?undefined:{scale:.97}}>{!ready && !error && !reduced?<BorderBeam size={48} duration={2.2} colorFrom="#b5b5ba" colorTo="#52525b"/>:null}<motion.span animate={!ready && !reduced?{rotate:360}:{rotate:0}} transition={{duration:1.4,repeat:!ready?Infinity:0,ease:'linear'}}><RotateCcw size={16}/></motion.span><TextMorph>{!ready && !error?'Creating variation':'Variation'}</TextMorph></motion.button></div>
+              <div className={styles.secondaryActions}><button type="button" disabled={busy || !prepared} onClick={()=>editing?setEditing(false):edit()}><Pencil size={16}/>{editing?'Done editing':'Edit'}</button><motion.button type="button" disabled={busy || !ready && !error && !currentMix?.error} aria-busy={!ready && !error} onClick={newVariation} whileTap={reduced?undefined:{scale:.97}}>{!ready && !error && !reduced?<BorderBeam size={48} duration={2.2} colorFrom="#b5b5ba" colorTo="#52525b"/>:null}<motion.span animate={!ready && !reduced?{rotate:360}:{rotate:0}} transition={{duration:1.4,repeat:!ready?Infinity:0,ease:'linear'}}><RotateCcw size={16}/></motion.span><TextMorph>{!ready && !error?'Creating variation':'Variation'}</TextMorph></motion.button></div>
               <motion.button type="button" whileTap={reduced?undefined:{scale:.985}} className={styles.download} aria-busy={progress!==null || !ready} disabled={!ready || busy || timingIssues.length>0} onClick={()=>void downloadVideo()}>{progress!==null?<Loader2 size={19} className="animate-spin"/>:downloaded?<Check size={19}/>:<Download size={19}/>}<TextMorph>{progress!==null?exportStatus.startsWith('Rendering video')?`Rendering ${Math.min(99,Math.round(progress*100))}%`:exportStatus:!ready?'Preparing video':downloaded?'Download again':'Download video'}</TextMorph>{progress!==null?<motion.span aria-hidden="true" className={styles.downloadProgress} initial={{scaleX:0}} animate={{scaleX:progress}} transition={{duration:reduced?0:.2,ease:'linear'}}/>:null}</motion.button>
               {progress!==null?<RenderTimeRemaining seconds={remainingSeconds}/>:null}
               {progress!==null?<button type="button" className={styles.cancelExport} onClick={()=>abortRef.current?.abort()}>Cancel download</button>:null}

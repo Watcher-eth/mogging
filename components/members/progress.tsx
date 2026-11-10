@@ -10,7 +10,7 @@ import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
 import { TextMorph } from 'torph/react'
 import { Drawer } from 'vaul'
-import { ArrowRight, ArrowUpRight, ChevronDown, Focus, Plus, Route, ScanFace, X } from 'lucide-react'
+import { MoggingIcon } from '@/components/ui/mogging-icon'
 import { MobileScoreGauge } from './mobile-score-gauge'
 import { formatProtocolDate, protocolTasks } from '@/lib/creator/protocol-tasks'
 import type { ProgressEvaluation } from '@/lib/users/member-pages'
@@ -73,18 +73,18 @@ export default function ProgressPage({ evaluations, focusIds, skinPortrait, prev
   const visibleAreas = faceHistory.slice(0, expanded ? faceHistory.length : 6)
   const kinds = ['field', 'bars', 'trend', 'orbit', 'line', 'horizontal'] as const
   return <section className="scan-progress" data-wide={desktop || undefined}>
-    <header><h1>Progress</h1>{onNewScan ? <button type="button" onClick={onNewScan}><Plus size={14} /> New</button> : <Link href={newHref}><Plus size={14} /> New</Link>}</header>
+    <header><h1>Progress</h1>{onNewScan ? <button type="button" onClick={onNewScan}><MoggingIcon name="plus" size={14} /> New</button> : <Link href={newHref}><MoggingIcon name="plus" size={14} /> New</Link>}</header>
     {latest ? <>
       {overall && <div className="scan-progress-summary">
         <motion.button type="button" className="scan-progress-gauge-button" aria-label={`Explore overall score history, ${overall.scores.overall.toFixed(1)} out of ten`} onClick={() => showMetric('overall')}
           initial={reduced ? false : { opacity: 0, y: 9 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .35, ease: progressEase }}>
           {desktop ? <div className="member-standalone-overall"><strong>{overall.scores.overall.toFixed(1)}</strong><IndustrialHistory readings={history.find(area => area.id === 'overall')?.points ?? []} /></div>
             : <MobileScoreGauge score={overall.scores.overall} />}
-          <span className="scan-progress-gauge-footer">Last Evaluation: {shortDate(overall.date)}<ArrowUpRight size={13} /></span>
+          <span className="scan-progress-gauge-footer">Last Evaluation: {shortDate(overall.date)}<MoggingIcon name="external" size={13} /></span>
         </motion.button>
         <motion.button type="button" className="scan-progress-overall" onClick={() => showMetric('overall')} aria-label="Open overall score distribution and history"
           initial={reduced ? false : { opacity: 0, y: 9 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .35, delay: .07, ease: progressEase }}>
-          <span className="scan-progress-overall-heading"><span>Score distribution</span><ArrowUpRight size={15} /></span>
+          <span className="scan-progress-overall-heading"><span>Score distribution</span><MoggingIcon name="external" size={15} /></span>
           <ScoreDistribution score={overall.scores.overall} potential={overall.potential} showSurvey />
           <span className="scan-progress-overall-values">
             <span data-reading="current"><span>Current</span><strong><ProgressText text={overall.scores.overall.toFixed(1)} /></strong></span>
@@ -93,7 +93,7 @@ export default function ProgressPage({ evaluations, focusIds, skinPortrait, prev
         </motion.button>
       </div>}
       {faceHistory.length > 0 && <motion.div layout={!reduced} className="scan-progress-section">
-        <h2><ScanFace size={22} />Your face</h2>
+        <h2><MoggingIcon name="scan" size={22} />Your face</h2>
         <motion.div layout={!reduced} className="scan-progress-grid"><AnimatePresence initial={false} mode="popLayout">
           {visibleAreas.map((area, index) => {
             const id = area.id
@@ -110,7 +110,7 @@ export default function ProgressPage({ evaluations, focusIds, skinPortrait, prev
               style={{ '--metric-color': color } as CSSProperties} onClick={() => showMetric(area.id)}
               initial={reduced ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               transition={{ duration: reduced ? 0 : .26, ease: progressEase }}>
-              <span className="scan-progress-card-label"><span>{area.title}{focused(area.id) && <i aria-label="Focus area" />}</span><ArrowUpRight size={12} aria-hidden="true" /></span>
+              <span className="scan-progress-card-label"><span>{area.title}{focused(area.id) && <i aria-label="Focus area" />}</span><MoggingIcon name="external" size={12} /></span>
               <span className="scan-progress-card-score"><strong><ProgressText text={last.toFixed(1)} /> <small>/ 10</small></strong><small>{area.points.length < 2 ? 'Baseline' : deltaLabel(last - area.points[0].score)}</small></span>
               <FeatureInstrument area={id} readings={measured.length ? measured : area.points} measured={measured.length > 0}
                 wide={kind === 'trend' || kind === 'horizontal'} caption={measured.length ? measurement.label : 'Score trend'}
@@ -122,10 +122,10 @@ export default function ProgressPage({ evaluations, focusIds, skinPortrait, prev
         {faceHistory.length > 6 && <motion.button layout={!reduced ? 'position' : false} className="scan-progress-expand" type="button" aria-expanded={expanded} onClick={() => {
           navigator.vibrate?.(7)
           setExpanded(value => !value)
-        }}><ProgressText text={expanded ? 'Show overview' : `Explore all ${faceHistory.length} areas`} /><ChevronDown size={13} /></motion.button>}
+        }}><ProgressText text={expanded ? 'Show overview' : `Explore all ${faceHistory.length} areas`} /><MoggingIcon name="chevron-down" size={13} /></motion.button>}
       </motion.div>}
       {faceHistory.length > 0 && <ProgressActivity areas={faceHistory} userId={userId} preview={preview} onOpen={showMetric} />}
-    </> : <div className="scan-progress-empty"><Focus size={42} /><h2>Your story starts here.</h2><p>Save your first evaluation to start tracking your focus areas.</p>
+    </> : <div className="scan-progress-empty"><MoggingIcon name="focus" size={42} /><h2>Your story starts here.</h2><p>Save your first evaluation to start tracking your focus areas.</p>
       {onNewScan ? <button type="button" onClick={onNewScan}>Take your first scan</button> : <Link href={newHref}>Take your first scan</Link>}
     </div>}
     <Drawer.Root open={drawerOpen} onOpenChange={setDrawerOpen} repositionInputs={false} handleOnly>
@@ -194,13 +194,13 @@ export function ProgressActivity({ areas, userId, preview, onOpen, tile = false 
   const total = [...counts.values()].reduce((sum, count) => sum + count, 0)
   const visible = total ? areas.filter(area => counts.has(area.id)) : areas.slice(0, 3)
   return <motion.div layout={!reduced} className={tile ? "member-eval-tile member-eval-activity scan-progress-activity" : "scan-progress-section scan-progress-activity"}>
-    <h2><Route size={22} />Where you focused</h2>
+    <h2><MoggingIcon name="route" size={22} />Where you focused</h2>
     <p><strong><ProgressText text={String(total)} /></strong> completed {total === 1 ? 'task' : 'tasks'}</p>
     {!tile && <motion.div className="scan-progress-activity-strip" initial={reduced ? false : { scaleX: .96, opacity: .5 }} whileInView={{ scaleX: 1, opacity: 1 }} viewport={{ once: true }} aria-hidden="true">
       {total > 0 && visible.map(area => <span key={area.id} style={{ flex: counts.get(area.id), background: progressTone(area.id) }} />)}
     </motion.div>}
-    {visible.map(area => <button type="button" key={area.id} onClick={() => onOpen(area.id)}><span><Focus size={19} style={{ color: progressTone(area.id) }} />{area.title}</span><b>{counts.get(area.id) ?? 0}</b></button>)}
-    <Link href={`/app/home?tab=protocol${preview ? '&preview=1' : ''}${preview && router.query.device === 'phone' ? '&device=phone' : ''}`}>View your Protocol <ArrowRight size={16} /></Link>
+    {visible.map(area => <button type="button" key={area.id} onClick={() => onOpen(area.id)}><span><MoggingIcon name="focus" size={19} style={{ color: progressTone(area.id) }} />{area.title}</span><b>{counts.get(area.id) ?? 0}</b></button>)}
+    <Link href={`/app/home?tab=protocol${preview ? '&preview=1' : ''}${preview && router.query.device === 'phone' ? '&device=phone' : ''}`}>View your Protocol <MoggingIcon name="forward" size={16} /></Link>
   </motion.div>
 }
 
@@ -238,7 +238,7 @@ export function MetricSheet({ area: [id, title], evaluations, desktop, preview }
   }
   return <Drawer.Content className="scan-progress-sheet" data-wide={desktop || undefined} style={{ '--metric-color': color } as CSSProperties} aria-describedby={undefined}>
     <Drawer.Handle className="scan-progress-handle" />
-    <div className="scan-progress-sheet-header"><Drawer.Title>{title}</Drawer.Title><Drawer.Close aria-label="Close progress"><X size={19} /></Drawer.Close></div>
+    <div className="scan-progress-sheet-header"><Drawer.Title>{title}</Drawer.Title><Drawer.Close aria-label="Close progress"><MoggingIcon name="close" size={19} /></Drawer.Close></div>
     <LayoutGroup>
       <div className="scan-progress-ranges" role="group" aria-label="Time range">{ranges.map(value => <button key={value} type="button" aria-pressed={range === value} onClick={() => {
         navigator.vibrate?.(6)
@@ -292,7 +292,7 @@ export function MetricSheet({ area: [id, title], evaluations, desktop, preview }
         <small>{day.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })}</small>{day.getUTCDate()}<i aria-hidden="true" />
       </button>
     })}</div>
-    {desktop && report && !preview && <Link className="scan-progress-report-link" href={`/analysis?analysisId=${encodeURIComponent(report.id)}&from=app`}>Open evaluation <ArrowUpRight size={14} /></Link>}
+    {desktop && report && !preview && <Link className="scan-progress-report-link" href={`/analysis?analysisId=${encodeURIComponent(report.id)}&from=app`}>Open evaluation <MoggingIcon name="external" size={14} /></Link>}
     <div className="scan-progress-stats">{[
       ['Measured', `${points.length} / ${visible.length}`], ['First', points[0]?.score.toFixed(1) ?? '—'], ['Latest', points.at(-1)?.score.toFixed(1) ?? '—'],
     ].map(([label, value]) => <div key={label}><p>{label}</p><strong><ProgressText text={value} /></strong></div>)}</div>

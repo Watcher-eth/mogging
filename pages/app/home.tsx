@@ -18,7 +18,7 @@ import { toast } from 'sonner'
 import { ScanCreditSheet, scanBalanceKey, type ScanAccess } from '@/components/members/scan-credit-sheet'
 import useSWRInfinite from 'swr/infinite'
 import { AnimatePresence, LayoutGroup, MotionConfig, motion, useReducedMotion } from 'motion/react'
-import { ArrowUpRight, BookOpen, FileText, LayoutGrid, Plus, Trophy } from 'lucide-react'
+import { MoggingIcon } from '@/components/ui/mogging-icon'
 import { TextMorph } from 'torph/react'
 import { ScanPwaHead } from '@/components/app/scan-pwa-head'
 import { DesktopMemberPreview, sampleMemberProfile, sampleMemberEvaluations } from '@/components/landing/desktop-member-preview'
@@ -41,10 +41,10 @@ import sampleLandmarks from '@/components/analysis/scan-welcome-landmarks.json'
 const ScanCourses = dynamic(() => import('@/components/members/scan-courses'))
 
 const tabs = [
-  { id: 'courses', title: 'Courses', Icon: BookOpen },
-  { id: 'protocol', title: 'Protocol', Icon: LayoutGrid },
-  { id: 'evaluation', title: 'Evaluation', Icon: FileText },
-  { id: 'leaderboard', title: 'Leaderboard', Icon: Trophy },
+  { id: 'courses', title: 'Courses', icon: 'courses' },
+  { id: 'protocol', title: 'Protocol', icon: 'protocol' },
+  { id: 'evaluation', title: 'Evaluation', icon: 'evaluation' },
+  { id: 'leaderboard', title: 'Leaderboard', icon: 'leaderboard' },
 ] as const
 type Tab = typeof tabs[number]['id'] | 'progress'
 type Props = {
@@ -187,7 +187,7 @@ export default function ScanHome({ tab, preview, userId, signedIn, now, phoneEnt
           {desktop && <div className="scan-home-brand"><img src="/scan/icon-192.png" width={34} height={34} alt="" /><span>Mogging</span></div>}
           <nav className="scan-home-nav" aria-label="Mogging app">
             <LayoutGroup id="scan-home-tabs">
-              {tabs.map(({ id, title, Icon }, index) => {
+              {tabs.map(({ id, title, icon }, index) => {
                 if (id === 'protocol' && !memberFeatures) return null
                 return <Link key={id} href={href(id)} scroll={false} aria-current={activeTab === id ? 'page' : undefined} onClick={event => {
                   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
@@ -197,7 +197,7 @@ export default function ScanHome({ tab, preview, userId, signedIn, now, phoneEnt
                   void router.push(href(id)).then(changed => { if (changed) window.scrollTo(0, 0) })
                 }}>
                   {activeTab === id && <motion.span aria-hidden="true" layoutId="selected" className="scan-home-selected" transition={{ type: 'spring', damping: 30, stiffness: 360 }} />}
-                  {!desktop && <Icon size={20} />}
+                  {!desktop && <MoggingIcon name={icon} size={21} variant={activeTab === id ? "accent" : "quiet"} />}
                   <span>{desktop && id === 'evaluation' ? 'Progress' : title}</span>
                 </Link>
               })}
@@ -309,7 +309,7 @@ function Evaluations({ preview, desktop, onNewScan, progress, jumpToHistory }: {
       more={data?.at(-1)?.next ? { loading: isValidating, load: () => void setSize(size => size + 1) } : undefined} jumpToHistory={jumpToHistory} />
   }
   return <section className="scan-evaluations">
-    <header><h1>Evaluations</h1><button type="button" className="scan-home-primary" onClick={onNewScan}><Plus size={19} /> New</button></header>
+    <header><h1>Evaluations</h1><button type="button" className="scan-home-primary" onClick={onNewScan}><MoggingIcon name="plus" size={19} /> New</button></header>
     {data?.[0]?.processing && <p role="status">Your new analysis is being prepared. It will appear here automatically.</p>}
     {latest && <div className="scan-evaluation-overview">
       {showDistribution && <EvaluationLink className="scan-evaluation-overall" href={reportHref(latest.analysis.id)}
@@ -350,7 +350,7 @@ function Evaluations({ preview, desktop, onNewScan, progress, jumpToHistory }: {
       {reports.map(({ photo, analysis }, index) => <EvaluationLink key={analysis.id} className="scan-evaluation-card" data-latest={index === 0 || undefined} href={reportHref(analysis.id)}
         variants={evaluationEntrance} custom={index} initial={animateCards ? 'hidden' : false} animate="visible">
         <ReportHistoryPortrait imageUrl={photo.imageUrl} landmarks={analysis.landmarks} />
-        <span><small>{index === 0 ? 'Latest evaluation' : 'Prior evaluation'}</small><b>{evaluationDate.format(new Date(analysis.createdAt))}</b></span><ArrowUpRight size={18} aria-hidden="true" />
+        <span><small>{index === 0 ? 'Latest evaluation' : 'Prior evaluation'}</small><b>{evaluationDate.format(new Date(analysis.createdAt))}</b></span><MoggingIcon name="external" size={18} />
       </EvaluationLink>)}
       {data?.at(-1)?.next && <button type="button" disabled={isValidating} onClick={() => void setSize(size => size + 1)}>Load more</button>}
     </div> : <p>Your saved reports will appear here after your first evaluation.</p>}

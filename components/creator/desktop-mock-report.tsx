@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useRef, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import { AppHeader } from '@/components/app/app-header'
 import { AnalysisReport, ReportActions, type DesktopReportCategory } from '@/components/analysis/analysis-report'

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Check, Loader2 } from 'lucide-react'
+import { Check, Loader2 } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'

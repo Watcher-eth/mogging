@@ -1,6 +1,6 @@
 import { InviteCreators } from '@/components/creator/creator-referrals'
 import { CreatorUpdates } from '@/components/creator/creator-updates'
-import { Loader2 } from 'lucide-react'
+import { Loader2 } from '@/components/ui/mogging-glyphs'
 import useSWR from 'swr'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
 import { OverviewBento } from '@/components/creator/overview-bento'

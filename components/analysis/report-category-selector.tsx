@@ -1,21 +1,12 @@
+import { MoggingIcon } from '@/components/ui/mogging-icon'
+import { reportCategoryIcon } from '@/lib/design/report-category-icon'
 import { useScanFeedback } from '@/hooks/use-scan-feedback'
 import { useEffect, useRef, useState } from 'react'
-import { Activity, ChartNoAxesColumnIncreasing, ChevronDown, Circle, Eye, Focus, ScanFace, Smile, Sparkles, Waves } from 'lucide-react'
+import { ChevronDown } from '@/components/ui/mogging-glyphs'
 import { TextMorph } from 'torph/react'
 import { Disclosure, DisclosureContent, DisclosureTrigger } from '@/components/core/disclosure'
 import type { DesktopReportCategory } from './analysis-report'
 import styles from './analysis-report.module.css'
-
-const categoryIcons = {
-  overall: ChartNoAxesColumnIncreasing, eyes: Eye, brows: Eye, eyebrows: Eye,
-  nose: Focus, mouth: Smile, lips: Smile, jaw: ScanFace, 'face-shape': ScanFace,
-  symmetry: ScanFace, skin: Sparkles, 'skin-age': Sparkles, 'biological-age': Sparkles,
-  cheekbones: Waves, cheeks: Waves, 'facial-fat': Activity, dimorphism: Activity,
-} as const
-
-function categoryIcon(id: string) {
-  return categoryIcons[id as keyof typeof categoryIcons] ?? Circle
-}
 
 export function ReportCategorySelector({ categories, activeCategory, score, onSelect }: {
   categories: DesktopReportCategory[]; activeCategory: DesktopReportCategory; score: number | null; onSelect: (id: string) => void
@@ -25,7 +16,6 @@ export function ReportCategorySelector({ categories, activeCategory, score, onSe
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   const hoverOpened = useRef(false)
-  const ActiveIcon = categoryIcon(activeCategory.id)
   const index = categories.findIndex(category => category.id === activeCategory.id)
 
   useEffect(() => {
@@ -38,7 +28,6 @@ export function ReportCategorySelector({ categories, activeCategory, score, onSe
   }, [open])
 
   const buttons = (mobile: boolean) => categories.map((category, categoryIndex) => {
-    const Icon = categoryIcon(category.id)
     return <button key={category.id} type="button"
     aria-pressed={category.id === activeCategory.id} className={styles.categoryOption} onClick={event => {
       if (category.id !== activeCategory.id && event.currentTarget.closest('[data-mobile-scan]')) feedback('selection')
@@ -46,7 +35,7 @@ export function ReportCategorySelector({ categories, activeCategory, score, onSe
       if (mobile) { setOpen(false); trigger.current?.focus({ preventScroll: true }) }
     }}>
     <span className={styles.categoryNumber}>[ {String(categoryIndex + 1).padStart(3, '0')} ]</span>
-    {mobile && <Icon className={styles.categoryIcon} size={17} aria-hidden="true" />}
+    {mobile && <MoggingIcon name={reportCategoryIcon(category.id)} className={styles.categoryIcon} size={17} />}
     <span>{category.title}</span>
     <span className={styles.categoryScore}>{category.id === 'overall' ? score?.toFixed(1) ?? '—' : ''}</span>
   </button>
@@ -71,7 +60,7 @@ export function ReportCategorySelector({ categories, activeCategory, score, onSe
         }} onKeyDown={event => {
           if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true) }
         }}>
-          <ActiveIcon className={styles.categoryIcon} size={17} aria-hidden="true" />
+          <MoggingIcon name={reportCategoryIcon(activeCategory.id)} className={styles.categoryIcon} size={17} />
           <span><small>Categories / {String(index + 1).padStart(2, '0')}</small><strong><TextMorph>{activeCategory.title}</TextMorph></strong></span>
           <ChevronDown size={18} aria-hidden="true" className={open ? styles.chevronOpen : undefined} />
         </DisclosureTrigger>

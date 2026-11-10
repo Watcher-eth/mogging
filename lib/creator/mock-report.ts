@@ -1,3 +1,6 @@
+import { moggingIconGrid, moggingIconStroke } from '@/lib/design/mogging-icons'
+import { getMoggingWebGlyph, type MoggingWebIconName } from '@/lib/design/mogging-web-glyphs'
+import { reportCategoryIcon } from '@/lib/design/report-category-icon'
 import { drawReportPortrait, drawReportPortraitFade } from './report-portrait'
 import { drawReportMetricTimeline, reportMetricHeight, reportTimelineStyle } from './metric-timeline'
 import { reportGlassInk, drawReportHeaderGlass } from './report-glass'
@@ -278,46 +281,40 @@ function drawChrome(ctx: CanvasRenderingContext2D, category: ReportCategory, int
   const pillLight = reportGlassInk(ctx.canvas, { x: 18, y: 61, width: pillWidth, height: 38 }) === 'light'
   const closeLight = reportGlassInk(ctx.canvas, { x: 344, y: 61, width: 38, height: 38 }) === 'light'
   glass(ctx, 18, 61, pillWidth, 38, 19)
-  symbol(ctx, categorySymbolIds.indexOf(({ brows: 'eyes', cheeks: 'face-shape', proportions: 'symmetry', skin: 'skin-age', hair: 'face-shape', ears: 'face-shape' } as Record<string, string>)[category.id] ?? category.id), 30, 72, 16, pillLight)
+  symbol(ctx, reportCategoryIcon(category.id), 30, 72, 16, pillLight)
   ctx.textBaseline = 'middle'
   text(ctx, title, 54, 80, 14, 600, pillLight ? '#fff' : ink)
-  symbol(ctx, 15, 18 + pillWidth - 25, 72, 15, pillLight)
+  symbol(ctx, 'chevron-down', 18 + pillWidth - 25, 72, 15, pillLight)
   glass(ctx, w - 46, 61, 38, 38, 19)
-  ctx.strokeStyle = closeLight ? '#fff' : ink; ctx.lineWidth = 1.7; ctx.lineCap = 'round'
-  ctx.beginPath(); ctx.moveTo(359, 76); ctx.lineTo(367, 84); ctx.moveTo(367, 76); ctx.lineTo(359, 84); ctx.stroke()
+  symbol(ctx, 'close', 354, 71, 18, closeLight)
   }
   ctx.restore()
   fade(ctx, h - 140, 56)
   ctx.fillStyle = paper; ctx.fillRect(0, h - 84, w, 84)
   box(ctx, 18, h - 84, w - 36, 58, 29, ink)
   text(ctx, 'SHARE YOUR SCORE', w / 2 + 12, h - 63, 15, 600, paper, false, undefined, sans, 'center')
-  symbol(ctx, 11, w / 2 - 91, h - 65, 19, true)
+  symbol(ctx, 'share', w / 2 - 91, h - 65, 19, true)
   box(ctx, w / 2 - 67, h - 9, 134, 5, 3, ink)
 }
 
-const categorySymbolIds = ['eyes', 'nose', 'mouth', 'jaw', 'dimorphism', 'face-shape', 'skin-age', 'symmetry', 'sun-damage', 'facial-fat', 'overall']
-let symbols: { ink: HTMLImageElement; white: HTMLCanvasElement } | undefined
-let symbolsPromise: Promise<void> | undefined
-export function loadMockReportSymbols() {
-  return symbolsPromise ??= new Promise<void>((resolve, reject) => {
-    const image = new Image()
-    image.onload = () => {
-      const white = document.createElement('canvas')
-      white.width = image.width; white.height = image.height
-      const ctx = white.getContext('2d')
-      if (!ctx) { symbolsPromise = undefined; reject(new Error('Report icons could not be prepared')); return }
-      ctx.drawImage(image, 0, 0)
-      ctx.globalCompositeOperation = 'source-in'
-      ctx.fillStyle = paper; ctx.fillRect(0, 0, white.width, white.height)
-      symbols = { ink: image, white }
-      resolve()
-    }
-    image.onerror = () => { symbolsPromise = undefined; reject(new Error('Report icons could not be loaded. Please retry.')) }
-    image.src = '/creator-icons/report-symbols.png'
-  })
-}
-function symbol(ctx: CanvasRenderingContext2D, index: number, x: number, y: number, size: number, white = false) {
-  if (symbols) ctx.drawImage(white ? symbols.white : symbols.ink, index * 96, 0, 96, 96, x - size * .1, y - size * .1, size * 1.2, size * 1.2)
+const glyphPaths = new Map<MoggingWebIconName, Path2D>()
+
+function symbol(ctx: CanvasRenderingContext2D, name: MoggingWebIconName, x: number, y: number, size: number, white = false) {
+  if (typeof Path2D === 'undefined') return
+  let path = glyphPaths.get(name)
+  if (!path) {
+    path = new Path2D(getMoggingWebGlyph(name).ink)
+    glyphPaths.set(name, path)
+  }
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.scale(size / moggingIconGrid, size / moggingIconGrid)
+  ctx.strokeStyle = white ? paper : ink
+  ctx.lineWidth = moggingIconStroke
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.stroke(path)
+  ctx.restore()
 }
 
 function box(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number, fill: string | CanvasGradient) {

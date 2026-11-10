@@ -1,7 +1,7 @@
 import { webJourneyContext } from '@/lib/analytics/web-journey'
 import { trackWebEvent, flushWebAnalytics } from '@/lib/analytics/client'
 import { rememberStripeAttempt } from '@/lib/client/stripe-attempt'
-import { Check, X } from 'lucide-react'
+import { MoggingIcon } from '@/components/ui/mogging-icon'
 import Link from 'next/link'
 import { Drawer } from 'vaul'
 import { useRef, useState } from 'react'
@@ -106,14 +106,14 @@ export function ScanCreditSheet({ open, onOpenChange, tab, userId, preview, conf
         <div className="scan-credit-body">
           <header>
             <button type="button" className="scan-credit-close" aria-label="Close upgrades" disabled={busy}
-              onClick={() => { setError(null); onOpenChange(false) }}><X size={17} /></button>
+              onClick={() => { setError(null); onOpenChange(false) }}><MoggingIcon name="close" size={17} /></button>
             <img className="scan-credit-icon" src="/scan/icon-192.png" alt="Mogging" width={76} height={76} />
             <div><Drawer.Title>Your next level starts here.</Drawer.Title>
               <Drawer.Description>Get a new private face scan.</Drawer.Description></div>
           </header>
           {credits !== Number.MAX_SAFE_INTEGER && <>
             <div className="scan-credit-options">
-              <ul className="scan-credit-benefits">{benefits.map(benefit => <li key={benefit}><Check size={15} aria-hidden="true" />{benefit}</li>)}</ul>
+              <ul className="scan-credit-benefits">{benefits.map(benefit => <li key={benefit}><MoggingIcon name="check" size={15} />{benefit}</li>)}</ul>
               <fieldset className="scan-credit-tiers">
                 <legend className="sr-only">Scan packs</legend>
                 {offers.map((offer, index) => {

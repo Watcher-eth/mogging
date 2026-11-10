@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowUpRight, PanelRight } from 'lucide-react'
+import { ArrowUpRight, PanelRight } from '@/components/ui/mogging-glyphs'
 import { CreatorSupportChat } from '@/components/creator/support/support-chat'
 import { CreatorSupportLauncher } from '@/components/creator/support/support-launcher'
 import { CreatorSetupChecklist } from '@/components/creator/setup-checklist'

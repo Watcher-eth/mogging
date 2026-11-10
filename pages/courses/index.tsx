@@ -2,7 +2,7 @@ import { coursePageProps, type CoursePageProps } from '@/lib/courses/pages'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowUpRight, Search, X } from 'lucide-react'
+import { ArrowUpRight, Search, X } from '@/components/ui/mogging-glyphs'
 import {
   CourseHero,
   CourseLayout,

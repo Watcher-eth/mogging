@@ -9,7 +9,7 @@ import { type ContentSlide, type GeneratorImage } from './content-generator'
 import { createReportOverlay, type ReportOverlay } from './report-overlay'
 import { drawScoreReveal, loadRevealBrand, REVEAL_DURATION_MS, type RevealBrand } from './score-reveal'
 
-import { drawMockReport, mockReportFormat, mockReportSize, mockReportHeroHeight, loadMockReportSymbols } from './mock-report'
+import { drawMockReport, mockReportFormat, mockReportSize, mockReportHeroHeight } from './mock-report'
 
 export const CTA_CLIP_DURATION_MS = 2000
 
@@ -234,7 +234,7 @@ export async function prepareCanvas({ slide, images, width, height }: RenderArgs
   const isReport = ['mock-report', 'phone-report', 'handheld-report'].includes(slide.templateId)
   const glamour = slide.templateId === 'glamour-guidance'
   const portraitCover = ['score-potential', 'editorial', 'performance'].includes(slide.templateId)
-  const [image, brand] = await Promise.all([loadImage(selectedImage.dataUrl), loadRevealBrand(), loadShareFont(), isReport ? loadMockReportSymbols() : null, slide.templateId === 'phone-report' ? loadPhoneFrame() : slide.templateId === 'handheld-report' ? loadHandheldPhone() : null])
+  const [image, brand] = await Promise.all([loadImage(selectedImage.dataUrl), loadRevealBrand(), loadShareFont(), slide.templateId === 'phone-report' ? loadPhoneFrame() : slide.templateId === 'handheld-report' ? loadHandheldPhone() : null])
   const source = { ...selectedImage, width: image.naturalWidth, height: image.naturalHeight }
   const imageSpace = portraitCover || slide.templateId === 'cta'
   const overlaySlide = slide.templateId === 'performance' ? { ...slide, overlayStyle: 'category' as const } : slide

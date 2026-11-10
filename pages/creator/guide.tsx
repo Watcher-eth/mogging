@@ -16,7 +16,7 @@ import {
   ShieldCheck,
   Smartphone,
   TriangleAlert,
-} from 'lucide-react'
+} from '@/components/ui/mogging-glyphs'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
 import { ContentGuidelines, TikTokAnchorGuidelines, AnalyticsVerificationHelp, discordContactUrl } from '@/components/creator/content-guidelines'
 import useSWR from 'swr'

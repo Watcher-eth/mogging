@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import type { CSSProperties } from 'react'
-import { ArrowUpRight, Check, RotateCcw, Upload, X } from 'lucide-react'
+import { ArrowUpRight, Check, RotateCcw, Upload, X } from '@/components/ui/mogging-glyphs'
 import type { CreatorDashboard, CreatorSubmission } from './types'
 import { SubmissionPostPreview, useSubmissionPostPreview } from './submission-post-preview'
 import { creatorActivity, creatorUpdateAge, creatorUpdateLabels, type CreatorUpdateType } from '@/lib/creator/updates'

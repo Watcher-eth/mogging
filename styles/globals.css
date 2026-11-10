@@ -1092,7 +1092,6 @@ html:has(.scan-flow[data-desktop-report])::-webkit-scrollbar,
 .onboarding-choice-grid[data-mobile] > button:nth-child(5n + 3) { --goal-color: #00a99d; }
 .onboarding-choice-grid[data-mobile] > button:nth-child(5n + 4) { --goal-color: #ff9500; }
 .onboarding-choice-grid[data-mobile] > button:nth-child(5n + 5) { --goal-color: #ffcc00; }
-.desktop-goal-symbol { flex: none; width: 21px; height: 21px; background: currentColor; mask: center / contain no-repeat; }
 @media (prefers-reduced-motion: reduce) { .onboarding-choice-grid > button { transition: none; } }
 @media (min-width: 744px) and (max-height: 800px) {
   .desktop-onboarding[data-onboarding-step="focus"] h1 { max-width: none; font-size: clamp(2.35rem, 3.45vw, 3.35rem); }
@@ -1185,7 +1184,7 @@ html:has(.scan-flow[data-desktop-report])::-webkit-scrollbar,
   font-size: .78rem; font-weight: 580; box-shadow: 0 3px 12px #1419230b; backdrop-filter: blur(12px);
 }
 .desktop-particle-label-icon { display: grid; flex: none; place-items: center; width: 15px; height: 15px; }
-.desktop-particle-label-icon > :is(svg, .desktop-goal-symbol) { width: 15px; height: 15px; }
+.desktop-particle-label-icon > svg { width: 15px; height: 15px; }
 .desktop-studio-guide { position: relative; aspect-ratio: 4 / 5; width: 100%; overflow: hidden; border-radius: 18px; background: #ddd5c8; }
 .desktop-studio-guide video { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 35%; }
 .desktop-studio-guide::after { content: ''; position: absolute; inset: 60% 0 0; pointer-events: none; background: linear-gradient(transparent,#111315c9); }

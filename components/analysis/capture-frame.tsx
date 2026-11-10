@@ -1,4 +1,4 @@
-import { ImagePlus } from 'lucide-react'
+import { ImagePlus } from '@/components/ui/mogging-glyphs'
 import Image from 'next/image'
 import { motion, useReducedMotion } from 'motion/react'
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'

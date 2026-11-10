@@ -1,6 +1,6 @@
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { useState } from 'react'
-import { Save, Settings2 } from 'lucide-react'
+import { Save, Settings2 } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Panel, Table } from './analytics-ui'

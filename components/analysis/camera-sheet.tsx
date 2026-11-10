@@ -2,7 +2,7 @@ import { DesktopCaptureExample, DesktopCaptureOval } from './desktop-capture-ova
 import { GuidedWebCapture } from './guided-web-capture'
 import { trackWebEvent } from '@/lib/analytics/client'
 import { AnimatePresence, motion } from 'motion/react'
-import { Camera, ImagePlus, Images, X } from 'lucide-react'
+import { Camera, ImagePlus, Images, X } from '@/components/ui/mogging-glyphs'
 import { useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { CaptureFrame } from '@/components/analysis/capture-frame'
