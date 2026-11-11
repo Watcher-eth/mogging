@@ -450,7 +450,7 @@ export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPost
       if (direction.imageId && !imageIds.includes(direction.imageId)) throw new Error(`Missing directed image: ${direction.imageId}`)
       scene.source = { ...scene.source, kind: direction.kind, imageId: portrait || component || report ? direction.imageId ?? imageIds[0] ?? null : null, secondaryImageId: null, categoryId, overlay: direction.overlay ?? (portrait ? 'face-map' : component ? 'category' : 'none'), report: category, metricScore: category?.score ?? scene.source.metricScore }
       scene.portraitCrop = portrait ? direction.portraitCrop : undefined
-      scene.scoreCallouts = portrait ? direction.scoreCallouts : undefined
+      scene.scoreCallouts = portrait || report ? direction.scoreCallouts : undefined
       scene.graphic = direction.kind === 'explainer' ? direction.graphic : undefined
       scene.photoStudy = portrait ? direction.photoStudy : undefined
       scene.portraitFX = portrait ? direction.portraitFX : undefined

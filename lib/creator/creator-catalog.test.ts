@@ -1,3 +1,4 @@
+import { documentaryVariationCount } from './video-documentary-plan'
 import {chooseCreatorTake} from './creator-catalog'
 import { creatorStoryOptions } from './creator-stories'
 import { isVideoCta } from './video-branding'
@@ -166,6 +167,13 @@ test('recorded stories retain measured audio and saved photo scores across the e
     for (const style of existingStyles) {
       const directions = creatorStoryDirections(story, saved.script, actual, story.images, reports, style.id, 0)
       const video = compileProductionVideo(saved.script, actual, story.images, reports, style.id, saved.voice, 0, 'philtrum', 1, directions)
+      if (subject.id === 'v') {
+        for (const text of ['The side view shows', 'In profile,']) {
+          const shot = video.scenes.find(scene => scene.narration.startsWith(text))
+          expect(shot && [shot.source.imageId, ...shot.presentation?.imageIds ?? []]).toContain('v-profile')
+        }
+        expect(video.scenes.find(scene => scene.scoreCallouts?.length)?.source.imageId).toBe(analysis.source.imageId)
+      }
       expect(video.scenes.some(scene => scene.featureStudy?.layout === 'compare')).toBe(false)
       if (story.evidence.revealEdit === 0 && ['portrait-audit','feature-study'].includes(style.id)) expect(video.scenes.filter(scene => scene.cueId === 'reveal').every(scene => scene.featureStudy?.edit === 0)).toBe(true)
       const assembled = assembleProductionAudio(video, saved.clips)
@@ -531,6 +539,23 @@ test('automatic Studio takes use compatible recordings and avoid the immediately
     expect([next.recipe,next.storyId]).not.toEqual([first.recipe,first.storyId])
     if(style==='qoves'){expect(first.storyId).toBe('story');expect(next.storyId).toBe('report')}
   }
+  for (const style of ['mogging-editorial','qoves','cephra','fern'] as const) {
+    const options=Array.from({length:3},(_,index)=>({
+      id:`story-${index}`,kind:style==='cephra'?'sculpture-explainer':'feature-story',recording:`/story-${index}.json`,
+    }))
+    let previous
+    const variations=new Set<number>()
+    for(let cycle=0;cycle<12;cycle++){
+      const stories=new Set<string>()
+      for(let index=0;index<options.length;index++){
+        const next=chooseCreatorTake(style,options,previous,()=>0)
+        if(previous) expect(next.storyId).not.toBe(previous.storyId)
+        stories.add(next.storyId);variations.add(next.variation);previous=next
+      }
+      expect(stories.size).toBe(options.length)
+    }
+    expect(variations.size).toBe(36)
+  }
   const only=chooseCreatorTake('fern',[stories[0]],{storyId:'story',recipe:'documentary-studio',variation:0},()=>0)
   expect(only.variation).toBe(1)
   const families = new Set([only.variation])
@@ -540,7 +565,7 @@ test('automatic Studio takes use compatible recordings and avoid the immediately
     families.add(previous.variation)
   }
   expect(families.size).toBe(28)
-  expect(chooseCreatorTake('fern', [stories[0]], previous, () => 0).variation).toBe(only.variation)
+  expect(chooseCreatorTake('fern', [stories[0]], previous, () => 0).variation % documentaryVariationCount).toBe(only.variation % documentaryVariationCount)
   const third={id:'another',recording:'/another.json'}
   const options=[...stories,third]
   const first=chooseCreatorTake('qoves',options,undefined,()=>0)

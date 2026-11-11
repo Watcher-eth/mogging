@@ -57,6 +57,7 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   const editorRef=useRef<HTMLElement>(null)
   const headingRef=useRef<HTMLHeadingElement>(null)
   const requestRef=useRef(false)
+  const activeTakeRef=useRef<{person:string;style:CreatorContentStyleId;take:CreatorTake}|null>(null)
   const { data: exports, mutate: refreshExports } = useSWR<{ generations: StudioExport[] }>(trackExports ? '/api/creator/studio' : null, apiGet)
   const [postExport, setPostExport] = useState<StudioExport | null>(() => previewSubmission ? { id: 'preview', title: 'Tom Holland · Detailed analysis', campaignName: 'Mogging Detailed Analysis MGC', minimumViews: 5000 } : null)
   const [master,setMaster]=useState<VideoScript|null>(null)
@@ -83,7 +84,15 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   const [remainingSeconds,setRemainingSeconds]=useState<number|null>(null)
   const contentStyle=creatorContentStyle(recipe)
   const busy=loading || progress!==null
-  const sourceImages=useMemo(()=>recipe==='documentary-studio' && selection?.assets?selection.assets.map(image=>selection.images.find(ready=>ready.id===image.id)??image):selection?.images??images,[recipe,selection,images])
+  const sourceImages=useMemo(()=>{
+    if(!selection) return images
+    if(!selection.assets) return selection.images
+    const selected=new Map(selection.images.map(image=>[image.id,image]))
+    if(recipe==='documentary-studio') return selection.assets.map(image=>selected.get(image.id)??image)
+    const extra=selection.assets.filter(image=>!selected.has(image.id) && !image.retouch && !image.comparison &&
+      image.purpose!=='reference' && (image.status==='ready' || image.status==='warning'))
+    return [...selection.images,...extra]
+  },[recipe,selection,images])
   const studioInput=useMemo(()=>selection?.editorialRatings?editorialRatingInput(input,selection.name,selection.editorialRatings):selection?creatorAnalysisInput(input,selection.name,selection.analysis):input,[input,selection])
   const studioReports=useMemo(()=>selection?.editorialRatings?editorialRatingReports(selection.editorialRatings,selection.story?.images[0]?.id):selection?.analysis?creatorAnalysisReports(selection.analysis):reportCategories,[selection])
   const cuts=useMemo(()=>{
@@ -163,16 +172,15 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
     if(requestRef.current || busy)return
     requestRef.current=true;setLoading(true);setError('')
     try{
-      const previous=previousTake('sculptures','cephra')
-      const scriptModel=model==='female' || model==='editorial-female' ? 'female' : 'male'
-      const compatible=sculptureScripts.filter(script=>script.model===scriptModel)
-      const candidates=compatible.filter(script=>script.id!==previous?.storyId)
-      const chosen=candidates[Math.floor(Math.random()*candidates.length)]??compatible[0]
-      const saved=await loadSculptureStory(chosen.id,material,model)
-      const take={storyId:chosen.id,recipe:'sculpture-study' as const,variation:Math.floor(Math.random()*10000)}
+      const previous=activeTakeRef.current?.person==='sculptures' ? activeTakeRef.current.take : previousTake('sculptures','cephra')
+      const take=chooseCreatorTake('cephra',sculptureScripts.map(script=>({
+        id:script.id,kind:'sculpture-explainer',recording:script.id,
+      })),previous)
+      const saved=await loadSculptureStory(take.storyId,material,model)
       productionCut(saved.script,75)
-      setMaster(saved.script);setVoice(saved.voice);setClips(saved.clips);setRecipe(take.recipe);setVariation(take.variation);setAudioCut(null);setCustomComposition(null);setSeekMs(0)
+      setMaster(saved.script);setVoice(saved.voice);setClips(saved.clips);setRecipe(take.recipe);setVariation(take.variation);setAudioCut(null);setCustomComposition(null);setSeekMs(0);previewPositionRef.current=0
       setSelection({sculpture:{model,material},id:`sculpture:${model}`,name:sculptureModelLabels[model],images:saved.story.images,story:saved.story})
+      activeTakeRef.current={person:'sculptures',style:'cephra',take}
       rememberTake('sculptures','cephra',take);goTo('preview')
     }catch(reason){toast.error(reason instanceof Error?reason.message:'Could not prepare this sculpture story.')}
     finally{requestRef.current=false;setLoading(false)}
@@ -182,12 +190,15 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
     requestRef.current=true;setLoading(true)
     try{
       const options=creatorStoryOptions(await loadCreatorStoryCatalog(subject.id))
-      const take=chooseCreatorTake(contentStyle.id,options,previousTake(subject.id,contentStyle.id))
+      const previous=activeTakeRef.current?.person===subject.id && activeTakeRef.current.style===contentStyle.id
+        ? activeTakeRef.current.take : previousTake(subject.id,contentStyle.id)
+      const take=chooseCreatorTake(contentStyle.id,options,previous)
       const saved=await loadCreatorStory(subject.id,take.storyId)
       // Accept longer recordings when the length picker can fall back to Full.
       creatorStoryCut(saved.script,75,saved.story)
-      setMaster(saved.script);setVoice(saved.voice);setClips(saved.clips);setRecipe(take.recipe);setVariation(take.variation);setAudioCut(null);setCustomComposition(null);setSeekMs(0);setError('')
+      setMaster(saved.script);setVoice(saved.voice);setClips(saved.clips);setRecipe(take.recipe);setVariation(take.variation);setAudioCut(null);setCustomComposition(null);setSeekMs(0);previewPositionRef.current=0;setError('')
       setSelection({id:subject.id,name:subject.name,images:saved.story.images,assets:saved.assets,story:saved.story,analysis:saved.analysis,editorialRatings:saved.story.editorialRatings,})
+      activeTakeRef.current={person:subject.id,style:contentStyle.id,take}
       rememberTake(subject.id,contentStyle.id,take);goTo('preview')
     }catch(reason){toast.error(reason instanceof Error?reason.message:'Could not create this video.')}
     finally{requestRef.current=false;setLoading(false)}
@@ -196,15 +207,15 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
     if(!character.recording)throw new Error('Approve and record this story first.')
     const saved=restoreProductionRecording(character.recording)
     productionCut(saved.script,defaultLength)
-    setMaster(saved.script);setVoice(saved.voice);setClips(saved.clips);setVariation(Math.floor(Math.random()*10000));setAudioCut(null);setCustomComposition(null);setSeekMs(0)
+    setMaster(saved.script);setVoice(saved.voice);setClips(saved.clips);setVariation(Math.floor(Math.random()*10000));setAudioCut(null);setCustomComposition(null);setSeekMs(0);previewPositionRef.current=0
     setSelection({id:`private:${character.id}`,name:character.name||'Your person',title:character.title,images:character.images,analysis:character.analysis,editorialRatings:character.editorialRatings});goTo('preview')
   }
   function newVariation(){
     if(!selection || busy)return
-    if(contentStyle.id==='cephra'){setVariation(current=>current+1);setCustomComposition(null);setSeekMs(0);return}
+    if(selection.sculpture){void selectSculpture(selection.sculpture.model,selection.sculpture.material);return}
     const subject=creatorSubjects.find(person=>person.id===selection.id)
     if(subject){void selectPerson(subject);return}
-    setVariation(current=>current+1);setCustomComposition(null);setSeekMs(0)
+    setVariation(current=>(current+1)%10000);setCustomComposition(null);setSeekMs(0);previewPositionRef.current=0
   }
   function edit(){if(!customComposition){setCustomComposition(baseComposition);setSeekMs(customClipPreviewTime(baseComposition.scenes[0]))}setEditing(true)}
   const onPreviewTime=useCallback((time:number)=>{previewPositionRef.current=time;if(editing)setPlayhead(time)},[editing])
@@ -231,7 +242,7 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   }
 
   useEffect(()=>setDownloaded(false),[composition])
-  const ready=Boolean(prepared && outputAudio && !error)
+  const ready=Boolean(prepared && outputAudio && !error && !loading)
   const pageTitle=step==='style'?'Choose a content style':step==='sculpture'?'Choose your sculpture':step==='person'?'Who’s the post about?':editing?'Make it yours':'Your post'
   const ease=[.22,1,.36,1] as const
   return <div className={styles.studio}>
@@ -265,14 +276,14 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
         </div>:null}
         {step==='preview' && selection?<div className={styles.result} data-editing={editing}>
           <section className={styles.resultPreview} aria-label="Post preview">
-            <VideoCompositionPlayer prepared={prepared} composition={composition} seekMs={seekMs} audioUrl={soundActive && currentMix?.url?currentMix.url:activeAudio?.audio.url} onTime={onPreviewTime}/>
+            <VideoCompositionPlayer prepared={loading?null:prepared} composition={composition} seekMs={seekMs} audioUrl={soundActive && currentMix?.url?currentMix.url:activeAudio?.audio.url} onTime={onPreviewTime}/>
           </section>
           <aside className={styles.resultDetails}>
             <div><div className={styles.resultHeadingRow}><span className={styles.resultStyle}>{contentStyle.name}</span><button type="button" className={styles.videoThemeToggle} aria-label="Dark mode" aria-pressed={videoTheme==='dark'} title={`Switch to ${videoTheme==='dark'?'light':'dark'} video`} disabled={busy} onClick={()=>{setSeekMs(previewPositionRef.current);setThemeOverride(videoTheme==='dark'?'light':'dark')}}>{videoTheme==='dark'?<Sun size={16}/>:<Moon size={16}/>}</button></div><h2>{selection.name}</h2><div className={styles.resultTitle}><TextMorph style={{whiteSpace:'normal'}}>{selection.title??selection.story?.title??'Your story'}</TextMorph></div><p className={styles.resultMeta}>{Math.round(composition.durationMs/1000)} seconds · {creatorVideoStyles.find(style=>style.id===recipe)?.label}</p></div>
             <AnimatedDialogPanel contentKey={editing?'edit':'posting'} motionStyle="swish">
               {editing?<div className={styles.editIntro}><h3>Give it your finishing touches.</h3><p>Rearrange the clips or adjust the details below. Your changes stay in this preview.</p></div>:<StudioPostingGuide/>}
             </AnimatedDialogPanel>
-            {!editing?<div className={styles.lengthPicker} role="group" aria-label="Video length">{([30,45,'full'] as const).map(choice=><button key={choice} type="button" aria-pressed={activeLength===choice} disabled={busy || !cuts.has(choice)} onClick={()=>{setLengthChoice(choice);setCustomComposition(null);setSeekMs(0)}}>{activeLength===choice?<motion.span className={styles.lengthSelection} layoutId="studio-length-selection" transition={{duration:reduced?0:.2,ease}}/>:null}<span>{choice==='full'?`Full · ${fullSeconds}s`:`${choice}s`}</span></button>)}</div>:null}
+            {!editing?<div className={styles.lengthPicker} role="group" aria-label="Video length">{([30,45,'full'] as const).map(choice=><button key={choice} type="button" aria-pressed={activeLength===choice} disabled={busy || !cuts.has(choice)} onClick={()=>{setLengthChoice(choice);setCustomComposition(null);setSeekMs(0);previewPositionRef.current=0}}>{activeLength===choice?<motion.span className={styles.lengthSelection} layoutId="studio-length-selection" transition={{duration:reduced?0:.2,ease}}/>:null}<span>{choice==='full'?`Full · ${fullSeconds}s`:`${choice}s`}</span></button>)}</div>:null}
             {!ready && !error?<p role="status" className={styles.flowStatus}><Loader2 size={15} className="animate-spin"/>{loading?'Creating a new variation…':'Preparing your preview…'}</p>:null}
             {error?<p role="alert" className={styles.flowError}>{error}</p>:null}
             {currentMix?.error?<p role="alert" className={styles.flowError}>Audio effects couldn’t load. Try a new variation.</p>:null}

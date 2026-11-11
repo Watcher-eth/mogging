@@ -6,7 +6,7 @@ import { applyGlassInk } from './glass-overlay'
 import { drawPortraitInstruments, drawPortraitParticles, instrumentOwnsGuides, type PortraitInstrument } from './portrait-instruments'
 import { z } from 'zod'
 import { measuredProportionWarp, drawNaturalFreckles } from './portrait-detail-edits'
-import { drawPortraitActivity, drawPortraitLabel, type PortraitActivity } from './portrait-program'
+import { drawPortraitActivity, drawOffFaceAnnotation, portraitFaceBoundary, type PortraitActivity } from './portrait-program'
 import { visualFeatures } from './video-semantics'
 import { smoothMotion, videoContent, videoSize } from './video-layout'
 import { sceneWordStart } from './video-script'
@@ -183,7 +183,7 @@ export function featureRegistration(original: FaceLandmarksPayload, edited: Face
   const a=((q.x-p.x)*dx+(q.y-p.y)*dy)/den,b=((q.y-p.y)*dx-(q.x-p.x)*dy)/den
   return {a,b,c:-b,d:a,e:p.x-a*u.x+b*u.y,f:p.y-b*u.x-a*u.y}
 }
-function drawNote(ctx: CanvasRenderingContext2D, photo: FeaturePhoto, study: FeatureStudy, progress: number) {
+function drawNote(ctx: CanvasRenderingContext2D, photo: FeaturePhoto, study: FeatureStudy, progress: number, clip: { left: number; right: number; top: number; bottom: number }) {
   if (study.topic === 'ears' || !study.annotation || !photo.landmarks || progress <= 0) return
   const { center, eyeWidth } = featureTarget(photo.landmarks, study.topic)
   const x = center.x * photo.image.width, y = center.y * photo.image.height
@@ -218,17 +218,15 @@ function drawNote(ctx: CanvasRenderingContext2D, photo: FeaturePhoto, study: Fea
     line([a.jawLeft, a.chin, a.jawRight])
   }
   ctx.restore()
-  if (study.annotationStyle === 'leader') {
-    // Keep the note beside the target, with a single drawn leader rather than a box.
-    const side = center.x > .5 ? -1 : 1, endX = x + side * rx * 1.6, endY = y - ry * 1.5
-    const t = smoothMotion((progress - .35) / .5)
-    drawEditorialLeader(ctx, { x: endX, y: endY }, { x: x + side * rx * 1.15, y: endY }, { x: x + side * rx * .58, y: y - ry * .25 }, t, unit)
+  const boundary = portraitFaceBoundary(photo.landmarks, photo.image.width, photo.image.height)
+  const bounds = {
+    left: Math.max(0, clip.left, (120 - matrix.e) / matrix.a),
+    right: Math.min(photo.image.width, clip.right, (1016 - matrix.e) / matrix.a),
+    top: Math.max(0, clip.top, (540 - matrix.f) / matrix.d),
+    bottom: Math.min(photo.image.height, clip.bottom, (1960 - matrix.f) / matrix.d),
   }
-  ctx.globalAlpha *= smoothMotion((progress - .55) / .45)
-  ctx.font = `400 ${27 * unit}px "SFMono-Regular",Consolas,monospace`; ctx.textAlign = 'left'
-  const label = study.annotation.toUpperCase()
-  const labelX = (study.annotationStyle === 'leader' ? x + (center.x > .5 ? -1 : 1) * rx * 1.6 : x) - ctx.measureText(label).width / 2
-  drawPortraitLabel(ctx,label,labelX,y - ry * (study.annotationStyle === 'leader' ? 1.7 : 1) - 24 * unit,progress)
+  const targets = study.annotationStyle === 'guide' ? [{ x, y }] : [{ x: x - rx, y }, { x: x + rx, y }]
+  drawOffFaceAnnotation(ctx, study.annotation, targets, boundary, bounds, unit, smoothMotion((progress - .35) / .65))
 
   ctx.restore()
 }
@@ -851,6 +849,12 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
       drawEditorialTool(ctx,{x:target.center.x*item.image.width-w,y:target.center.y*item.image.height-w*.35,width:w*2,height:w*.7},localMs/1400,study.tool,reduced)
     }
     if (!textureEdit && study.topic === 'freckles' && item.landmarks) drawNaturalFreckles(ctx,item.image,item.landmarks,Math.max(0,edit))
+    const annotationClip = {
+      left: (clip.x - placement.x) * item.image.width / placement.width,
+      right: (clip.x + clip.width - placement.x) * item.image.width / placement.width,
+      top: (clip.y - placement.y) * item.image.height / placement.height,
+      bottom: (clip.y + clip.height - placement.y) * item.image.height / placement.height,
+    }
     const showGuides = (!cursorDetail || guideElapsed>=0) && (study.guidesDuringEdit || !study.editorial || study.comparison !== 'wipe' || reduced || localMs >= _durationMs * .72)
     if (index===0 && instrument && showGuides) {
       if (instrument.particles!=='none' || instrument.trails) drawPortraitParticles(ctx,item.image,instrument,cursorDetail?guideElapsed:localMs,reduced)
@@ -858,10 +862,10 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
     }
     if (index === 0 && activity && showGuides) {
       const warp=registeredWarp ?? (!textureEdit && item.landmarks ? featureWarp(item.landmarks,study.topic,edit,study.adjustment,study.axis) : undefined)
-      drawPortraitActivity(ctx,cursorDetail?{...activity,phase:Math.min(activity.phase,smoothMotion(guideElapsed/650)),blend:Math.min(activity.blend,smoothMotion(guideElapsed/650)),labelPhase:Math.min(activity.labelPhase,smoothMotion(guideElapsed/650)),elapsedMs:Math.min(activity.elapsedMs,guideElapsed)}:activity,item.image.width,item.image.height,warp)
+      drawPortraitActivity(ctx,cursorDetail?{...activity,phase:Math.min(activity.phase,smoothMotion(guideElapsed/650)),blend:Math.min(activity.blend,smoothMotion(guideElapsed/650)),labelPhase:Math.min(activity.labelPhase,smoothMotion(guideElapsed/650)),elapsedMs:Math.min(activity.elapsedMs,guideElapsed)}:activity,item.image.width,item.image.height,warp,annotationClip)
       if (frames.length === 1 && prior.length === 1) captureMetric?.(ctx, item.image.width, item.image.height, warp)
     }
-    if (showGuides && !activity && !instrumentOwnsGuides(instrument) && index === 0 && frames.length === 1) drawNote(ctx, photo, study, reduced ? 1 : smoothMotion(guideElapsed / 650))
+    if (showGuides && !activity && !instrumentOwnsGuides(instrument) && index === 0 && frames.length === 1) drawNote(ctx, photo, study, reduced ? 1 : smoothMotion(guideElapsed / 650), annotationClip)
     ctx.restore()
     if (mesh && !reduced) drawRetouchMesh(ctx, mesh, placement, localMs)
     const fadeOpacity = (prior.length === 1 ? 1 - progress : 0) + (frames.length === 1 ? progress : 0)

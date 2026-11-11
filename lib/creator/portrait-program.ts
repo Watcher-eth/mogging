@@ -308,7 +308,7 @@ function eyeReportDetail(source: GeneratorImage, feature: string, guide: string)
 }
 
 export function preparePortraitProgram(program: PortraitProgram, source: GeneratorImage, profile?: ProfileStudy, image?: HTMLCanvasElement|HTMLImageElement): PreparedPortraitProgram {
-  const base: ReportOverlay = { size: { width: source.width, height: source.height }, primitives: [], dots: [], faceBoundary: source.landmarks?.contours?.faceOutline?.map(p=>({x:p.x*source.width,y:p.y*source.height})) }
+  const base: ReportOverlay = { size: { width: source.width, height: source.height }, primitives: [], dots: [], faceBoundary: portraitFaceBoundary(source.landmarks, source.width, source.height, profile) }
   const actions = program.actions.map(action => {
     let overlay: ReportOverlay
     if (action.guide.startsWith('profile:') && profile) {
@@ -380,7 +380,7 @@ function adjacentPortraitGuides(from: PreparedPortraitProgram['actions'][number]
   const x = center(a), y = center(b)
   return Math.hypot((x.x-y.x)/width, (x.y-y.y)/height) < .09
 }
-export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: PortraitActivity, width: number, height: number, warp?: PortraitWarp) {
+export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: PortraitActivity, width: number, height: number, warp?: PortraitWarp, clip?: AnnotationBounds) {
   ctx = originalVideoContext(ctx)
   const geometry = activity.from ? morphFaceOverlay(activity.from,activity.to,activity.blend) : activity.to
   const move=(p:Point)=>{if(!warp)return p;const q=warpDestinationPoint({x:p.x/width,y:p.y/height},warp);return{x:q.x*width,y:q.y*height}}
@@ -538,75 +538,112 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
     })
     ctx.restore()
   }
-  if(!activity.label.trim()){ctx.restore();return}
-  const arrow = activity.treatment === 'arrow' || activity.treatment === 'ink-callout'
-  const handwritten = arrow || activity.treatment === 'note' || activity.treatment === 'scribble' || activity.treatment === 'ink-hatch'
-  const label = handwritten ? activity.label : activity.label.toUpperCase()
-  const fontSize=(activity.treatment === 'ink-callout' ? 36 : arrow ? 30 : 36)*unit,lineHeight=fontSize+6*unit
-  ctx.font=handwritten?`italic 500 ${fontSize}px "Mogging Share",sans-serif`:`400 ${fontSize}px "SFMono-Regular",Consolas,monospace`
-  ctx.textAlign='left';ctx.textBaseline='alphabetic'
-  const labelLines=portraitLabelLines(ctx,label,Math.min((safe.right-safe.left)*.9,390*unit))
-  const labelWidth=Math.max(...labelLines.map(line=>ctx.measureText(line).width)),onRight=(left+right)/2<width/2
-  let labelX=onRight?right+26*unit:left-labelWidth-26*unit,labelY=(top+bottom)/2
-  if(labelX<safe.left+16*unit||labelX+labelWidth>safe.right-16*unit||activity.treatment==='inset') {
-    labelX=Math.max(safe.left+16*unit,Math.min(safe.right-labelWidth-16*unit,(left+right-labelWidth)/2))
-    labelY=top-(activity.treatment==='inset'?162:30)*unit
-  }
-  labelY=Math.max(safe.top+fontSize,Math.min(safe.bottom-labelLines.length*lineHeight,labelY))
-  let placed=placePortraitAnnotation({x:labelX,y:labelY-fontSize,width:labelWidth,height:labelLines.length*lineHeight},safe,unit,width,height,activity.mask)
-  if (arrow) {
-    const center = { x: placed.x + placed.width / 2, y: placed.y + placed.height / 2 }
-    const target = points.reduce((best, p) => Math.hypot(p.x-center.x,p.y-center.y) < Math.hypot(best.x-center.x,best.y-center.y) ? p : best)
-    const above = target.y - placed.height - 42 * unit
-    const y = above >= safe.top ? above : Math.min(safe.bottom - placed.height, target.y + 42 * unit)
-    const x = Math.max(safe.left, Math.min(safe.right - placed.width, target.x - placed.width / 2 + (onRight ? 24 : -24) * unit))
-    placed = { ...placed, x, y }
-  }
-  labelX=placed.x;labelY=placed.y+fontSize
-  if(arrow || activity.treatment==='callout') {
-    const center={x:placed.x+placed.width/2,y:placed.y+placed.height/2}
-    const target=points.reduce((best,p)=>Math.hypot(p.x-center.x,p.y-center.y)<Math.hypot(best.x-center.x,best.y-center.y)?p:best)
-    const origin={x:Math.max(placed.x,Math.min(placed.x+placed.width,target.x)),y:Math.max(placed.y,Math.min(placed.y+placed.height,target.y))}
-    if(Math.hypot(target.x-origin.x,target.y-origin.y)>18*unit) {
-      ctx.save();ctx.globalAlpha*=reveal
-      if (arrow) {
-        const dx = target.x - origin.x, dy = target.y - origin.y
-        const distance = Math.hypot(dx, dy)
-        const curve = Math.min(19 * unit, distance * .28) * (onRight ? 1 : -1)
-        const bend = {
-          x: origin.x + dx * .55 - dy / distance * curve,
-          y: origin.y + dy * .55 + dx / distance * curve,
-        }
-        applyGlassInk(ctx, unit, 2.8, 'rgba(248,251,255,.82)')
-        drawEditorialLeader(ctx, origin, bend, target, reveal, unit)
-      } else {
-        line(revealContour([origin, { x: (origin.x + target.x) / 2, y: origin.y }, target], reveal), 2.5)
-        if (reveal > .9) {
-          ctx.beginPath();ctx.arc(target.x,target.y,4*unit,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill()
+  const handwritten = ['arrow', 'ink-callout', 'note', 'scribble', 'ink-hatch'].includes(activity.treatment)
+  drawOffFaceAnnotation(ctx, activity.label, points, geometry.faceBoundary?.map(move), clip ? {
+    left: Math.max(safe.left, clip.left), right: Math.min(safe.right, clip.right),
+    top: Math.max(safe.top, clip.top), bottom: Math.min(safe.bottom, clip.bottom),
+  } : safe,
+    unit, activity.labelPhase, activity.reduced, handwritten ? 'handwritten' : activity.treatment === 'callout' ? 'elbow' : 'curve')
+  ctx.restore()
+}
+
+type AnnotationBounds = { left: number; right: number; top: number; bottom: number }
+
+export function portraitFaceBoundary(landmarks: FaceLandmarksPayload | null | undefined, width: number, height: number, profile?: ProfileStudy): Point[] {
+  const outline = landmarks?.contours?.faceOutline
+  if (outline && outline.length > 2) return outline.map(point => ({ x: point.x * width, y: point.y * height }))
+  const points = [...Object.values(landmarks?.anchors ?? {}), ...Object.values(profile?.contours ?? {}).flat()].filter(Boolean) as Point[]
+  if (points.length < 3) return []
+  const left = (Math.min(...points.map(point => point.x)) - .035) * width
+  const right = (Math.max(...points.map(point => point.x)) + .035) * width
+  const top = (Math.min(...points.map(point => point.y)) - .07) * height
+  const bottom = (Math.max(...points.map(point => point.y)) + .025) * height
+  return [{ x: left, y: top }, { x: right, y: top }, { x: right, y: bottom }, { x: left, y: bottom }]
+}
+
+/** Keep the note in a clear lane beside the projected face, even during a crop. */
+export function drawOffFaceAnnotation(
+  ctx: CanvasRenderingContext2D, text: string, targets: Point[], boundary: Point[] | undefined,
+  safe: AnnotationBounds, unit: number, progress: number, reduced = false, leader: "curve" | "elbow" | "handwritten" = "curve",
+) {
+  if (!text.trim() || !boundary?.length || !reduced && progress <= 0) return
+  const visible = targets.filter(point =>
+    point.x >= safe.left && point.x <= safe.right && point.y >= safe.top && point.y <= safe.bottom)
+  if (!visible.length) return
+  const handwritten = leader === 'handwritten'
+  const fontSize = 22 * unit, lineHeight = 27 * unit, gap = 18 * unit
+  const left = safe.left + gap, right = safe.right - gap
+  const top = safe.top + gap, bottom = safe.bottom - gap
+  if (right <= left || bottom - top < lineHeight) return
+  ctx.save()
+  ctx.font = handwritten ? `italic 500 ${fontSize}px "Mogging Share",sans-serif`
+    : `400 ${fontSize}px "SFMono-Regular",Consolas,monospace`
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'alphabetic'
+  const label = handwritten ? text : text.toUpperCase()
+  const focus = visible[Math.floor(visible.length / 2)]
+  const face = boundary
+  const faceTop = Math.min(...face.map(point => point.y))
+  const faceBottom = Math.max(...face.map(point => point.y))
+  const rows = [focus.y, focus.y - 64 * unit, focus.y + 64 * unit, focus.y - 128 * unit,
+    focus.y + 128 * unit, faceTop - 2 * lineHeight - gap, faceBottom + gap, top, bottom - 2 * lineHeight]
+  let best: { frame: { x: number; y: number; width: number; height: number }; lines: string[]; distance: number } | undefined
+  for (const row of rows) {
+    const y = Math.max(top, Math.min(bottom - 2 * lineHeight, row))
+    const low = y - gap, high = y + 2 * lineHeight + gap
+    const occupied: number[] = []
+    for (const [index, point] of face.entries()) {
+      if (point.y >= low && point.y <= high) occupied.push(point.x)
+      const next = face[(index + 1) % face.length]
+      for (const edge of [low, high]) {
+        if ((point.y < edge) !== (next.y < edge)) {
+          occupied.push(point.x + (next.x - point.x) * (edge - point.y) / (next.y - point.y))
         }
       }
-      ctx.restore()
+    }
+    const lanes = occupied.length
+      ? [[left, Math.min(right, Math.min(...occupied) - gap)], [Math.max(left, Math.max(...occupied) + gap), right]]
+      : [[left, right]]
+    for (const [start, end] of lanes) {
+      if (end - start < 70 * unit) continue
+      const lines = portraitLabelLines(ctx, label, Math.min(end - start, 250 * unit))
+      const width = Math.max(...lines.map(line => ctx.measureText(line).width))
+      if (lines.length > 2 || width > end - start || y + lines.length * lineHeight > bottom) continue
+      const x = Math.max(start, Math.min(end - width, focus.x - width / 2))
+      const height = lines.length * lineHeight
+      const distance = Math.hypot(x + width / 2 - focus.x, y + height / 2 - focus.y) + (lines.length - 1) * 22 * unit
+      if (!best || distance < best.distance) best = { frame: { x, y, width, height }, lines, distance }
     }
   }
-  ctx.fillStyle=portraitAnnotationInk(ctx,placed,activity.to.faceBoundary?.map(move));ctx.shadowColor='#ffffff66';ctx.shadowBlur=4*unit
-  let letters = 0
-  const letterCount = labelLines.reduce((count, line) => count + Array.from(line).length, 0)
-  const written = activity.labelPhase * (letterCount + 3)
-  for (const [index, text] of labelLines.entries()) {
-    const count = Array.from(text).length
-    drawPortraitLabel(ctx, text, labelX, labelY + index * lineHeight,
-      (written - letters) / (count + 3), activity.reduced, handwritten ? unit : 0)
-    if (handwritten) {
-      const underline = activity.reduced ? 1 : smoothMotion((written - letters - count * .68) / (count * .32 + 3))
-      const y = labelY + index * lineHeight + 9 * unit
-      const length = ctx.measureText(text).width
-      const stroke = Array.from({ length: 16 }, (_, i) => ({
-        x: labelX + length * i / 15,
-        y: y + (Math.sin(i * .72) * 1.5 - i / 15 * 2) * unit,
-      }))
-      line(revealContour(stroke, underline), 1.65)
+  if (best) {
+    const { frame, lines } = best
+    const center = { x: frame.x + frame.width / 2, y: frame.y + frame.height / 2 }
+    const target = visible.reduce((nearest, point) => Math.hypot(point.x - center.x, point.y - center.y) <
+      Math.hypot(nearest.x - center.x, nearest.y - center.y) ? point : nearest)
+    const origin = {
+      x: Math.max(frame.x - 6 * unit, Math.min(frame.x + frame.width + 6 * unit, target.x)),
+      y: Math.max(frame.y, Math.min(frame.y + frame.height, target.y)),
     }
-    letters += count
+    ctx.setLineDash([])
+    const ink = portraitAnnotationInk(ctx, frame)
+    applyGlassInk(ctx, unit, 1.7, ink === '#fff' ? 'rgba(248,251,255,.86)' : ink)
+    const reveal = reduced ? 1 : smoothMotion(progress * 1.4)
+    const bend = { x: (origin.x + target.x) / 2, y: origin.y + (handwritten ? 12 * unit : 0) }
+    if (leader === 'elbow') {
+      const path = revealContour([origin, bend, target], reveal)
+      ctx.beginPath()
+      path.forEach((point, index) => index ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y))
+      ctx.stroke()
+    } else {
+      drawEditorialLeader(ctx, origin, bend, target, reveal, .65 * unit)
+    }
+    ctx.fillStyle = ink
+    ctx.shadowBlur = 2 * unit
+    ctx.shadowColor = ink === '#fff' ? '#0007' : '#fff8'
+    ctx.globalAlpha *= reduced ? 1 : smoothMotion(progress)
+    for (const [index, line] of lines.entries()) {
+      ctx.fillText(line, frame.x, frame.y + fontSize + index * lineHeight)
+    }
   }
   ctx.restore()
 }

@@ -167,6 +167,11 @@ export function creatorStoryDirections(story: CreatorStory, script: VideoScript,
   const editorial = recipe === 'feature-study'
   const alternate = portraits.find(image => /three-quarter/.test(image.id)) ?? portraits.find(image => /profile/.test(image.id))
   const planningImages = portraits.length ? [...portraits, ...images.filter(image => !portraits.includes(image))] : images
+  const contextPortraits = planningImages.filter((image, index, pool) =>
+    !image.retouch && !image.comparison && image.purpose !== 'reference' &&
+    (image.status === 'ready' || image.status === 'warning') &&
+    !/(?:^|-)profile(?:-|$)/i.test(image.id) && pool.findIndex(photo => photo.dataUrl === image.dataUrl) === index)
+  const contextImages = new Map<string, GeneratorImage>()
   for (const shot of productionVisualPlan(script, input, planningImages, reports, recipe, variation)) {
     let authored = story.directions?.[shot.cue.sourceId]
     if(authored?.featureStudy&&!editorial){
@@ -223,7 +228,8 @@ export function creatorStoryDirections(story: CreatorStory, script: VideoScript,
       const assessed = explicit.imageId === images[0]?.id
       const scores = explicit.focus === 'scores' ? spokenScoreCallouts(shot.beat.quote, reports, explicit.categoryId) : undefined
       const categoryId = scores?.[0] ? reports.find(report => report.title === scores[0].label)?.id ?? explicit.categoryId : explicit.categoryId
-      const kind = shot.cue.section!.role === 'takeaway' || visuals.some(visual => visual.crop) || explicit.crop || explicit.treatment === 'detail' || scores && scores.length > 1 ? 'portrait' : assessed && recipe === 'report-led' ? 'report' : 'portrait'
+      const isDetail = shot.cue.section!.role === 'takeaway' || visuals.some(visual => visual.crop) || explicit.treatment === 'detail'
+      const kind = assessed && recipe === 'report-led' && !isDetail ? 'report' : 'portrait'
       const featureDetail = explicit.treatment === 'detail' || shot.cue.section!.role !== 'hook' &&
         shot.cue.section!.role !== 'takeaway' && shot.beat.feature !== 'whole' && ['observe', 'measure'].includes(shot.beat.intent)
       const storyInsert = ['compare', 'views'].includes(shot.beat.intent) || /\b(?:works? together|as part of|relationship|relative to)\b/i.test(shot.beat.quote)
@@ -233,7 +239,7 @@ export function creatorStoryDirections(story: CreatorStory, script: VideoScript,
         kind, imageId: explicit.imageId, categoryId, overlay: 'none', portraitCrop: explicit.crop,
         editorial: recipe === 'hybrid-story' && !explicit.crop && !scores?.length && storyInsert ? 'compare'
           : explicit.treatment === 'detail' || recipe === 'measurement-explainer' && !scores?.length && shot.beat.feature !== 'whole' ? 'detail' : 'context',
-        focus: scores?.length ? 'scores' : kind === 'report' ? shot.direction.focus ?? 'features' : 'features', scoreCallouts: kind === 'portrait' ? scores ?? [] : undefined,
+        focus: scores?.length ? 'scores' : kind === 'report' ? shot.direction.focus ?? 'features' : 'features', scoreCallouts: kind === 'portrait' ? scores ?? [] : scores && scores.length > 1 ? scores : undefined,
         emphasis: kind === 'report' ? 'section-lift' : undefined,
         featureStudy: recipe === 'feature-study' && kind === 'portrait' && !scores?.length && !explicit.crop && !visuals.some(visual => visual.crop)
           ? { editorial, topic: shot.beat.feature, edit: 0, editMode: 'warp', layout: featureDetail ? 'detail' : 'hero', motion: featureDetail && variation % 3 === 0 ? 'push' : variation % 2 ? 'pan-right' : 'pan-left', annotation: '', images: featureDetail && alternate && alternate.id !== explicit.imageId ? [explicit.imageId, alternate.id] : [] } : undefined,
@@ -261,13 +267,16 @@ export function creatorStoryDirections(story: CreatorStory, script: VideoScript,
 
       continue
     }
-    if (portraits.length) {
+    const contextShot = shot.direction.kind === 'portrait' && shot.beat.feature === 'whole' &&
+      ['context', 'observe'].includes(shot.beat.intent) && !shot.direction.featureStudy &&
+      !shot.direction.study && !shot.direction.presentation && !shot.direction.photoStudy &&
+      !shot.direction.profileStudy && !shot.direction.portraitCrop && !shot.direction.scoreCallouts?.length
+    if (contextShot && contextPortraits.length > 1) {
+      if (!contextImages.has(cue)) contextImages.set(cue, contextPortraits[(contextImages.size + variation) % contextPortraits.length])
+      const image = contextImages.get(cue)!
+      directions[shot.id] = { ...shot.direction, imageId: image.id, portraitProgram: undefined }
+    } else if (portraits.length) {
       directions[shot.id] = shot.direction
-      // Wider context shots can vary; precise feature shots retain the registered close-up.
-      if (shot.direction.kind === 'portrait' && shot.beat.feature === 'whole' && shot.beat.intent === 'context' && !shot.direction.featureStudy) {
-        const section = script.cues.findIndex(cue => cue.sourceId === shot.cue.sourceId)
-        directions[shot.id] = { ...shot.direction, imageId: portraits[(section + variation) % portraits.length].id }
-      }
       // Scores remain attached to the original assessed photograph.
       if (shot.direction.kind === 'report' || shot.direction.kind === 'component') directions[shot.id] = { ...shot.direction, imageId: images[0]?.id }
     }
@@ -299,7 +308,7 @@ export function creatorStoryDirections(story: CreatorStory, script: VideoScript,
         photoStudy: undefined, portraitFX: undefined, profileStudy: undefined, study: undefined, portraitProgram: undefined }
     } else if (shot.direction.featureStudy?.layout === 'compare') {
       directions[shot.id] = { ...shot.direction, featureStudy: { ...shot.direction.featureStudy, layout: 'hero', comparison: 'blend' } }
-    } else if (evidence.photoComparison) {
+    } else if (evidence.photoComparison && !contextImages.has(cue)) {
       directions[shot.id] = { ...shot.direction, photoStudy: undefined, portraitFX: undefined, imageId: variation % 2 && ['mechanism','consequence'].includes(shot.cue.sourceId) ? evidence.comparisonId : evidence.baselineId }
     }
   }

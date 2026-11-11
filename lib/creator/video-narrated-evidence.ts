@@ -7,6 +7,7 @@ import { isVideoInvitation } from './video-branding'
 import { scriptTokens, type VideoScript } from './video-script'
 import { photoStudyRegions } from './video-photo-study'
 import { decodeVisualBeat } from './video-semantics'
+import { profileFeatureForText } from './video-profile'
 
 const photosNoun = '(?:photos?|pictures?|portraits?|shots?|images?|versions?)'
 const photoPair = new RegExp([
@@ -18,14 +19,41 @@ const photoPair = new RegExp([
   `${photosNoun}\\s+(?:side by side|beside each other|next to each other)`,
   '(?:look at|see|put|show) (?:these|them) (?:side by side|next to each other)',
 ].map(pattern => `\\b(?:${pattern})\\b`).join('|'), 'i')
+const viewNames = {
+  front: /\b(?:front(?:al)? (?:photo|shot|portrait|image|view|angle)|from the front|face[- ]on|head[- ]on|straight[- ]on)\b/i,
+  profile: /\b(?:side[- ]profile|side (?:photo|shot|portrait|image|view|angle)|from the side|in profile|profile (?:photo|shot|portrait|image|view|angle))\b/i,
+  'three-quarter': /\bthree[- ]quarter(?:s)?(?: view| angle| photo| profile)?\b/i,
+}
+type PhotoView = keyof typeof viewNames
+const photoViews = Object.keys(viewNames) as PhotoView[]
+const photoView = (image: GeneratorImage): PhotoView | undefined => {
+  if (/(?:^|[-_])(?:profile|side[-_]view)(?:$|[-_])/i.test(image.id)) return 'profile'
+  if (/(?:^|[-_])(?:three[-_]quarter|angle)(?:$|[-_])/i.test(image.id)) return 'three-quarter'
+  if (/(?:^|[-_])front(?:$|[-_])/i.test(image.id)) return 'front'
+  const yaw = image.landmarks?.quality?.yawRadians
+  if (yaw === undefined) return
+  return Math.abs(yaw) >= .65 ? 'profile' : Math.abs(yaw) >= .22 ? 'three-quarter' : 'front'
+}
+const originalPortraits = (images: GeneratorImage[]) => images.filter(image =>
+  !image.retouch && !image.comparison && image.purpose !== 'reference' &&
+  (image.status === 'ready' || image.status === 'warning'))
+const spokenViews = (text: string) => photoViews.flatMap(view => {
+  const match = viewNames[view].exec(text)
+  return match ? [{ view, index: match.index }] : []
+}).sort((a, b) => a.index - b.index)
+const plainComparison = /\b(?:now |let(?:'|’)s )?compare(?=[.!?]|$)/i
+const photographicComparison = /\bcompare\b[^.!?;]{0,100}\b(?:photos|portraits|pictures|images|angles|views|side[- ]profile|in profile|from the side)\b/i
+const otherPhoto = /\bcompare\b[^.!?;]{0,85}\b(?:with|to|against) (?:an? |the )?(?:other|second|edited|original|earlier|later) (?:photo|picture|portrait|shot|image)\b/i
+const twoViews = /\b(?:from the front|front(?:al)?(?: view| photo)?)\s+(?:and|versus|vs\.?|with)\s+(?:the )?(?:side(?: profile| view)?|profile|three[- ]quarter)\b/i
 const returnPair = new RegExp(`\\b(?:(?:back|return) to both(?: of them| ${photosNoun})?|(?:show|see|look at) both(?: of them| ${photosNoun})? again|side by side again)\\b`, 'i')
-const editPair = /\b(?:versions?|before and after|original and edited)\b/i
+const editPair = /\b(?:versions?|before and after|original and edited|edited (?:photo|portrait|picture|image))\b/i
 const namedPhoto = /\b(?:the )?(first|second|left|right|top|bottom|front|profile|three[- ]quarter) (?:photo|picture|portrait|shot|image|view)\b/gi
 const focusPhoto = /\b(?:look\s+(?:at|closer at)|focus\s+on|zoom\s+in\s+on|switch\s+to|back\s+to|in|on|now)\s+(?:the\s+)?(?:photo\s+on\s+the\s+)?(first|second|left|right|top|bottom|original|edited|before|after|front|profile|side|three[- ]quarter)(?=\s*(?:photo|picture|portrait|shot|image|version|view|one|[.,;!?]|$))/gi
 const wordAt = (text: string, offset: number) => scriptTokens(text.slice(0, offset)).length
 
 function photoComparisonCue(text: string) {
-  return /\b(?:do not|don't|never)\s+compare\b/i.test(text) ? null : photoPair.exec(text)
+  return /\b(?:do not|don't|never|can't|cannot)\s+compare\b/i.test(text) ? null
+    : photoPair.exec(text) ?? photographicComparison.exec(text) ?? otherPhoto.exec(text) ?? twoViews.exec(text) ?? plainComparison.exec(text)
 }
 
 export function narratedPhotoDependencies(cues: VideoScript['cues']) {
@@ -53,9 +81,15 @@ function pairFor(images: GeneratorImage[], scene: VideoScene, text: string, need
   const after = before && originals.find(image => image.comparison?.state === 'after' && image.comparison.group === before.comparison!.group && image.comparison.feature === before.comparison!.feature)
   if (needsEdit && before && after) return { photos: [before, after], labels: ['Before', 'After'] }
 
-  const unedited = originals.filter(image => !image.comparison)
+  const unedited = originalPortraits(images)
+  const views = spokenViews(text)
+  if (views.length < 2 && twoViews.test(text)) {
+    views.length = 0
+    views.push({ view: 'front', index: 0 }, { view: /three[- ]quarter/i.test(text) ? 'three-quarter' : 'profile', index: 1 })
+  }
+  const firstView = views.length > 1 ? views[0].view : 'front'
   const first = needsEdit && current && unedited.includes(current) ? current
-    : unedited.find(image => /(?:^|-)front(?:-|$)/i.test(image.id)) ?? unedited[0]
+    : unedited.find(image => photoView(image) === firstView) ?? unedited[0]
   if (!first) return
   if (needsEdit) {
     const edited = available.find(image => image.retouch?.baselineImageId === first.id && (feature === 'whole' || image.retouch.feature === feature))
@@ -63,10 +97,17 @@ function pairFor(images: GeneratorImage[], scene: VideoScene, text: string, need
     return
   }
   const candidates = unedited.filter(image => image.id !== first.id && image.dataUrl !== first.dataUrl)
-  const key = /\b(?:profile|side view)\b/i.test(text) ? 'profile' : /\bthree[- ]quarter\b/i.test(text) ? 'three-quarter' : undefined
-  const second = key ? candidates.find(image => image.id.includes(key))
-    : requested?.find(image => image && candidates.includes(image)) ?? candidates[0]
-  if (second && second.dataUrl !== first.dataUrl) return { photos: [first, second], labels: ['Photo 1', 'Photo 2'] }
+  const secondView = views.find(({ view }) => view !== photoView(first))?.view
+  const second = secondView ? candidates.find(image => photoView(image) === secondView)
+    : requested?.find(image => image && candidates.includes(image)) ??
+      candidates.find(image => photoView(image) && photoView(image) !== photoView(first)) ?? candidates[0]
+  if (second) {
+    const label = (photo: GeneratorImage, fallback: string) => {
+      const view = photoView(photo)
+      return secondView && view ? { front: 'Front', profile: 'Profile', 'three-quarter': 'Three-quarter' }[view] : fallback
+    }
+    return { photos: [first, second], labels: [label(first, 'Photo 1'), label(second, 'Photo 2')] }
+  }
 }
 
 type Pair = NonNullable<ReturnType<typeof pairFor>>
@@ -77,27 +118,24 @@ function photoIndex(key: string, pair: Pair) {
   const label = pair.labels.findIndex(label => label.toLowerCase() === key)
   if (label >= 0) return label
   if (!/^(?:front|profile|side|three[- ]quarter)$/.test(key)) return -1
-  return pair.photos.findIndex(photo => {
-    const yaw = Math.abs(photo.landmarks?.quality?.yawRadians ?? 0)
-    if (key === 'front') return /front/i.test(photo.id) || Boolean(photo.landmarks && yaw < .22)
-    if (key === 'profile' || key === 'side') return /profile|side-view/i.test(photo.id) || yaw >= .65
-    return /three[- ]quarter/i.test(photo.id) || yaw >= .22 && yaw < .65
-  })
+  return pair.photos.findIndex(photo => photoView(photo) === (key === 'side' ? 'profile' : key.replace(' ', '-')))
 }
 
 export function applyNarratedEvidence(composition: VideoComposition, images: GeneratorImage[], reports: ReportCategory[]): VideoComposition {
   if (composition.recipe === 'sculpture-study') return composition
   const documentary = composition.recipe === 'documentary-studio'
   const qoves = ['feature-study', 'editorial-story'].includes(composition.recipe)
+  const portraits = originalPortraits(images)
   let active: { pair: Pair; index: number; focus?: number; cueId: string; layout: NonNullable<FeatureStudy['evidence']>['layout'] } | undefined
-  const scenes = composition.scenes.map((scene, index) => {
+  const scenes = composition.scenes.map((scene, index): VideoScene => {
     const cue = composition.script?.cues.find(cue => cue.id === scene.scriptRange?.cueId)
     if ((qoves && index === composition.scenes.length - 1 && scene.source.kind === 'report') || scene.sculpture || scene.documentary?.kind === 'media' || isVideoInvitation(cue) || ['cta', 'product'].includes(cue?.section?.role ?? '')) {
       return scene
     }
     const text = scene.narration
-    const returning = active && returnPair.exec(text)
-    const paired = returning ? null : photoComparisonCue(text)
+    const scoreEvidence = Boolean(scene.scoreCallouts?.length)
+    const returning = !scoreEvidence && active && returnPair.exec(text)
+    const paired = returning || scoreEvidence ? null : photoComparisonCue(text)
     // A director-authored archival reveal controls when the viewer first sees the second photo.
     if (scene.featureStudy?.revealWord !== undefined) {
       const [first, second] = scene.featureStudy.images.map(id => images.find(image => image.id === id))
@@ -105,6 +143,7 @@ export function applyNarratedEvidence(composition: VideoComposition, images: Gen
       return scene
     }
 
+    const viewCues = spokenViews(text)
     const explicitFocus = [...text.matchAll(focusPhoto)]
     const focus = explicitFocus.length ? explicitFocus : [...text.matchAll(namedPhoto)]
     const next = composition.scenes[index + 1]?.narration ?? ''
@@ -124,8 +163,13 @@ export function applyNarratedEvidence(composition: VideoComposition, images: Gen
       }
     }
     const pair = newPair ?? active?.pair
-    const named = pair && focus.map(match => ({ photo: photoIndex(match[1], pair), word: wordAt(text, match.index) })).filter(match => match.photo >= 0)
-    if (pair && (newPair || returning || named?.length || !paired && active?.cueId === scene.cueId && index === active.index + 1)) {
+    const named = pair && (focus.length || newPair
+      ? focus.map(match => ({ photo: photoIndex(match[1], pair), word: wordAt(text, match.index) }))
+      : viewCues.map(({ view, index }) => ({ photo: photoIndex(view, pair), word: wordAt(text, index) })))
+      .filter(match => match.photo >= 0)
+    const requestedView = viewCues.at(-1)?.view
+    const hasUnmatchedView = requestedView && pair && photoIndex(requestedView, pair) < 0
+    if (!scoreEvidence && pair && (newPair || returning || named?.length || !paired && !hasUnmatchedView && active?.cueId === scene.cueId && index === active.index + 1)) {
       const spatial = [...focus.map(match => match[1]), nextFocus].join(' ')
       const layouts = /\b(?:top|bottom)\b/i.test(spatial) ? ['stacked'] as const
         : /\b(?:left|right)\b/i.test(spatial) ? qoves ? ['columns', 'offset', 'contact-sheet', 'gate'] as const : ['columns', 'offset'] as const
@@ -143,10 +187,37 @@ export function applyNarratedEvidence(composition: VideoComposition, images: Gen
       return {
         ...scene, source: { ...scene.source, kind: 'portrait' as const, imageId: first.id, secondaryImageId: second.id, overlay: 'none' as const },
         presentation: undefined, graphic: undefined, portraitCrop: undefined, study: undefined, photoStudy: undefined, profileStudy: undefined, portraitFX: undefined, portraitProgram: undefined,
-        scoreCallouts: undefined, framing: 'captioned' as const, layout: 'portrait' as const, focus: 'hero',
+        scoreCallouts: [], framing: 'captioned' as const, layout: 'portrait' as const, focus: 'hero',
         tracks: scene.tracks.filter(track => track.target === 'text'),
         featureStudy: { topic: decodeVisualBeat(text).feature, layout: 'evidence' as const, editMode: 'warp' as const, edit: 0, annotation: '', images: [first.id, second.id], labels: pair.labels, evidence: { layout, initial, events } },
         documentary: documentary ? { kind: 'comparison' as const, label: scene.documentary?.label ?? '' } : undefined,
+      }
+    }
+
+    // Switch the source only for a real camera view. Leave measurement evidence
+    // and timed documentary angle cuts attached to their registered photos.
+    const presentationShowsView = scene.presentation?.imageIds.some(id =>
+      portraits.some(photo => photo.id === id && photoView(photo) === requestedView))
+    if (requestedView && !presentationShowsView && !scene.scoreCallouts?.length &&
+      !(scene.source.kind === 'report' && /\b(?:scores?|ratings?|report|app)\b/i.test(text)) &&
+      !scene.featureStudy?.opening && !scene.featureStudy?.edit && !scene.photoStudy &&
+      !(scene.documentary?.cutWord !== undefined && scene.source.secondaryImageId)) {
+      const current = portraits.find(photo => photo.id === scene.source.imageId && photoView(photo) === requestedView)
+      const source = current ?? portraits.find(photo => photoView(photo) === requestedView)
+      if (source && (source.id !== scene.source.imageId || scene.source.kind !== 'portrait' ||
+        (requestedView !== 'front' && scene.profileStudy?.view !== requestedView))) {
+        return {
+          ...scene, source: { ...scene.source, kind: 'portrait', imageId: source.id, secondaryImageId: null, overlay: 'none' },
+          portraitCrop: current ? scene.portraitCrop : undefined,
+          presentation: undefined, graphic: undefined, study: undefined, featureStudy: undefined,
+          portraitFX: undefined, portraitProgram: undefined,
+          profileStudy: requestedView === 'front' ? undefined : {
+            view: requestedView, side: 'left', feature: profileFeatureForText(text, scene.source.categoryId),
+          },
+          scoreCallouts: [], framing: 'captioned', layout: 'portrait', focus: 'hero',
+          tracks: scene.tracks.filter(track => track.target === 'text'),
+          documentary: documentary ? { kind: 'inspection', label: scene.documentary?.label ?? '' } : undefined,
+        }
       }
     }
 

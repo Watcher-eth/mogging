@@ -153,6 +153,28 @@ test('an authored product category remains a report when narration says together
   }
 })
 
+test('photo styles follow naturally spoken comparisons and genuine side views', () => {
+  const originals = images.filter(photo => !photo.retouch && !photo.comparison)
+  const front = originals.find(photo => photo.id === 'marlon-front')!
+  const profile = originals.find(photo => photo.id === 'marlon-studio-profile-20261027')!
+  for (const recipe of ['portrait-audit', 'report-led', 'measurement-explainer', 'hybrid-story', 'feature-study', 'editorial-story', 'documentary-studio'] as const) {
+    const pair = compileProductionVideo(withText('Compare this portrait with the side profile.'), input, originals, reportCategories, recipe, voice)
+      .scenes.find(scene => scene.cueId === 'contour')!
+    expect(pair.featureStudy?.images).toEqual([front.id, profile.id])
+    expect(pair.featureStudy?.labels).toEqual(['Front', 'Profile'])
+
+    const angles = compileProductionVideo(withText('From the side, the jawline changes direction beneath the ear.'), input, originals, reportCategories, recipe, voice)
+      .scenes.filter(scene => scene.cueId === 'contour')
+    expect(angles.some(scene => [scene.source.imageId, ...scene.presentation?.imageIds ?? []].includes(profile.id))).toBe(true)
+
+    const featureComparison = compileProductionVideo(withText('Compare the width of his nose with his mouth in this photo.'), input, originals, reportCategories, recipe, voice)
+      .scenes.filter(scene => scene.cueId === 'contour')
+    expect(featureComparison.every(scene => !scene.featureStudy?.evidence)).toBe(true)
+  }
+  const unavailable = compileProductionVideo(withText('Compare this portrait with the side profile.'), input, [front], reportCategories, 'portrait-audit', voice)
+  expect(unavailable.scenes.find(scene => scene.cueId === 'contour')?.featureStudy?.evidence).toBeUndefined()
+})
+
 test('a spoken pair keeps its sources across style variations, then expands the photo named in the recording', () => {
   const script = withText('Compare these two photos at the same scale. Now look at the second photo and follow the cheekbone.')
   const originals = images.filter(photo => !photo.retouch && !photo.comparison)

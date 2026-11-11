@@ -6,7 +6,7 @@ import { isVideoCta } from './video-branding'
 import {faceContourPaths,faceContourEdge} from './face-metric-guides'
 import { videoThemeContext } from './video-theme'
 import { expect, test } from 'bun:test'
-import { portraitProgramRuns, portraitProgramSchedule, portraitOverlayMinimumMs, narratedPortraitProgram, planPortraitProgram, preparePortraitProgram, samplePortraitProgram, drawPortraitActivity, portraitAnnotation, drawPortraitLabel, portraitLabelLines, portraitAnnotationInk, placePortraitAnnotation } from './portrait-program'
+import { portraitProgramRuns, portraitProgramSchedule, portraitOverlayMinimumMs, narratedPortraitProgram, planPortraitProgram, preparePortraitProgram, samplePortraitProgram, drawPortraitActivity, drawOffFaceAnnotation, portraitAnnotation, drawPortraitLabel, portraitLabelLines, portraitAnnotationInk, placePortraitAnnotation } from './portrait-program'
 import { portraitExposureAt, portraitLightingSchema, portraitLightGeometry, samplePortraitLighting } from './video-portrait-effects'
 import { compileProductionVideo, productionVisualPlan, productionTimeline } from './video-production'
 import { createProductionDraft } from './production-drafts'
@@ -218,6 +218,30 @@ test('zoomed annotation text stays inside the visible video safe area', () => {
   drawPortraitActivity(ctx,activity,1200,1800)
   expect(draws.length).toBeGreaterThan(0)
   expect(draws.every(p=>p.x>=64&&p.x<=1016&&p.y>=540&&p.y<=1960)).toBe(true)
+})
+
+test('small feature labels stay outside the face and point to the registered landmark', () => {
+  const text: Array<{ x: number; y: number; width: number; font: string }> = []
+  const path: Array<{ x: number; y: number }> = []
+  const ctx = {
+    globalAlpha: 1, font: '', save() {}, restore() {}, setLineDash() {}, beginPath() {},
+    moveTo(x: number, y: number) { path.push({ x, y }) },
+    lineTo(x: number, y: number) { path.push({ x, y }) }, stroke() {},
+    measureText(value: string) { return { width: value.length * 12 } },
+    fillText(this: { font: string }, value: string, x: number, y: number) { text.push({ x, y, width: value.length * 12, font: this.font }) },
+  } as unknown as CanvasRenderingContext2D
+  const face = [{ x: 340, y: 610 }, { x: 795, y: 610 }, { x: 795, y: 1280 }, { x: 340, y: 1280 }]
+  const anchor = { x: 690, y: 1090 }
+  const safe = { left: 120, right: 1016, top: 540, bottom: 1700 }
+  drawOffFaceAnnotation(ctx, 'Chin projection', [anchor], face, safe, 1, 1)
+  expect(text).toHaveLength(1)
+  expect(text[0].font).toContain('22px')
+  expect(text[0].x).toBeGreaterThan(face[1].x)
+  expect(text[0].x + text[0].width).toBeLessThan(safe.right)
+  expect(path).toContainEqual(anchor)
+  text.length = 0
+  drawOffFaceAnnotation(ctx, 'Chin projection', [anchor], face, { left: 400, right: 780, top: 700, bottom: 1200 }, 1, 1)
+  expect(text).toHaveLength(0)
 })
 
 test('portrait annotations remain white inside the detected face, including grayscale highlights', () => {

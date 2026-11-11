@@ -43,33 +43,21 @@ export type CreatorTake={storyId:string;recipe:VideoRecipe;variation:number;stor
 export function chooseCreatorTake(styleId:CreatorContentStyleId,stories:ReadonlyArray<{id:string;kind?:string;recording?:string}>,previous?:CreatorTake,random:()=>number=Math.random):CreatorTake{
   const style=creatorContentStyles.find(style=>style.id===styleId)!
   const specialized=styleId==='cephra' && stories.some(story=>story.kind==='sculpture-explainer' && story.recording)
-  const candidates=stories.filter(story=>story.recording && contentStyleSupportsScript(styleId,story) && (!specialized || story.kind==='sculpture-explainer')).flatMap(story=>style.recipes.map(recipe=>({storyId:story.id,recipe})))
+  const candidates=stories.filter(story=>story.recording && contentStyleSupportsScript(styleId,story) && (!specialized || story.kind==='sculpture-explainer'))
   if(!candidates.length)throw new Error('No recorded stories are ready for this person in this content style yet.')
-  if (styleId === 'qoves') {
-    const ids = [...new Set(candidates.map(take => take.storyId))]
-    const cycle = new Set((previous?.storyCycle ?? []).filter(id => ids.includes(id)))
-    if (previous && ids.includes(previous.storyId)) cycle.add(previous.storyId)
-    if (cycle.size === ids.length) cycle.clear()
-    const fresh = ids.filter(id => !cycle.has(id))
-    const alternatives = fresh.filter(id => id !== previous?.storyId)
-    const pool = alternatives.length ? alternatives : fresh
-    const storyId = pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))]
-    const family = previous ? (previous.variation + 1) % 6 : Math.min(5, Math.floor(random() * 6))
-    const variation = 6 * Math.min(1665, Math.floor(random() * 1666)) + family
-    return { storyId, recipe: style.recipes[family % style.recipes.length], variation, storyCycle: [...cycle, storyId] }
-  }
-  const alternatives=candidates.filter(take=>take.storyId!==previous?.storyId || take.recipe!==previous?.recipe)
-  const choices=alternatives.length?alternatives:candidates
-  const selected=choices[Math.min(choices.length-1,Math.floor(random()*choices.length))]
-  if (styleId === 'fern') {
-    const families = documentaryVariationCount
-    const family = previous ? (previous.variation + 1) % families : Math.min(families - 1, Math.floor(random() * families))
-    const bands = Math.floor(10000 / families)
-    return { ...selected, variation: families * Math.min(bands - 1, Math.floor(random() * bands)) + family }
-  }
-  let variation=Math.floor(random()*10000)
-  if(selected.storyId===previous?.storyId && selected.recipe===previous.recipe && variation%6===previous.variation%6)variation=(variation+1)%10000
-  return {...selected,variation}
+  const ids = [...new Set(candidates.map(story => story.id))]
+  const cycle = new Set((previous?.storyCycle ?? []).filter(id => ids.includes(id)))
+  if (previous && ids.includes(previous.storyId)) cycle.add(previous.storyId)
+  if (cycle.size === ids.length) cycle.clear()
+  const fresh = ids.filter(id => !cycle.has(id))
+  const alternatives = fresh.filter(id => id !== previous?.storyId)
+  const pool = alternatives.length ? alternatives : fresh
+  const storyId = pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))]
+  const families = styleId === 'fern' ? documentaryVariationCount : 6
+  const family = previous ? (previous.variation + 1) % families : Math.min(families - 1, Math.floor(random() * families))
+  const bands = Math.floor(10000 / families)
+  const variation = previous ? (previous.variation + 1) % 10000 : families * Math.min(bands - 1, Math.floor(random() * bands)) + family
+  return { storyId, recipe: style.recipes[family % style.recipes.length], variation, storyCycle: [...cycle, storyId] }
 }
 
 export function creatorStyleDirections(example: VideoScriptExample, recipe: VideoRecipe) {

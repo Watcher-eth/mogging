@@ -89,6 +89,8 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
             if (drawAbort.signal.aborted) return
             drawVideoFrame(ctx, prepared, positionRef.current, canvas.width, canvas.height, reduced)
             canvas.dataset.renderedStyle = prepared.composition.recipe
+            canvas.dataset.renderedVariation = String(prepared.composition.variation)
+            canvas.dataset.renderedScript = prepared.composition.script?.revision ?? ''
             rippleRendererRef.current ??= createPreviewRipple(overlay)
             rippleRendererRef.current?.start(ripple.previous, canvas)
             ripple.started = performance.now()
@@ -106,6 +108,8 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
           if (drawAbort.signal.aborted) return
           drawVideoFrame(ctx, prepared, positionRef.current, canvas.width, canvas.height, reduced)
           canvas.dataset.renderedStyle = prepared.composition.recipe
+            canvas.dataset.renderedVariation = String(prepared.composition.variation)
+            canvas.dataset.renderedScript = prepared.composition.script?.revision ?? ''
         }
         last = now
         if (firstFrame) { setPaintedVideo(prepared); firstFrame = false }
