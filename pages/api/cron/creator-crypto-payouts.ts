@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { timingSafeEqual } from 'node:crypto'
 import { reconcileOpenCryptoPayouts } from '@/lib/admin/crypto-payouts/settlement'
-import { publishCreatorCryptoPayouts } from '@/lib/admin/crypto-payouts/discord-announcements'
+import { publishCreatorPayouts } from '@/lib/admin/creator-payout-announcements'
 import { monitorBackend } from '@/lib/reliability/monitor'
 
 export const config = { maxDuration: 60 }
@@ -15,7 +15,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!secret || actual.length !== expected.length || !timingSafeEqual(actual, expected)) return res.status(401).end()
   const [result, discord] = await Promise.all([
     reconcileOpenCryptoPayouts(),
-    publishCreatorCryptoPayouts().catch(error => {
+    publishCreatorPayouts().catch(error => {
       console.error('Creator payout announcement check failed', error instanceof Error ? error.message : 'Unknown error')
       return { posted: 0, updated: 0, errors: 1 }
     }),

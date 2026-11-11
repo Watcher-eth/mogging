@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { and, eq, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 import { DISCORD_API, MOGGING_CREATORS_GUILD_ID } from '@/lib/creator/discord/config'
-import { payoutNetworks, type PayoutChain } from './shared'
+import { payoutNetworks, type PayoutChain } from './crypto-payouts/shared'
 
 const announcements = schema.creatorCryptoPayoutAnnouncements
 const dollars = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
@@ -11,6 +11,7 @@ type DailyPayout = {
   day: string
   handle: string
   amountCents: number
+  paypalCents: number
   transfers: { chain: PayoutChain; hash: string }[]
 }
 
@@ -37,12 +38,16 @@ async function payoutChannel(send: ReturnType<typeof discordRequest>, channel: s
   return matches[0].id
 }
 
-export async function publishCreatorCryptoPayouts(request: typeof fetch = fetch) {
+export async function publishCreatorPayouts(request: typeof fetch = fetch) {
   const channel = process.env.DISCORD_PAYOUTS_CHANNEL?.trim()
   if (!channel) return { posted: 0, updated: 0, errors: 0 }
   const token = process.env.DISCORD_BOT_TOKEN
   const startsAt = new Date(process.env.DISCORD_PAYOUTS_START_AT || '')
-  if (!token || !Number.isFinite(startsAt.getTime())) throw new Error('Discord payouts require a bot token and a start timestamp')
+  const paypalStart = process.env.DISCORD_PAYPAL_PAYOUTS_START_AT
+  const paypalStartsAt = paypalStart ? new Date(paypalStart) : null
+  if (!token || !Number.isFinite(startsAt.getTime()) || (paypalStartsAt && !Number.isFinite(paypalStartsAt.getTime()))) {
+    throw new Error('Discord payouts require a bot token and valid start timestamps')
+  }
   const send = discordRequest(token, request)
   const channelId = await payoutChannel(send, channel)
 
@@ -50,19 +55,26 @@ export async function publishCreatorCryptoPayouts(request: typeof fetch = fetch)
     with daily as (
       select p.creator_profile_id, timezone('America/Los_Angeles', p.paid_at at time zone 'UTC')::date as day,
         sum(p.amount_cents)::float8 as amount_cents,
-        jsonb_agg(distinct jsonb_build_object('chain', h.chain, 'hash', h.hash)) as transfers
+        coalesce(sum(p.amount_cents) filter (where p.payment_option = 'paypal'), 0)::float8 as paypal_cents,
+        coalesce(jsonb_agg(distinct jsonb_build_object('chain', h.chain, 'hash', h.hash))
+          filter (where h.hash is not null), '[]'::jsonb) as transfers
       from creator_payments p
-      join creator_crypto_payout_hashes h on h.batch_id = p.crypto_batch_id and h.hash = p.provider_reference
-      where p.status = 'paid' and p.payment_option = 'crypto' and p.currency = 'USD' and p.amount_cents > 0
-        and p.paid_at >= greatest(
-          ${startsAt.toISOString()}::timestamptz at time zone 'UTC',
-          ((timezone('America/Los_Angeles', now())::date - 1)::timestamp at time zone 'America/Los_Angeles') at time zone 'UTC'
+      left join creator_crypto_payout_hashes h on p.payment_option = 'crypto'
+        and h.batch_id = p.crypto_batch_id and h.hash = p.provider_reference
+      where p.status = 'paid' and p.currency = 'USD' and p.amount_cents > 0
+        and p.paid_at >= ((timezone('America/Los_Angeles', now())::date - 1)::timestamp at time zone 'America/Los_Angeles') at time zone 'UTC'
+        and (
+          (h.hash is not null and p.paid_at >= ${startsAt.toISOString()}::timestamptz at time zone 'UTC')
+          or (p.payment_option = 'paypal' and p.paid_at >= ${paypalStartsAt?.toISOString() ?? null}::timestamptz at time zone 'UTC'
+            and (nullif(trim(p.provider_reference), '') is not null or exists (
+              select 1 from creator_payment_receipts receipt where receipt.payment_id = p.id
+            )))
         )
         and p.paid_at <= now() at time zone 'UTC'
       group by p.creator_profile_id, day
     )
     select d.creator_profile_id as "creatorId", d.day::text as day, account.handle,
-      d.amount_cents as "amountCents", d.transfers
+      d.amount_cents as "amountCents", d.paypal_cents as "paypalCents", d.transfers
     from daily d
     join lateral (
       select lower(ltrim(trim(a.handle), '@')) as handle
@@ -93,7 +105,8 @@ export async function publishCreatorCryptoPayouts(request: typeof fetch = fetch)
         const urls = payout.transfers.map(({ chain, hash }) => payoutNetworks[chain].explorer + hash).sort()
         const [first, ...other] = urls.slice(0, 10)
         const content = [
-          `${first} ${dollars.format(payout.amountCents / 100)} @${payout.handle}`,
+          `${first ?? 'PayPal'} ${dollars.format(payout.amountCents / 100)} @${payout.handle}`,
+          ...(first && payout.paypalCents ? [`Includes ${dollars.format(payout.paypalCents / 100)} via PayPal`] : []),
           ...other,
           ...(urls.length > 10 ? [`+${urls.length - 10} more transactions`] : []),
         ].join('\n')
