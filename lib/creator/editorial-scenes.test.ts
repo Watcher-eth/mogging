@@ -1,3 +1,4 @@
+import { decodeVisualBeat } from './video-semantics'
 import {editorialCursorTiming,sampleEditorialCursor} from './editorial-cursor'
 import { expect, test } from 'bun:test'
 import { planEditorialPresentation, referenceEditorialDirection, referenceFeatureStack, referencePortraitMotion } from './editorial-planning'
@@ -139,13 +140,14 @@ test('feature chapters use ordered, distinct words and an angle flip requires th
   const {decodeVisualBeat}=await import('./video-semantics')
   const quote='The side profile makes the jaw contour easier to see.'
   const cue=draft.cues.find(cue=>cue.section)!.section!
-  const front={...images[0],id:'subject-front'}, profile={...images[0],id:'subject-profile'}
-  const angled={...images[0],id:'subject-three-quarter'}
+  const front={...images[0],id:'subject-front'}, profile={...images[0],id:'subject-profile',dataUrl:'/fixture/profile.png'}
+  const angled={...images[0],id:'subject-three-quarter',dataUrl:'/fixture/three-quarter.png'}
   const direction={kind:'portrait' as const,imageId:front.id}
   const plan=(seed:number,sources:typeof images)=>referenceEditorialDirection(direction,decodeVisualBeat(quote),cue,sources,seed)
   const seed=Array.from({length:72},(_,seed)=>seed).find(seed=>plan(seed,[front,angled,profile]).presentation?.kind==='reference-flip')!
   expect(plan(seed,[front,angled,profile]).presentation?.imageIds[0]).toBe(profile.id)
   expect(plan(seed,[front,angled]).presentation?.kind).not.toBe('reference-flip')
+  expect(plan(seed,[front,{ ...profile, dataUrl: front.dataUrl }]).presentation?.kind).not.toBe('reference-flip')
 })
 test('comparison surfaces reserve caption and platform margins, including their label strip', () => {
   for(const count of [3,4]){
@@ -192,7 +194,16 @@ test('context footage requires its source and seeks an explicit held frame on th
   scene.featureStudy=undefined;scene.portraitProgram=undefined
   scene.presentation=editorialPresentationSchema.parse({kind:'reference-hinge',mediaId:'owned-context',mediaOffsetMs:1000,holdMediaAtMs:500})
   expect(()=>parseComposition(composition)).toThrow('supplied video asset')
-  composition.media=[{id:'owned-context',kind:'video',url:'/creator/context.mp4',width:1920,height:1080,durationMs:10000,role:'context',source:{provider:'uploaded',url:'https://www.mogging.com',author:'Mogging',license:'Owned',usage:'owned'},scope:{kind:'public'}}]
+  const owned={id:'owned-context',kind:'video',url:'/creator/context.mp4',width:1920,height:1080,durationMs:10000,role:'context',source:{provider:'uploaded',url:'https://www.mogging.com',author:'Mogging',license:'Owned',usage:'owned'},scope:{kind:'public'}} as const
+  composition.media=[owned]
+  const beat = decodeVisualBeat('This clip gives the portrait some context.')
+  const direction = { kind: 'portrait' as const, imageId: scene.source.imageId ?? images[0].id, presentation: scene.presentation }
+  const section = draft.cues.find(cue => cue.section)!.section!
+  const choose = (source: NonNullable<typeof composition.media>) => referenceEditorialDirection(direction, beat, section, images, 2, undefined, [], 2, source)
+  expect(choose(composition.media).presentation?.kind).toBe('reference-hinge')
+  expect(choose([{ ...owned, width: 1080, height: 1920 }]).presentation).toMatchObject({
+    kind: 'social-unframe', beats: [{ anchor: 'clip' }],
+  })
   const parsed=parseComposition(composition)
   class SourceVideo extends EventTarget {
     duration=10;readyState=2;position=0
@@ -266,4 +277,30 @@ test('an authored detail crop becomes a full-context inset rather than an isolat
  expect(direction.presentation?.feature).toBe('jaw')
  expect(direction.portraitCrop).toBeUndefined()
  expect(direction.imageId).toBe(images[0].id)
+})
+
+test('new Qoves effects bind the actual feature and spoken cue', () => {
+  const section = draft.cues.find(cue => cue.section?.role === 'explanation')?.section ?? draft.cues.find(cue => cue.section)!.section!
+  const source = { kind: 'portrait' as const, imageId: images[0].id }
+  const cases = [
+    ['cue-index', 'Look at the brows, nose and jaw.', 2, 'brows'],
+    ['relationship-bridge', 'Compare the relationship between the nose and jaw.', 2, 'nose'],
+    ['landmark-route', 'The brows lead down to the nose and continue toward the jaw.', 0, 'brows'],
+    ['timing-dial', 'Hold the eyes here for eight seconds.', 1, 'eyes'],
+    ['paired-leaders', 'The outer corners of the brows appear on both sides.', 2, 'brows'],
+    ['feature-ordinal', 'The nose ranks second in this list.', 2, 'nose'],
+    ['statement-slit', 'The point is a small change can shift the whole outline.', 2, 'whole'],
+    ['contour-matte', 'Isolate the outline of the lips.', 1, 'lips'],
+    ['measurement-projection', 'Project the jaw onto a reference line.', 1, 'jaw'],
+  ] as const
+  for (const [kind, quote, take, feature] of cases) {
+    const direction = referenceEditorialDirection(source, decodeVisualBeat(quote), section, images, take)
+    expect(direction.presentation).toMatchObject({ kind, feature })
+    expect(editorialPresentationSchema.safeParse(direction.presentation).success).toBe(true)
+    expect(direction.presentation?.beats?.every(item => quote.includes(item.anchor))).toBe(true)
+  }
+  const quote = 'Camera distance can make the nose look larger in a selfie.'
+  const withSource = { ...section, evidence: [{ studyId: 'ward-2018' as const, claimId: 'camera-distance', anchor: quote }] }
+  expect(referenceEditorialDirection(source, decodeVisualBeat(quote), withSource, images, 0).presentation?.kind).toBe('source-pin')
+  expect(referenceEditorialDirection(source, decodeVisualBeat(quote), { ...section, evidence: undefined }, images, 0).presentation?.kind).not.toBe('source-pin')
 })

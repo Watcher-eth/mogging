@@ -9,6 +9,8 @@ import { annotationAppearance, sampleCaptionAppearance } from './caption-contras
 import { videoSize, videoExportSize, captionDesign, sharedElementMotion, type VideoFrame } from './video-layout'
 import { scientificEvidenceAt } from './video-research'
 import { creatorStudies } from './creator-studies'
+import { narratedEvidenceClock, drawNarratedEvidence } from './feature-study'
+import { drawSpokenScore } from './spoken-score'
 import { drawPhotoStudy, drawPhotoStudyCueLabel } from './video-photo-study'
 import { sceneWordStart, scriptTokens } from './video-script'
 import { documentaryRegistration, documentarySurveyPins, type SurveyPin } from './video-documentary-registration'
@@ -215,7 +217,9 @@ export async function prepareDocumentary(composition: VideoComposition, images: 
     const shots = documentaryShots(composition).map((shot): PreparedShot => {
       const { kind, scene } = shot
       const photos = kind === 'media' ? []
-        : (kind === 'comparison' ? [scene.source.secondaryImageId, scene.source.imageId] : [shot.alternateView ? scene.source.secondaryImageId : scene.source.imageId]).map(id => preparePhoto(id, images, decoded))
+        : (scene.featureStudy?.evidence ? scene.featureStudy.images
+          : kind === 'comparison' ? [scene.source.secondaryImageId, scene.source.imageId]
+            : [shot.alternateView ? scene.source.secondaryImageId : scene.source.imageId]).map(id => preparePhoto(id, images, decoded))
       const beat = shot.beat
       const anchor = featureAnchor(photos[0], beat.feature) ?? centered
       const guides = photos[0] && (shot.layout || ['registration', 'blueprint', 'specimen', 'locator', 'inspection', 'contact', 'ink', 'ledger'].includes(kind))
@@ -561,6 +565,10 @@ export async function prepareDocumentary(composition: VideoComposition, images: 
         ctx.save(); ctx.translate(0, (1 - open) * 40); ctx.globalAlpha *= open
         caseFile(ctx, shot, motion, evidence, reduced ? 1 : sharedElementMotion((time - evidence.startMs - 200) / 430))
         ctx.restore()
+      } else if (scene.featureStudy?.evidence) {
+        const study = scene.featureStudy
+        drawNarratedEvidence(ctx, study, shot.photos.map(photo => ({ image: photo.image, landmarks: photo.source.landmarks })),
+          narratedEvidenceClock(composition.scenes, scene, local), reduced, dark)
       } else if (kind === 'comparison') comparison(ctx, shot, local, motion)
       else if (kind === 'relations') relationships(ctx, shot, motion)
       else if (kind === 'projection' || kind === 'contact') {
@@ -711,12 +719,13 @@ export async function prepareDocumentary(composition: VideoComposition, images: 
         ctx.setTransform(width / W, 0, 0, height / H, 0, 0)
         const shared = sharedPortrait(ctx, shot, time, width, height, reduced)
         const { motion, evidence, showEdition } = shared ?? drawContent(ctx, shot, time, reduced)
-        if (scene.scoreCallouts?.length && !shot.alternateView) documentaryScores(ctx, scene, local, reduced, palette, variant + shot.index)
+        if (scene.scoreCallouts?.some(cue => cue.from !== undefined)) drawSpokenScore(ctx, scene, local, reduced, dark ? 'dark' : 'light')
+        else if (scene.scoreCallouts?.length && !shot.alternateView) documentaryScores(ctx, scene, local, reduced, palette, variant + shot.index)
         else if (kind === 'ledger' && !evidence && !showEdition && !shot.alternateView) {
           const feature = shot.guides?.label ?? featureNames[shot.beat.feature]
           documentaryObservation(ctx, feature, shot.guides?.paths.length ? 'REGISTERED TRACE' : 'PHOTO DETAIL', motion.enter(260, 490), palette)
         }
-        if (scene.photoStudy?.startWord !== undefined && local >= sceneWordStart(scene, scene.photoStudy.startWord)) drawPhotoStudyCueLabel(ctx)
+        if (scene.photoStudy?.startWord !== undefined && local >= sceneWordStart(scene, scene.photoStudy.startWord)) drawPhotoStudyCueLabel(ctx, scene.photoStudy)
         const invitation = kind === 'conclusion' || isVideoCta(composition, scene)
         const ticker = invitation ? { opacity: motion.enter(0, 340), offset: 0 } : videoTickerMotion(time, reduced)
         if (ticker) {

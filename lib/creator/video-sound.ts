@@ -54,6 +54,10 @@ function sceneSound(composition: VideoComposition, scene: VideoScene, index: num
     offset < scene.durationMs ? { sound, timeMs: scene.startMs + offset } : undefined
   const study = scene.featureStudy
   if (study?.revealWord !== undefined) return at('sweep', sceneWordStart(scene, study.revealWord))
+  if (study?.editWord !== undefined && study.comparison === 'drop')
+    return at('tap', Math.max(200, sceneWordStart(scene, study.editWord)))
+  if (study?.editWord !== undefined && study.comparison === 'wipe')
+    return at('sweep', sceneWordStart(scene, study.editWord))
   if (study?.comparison === 'wipe' && !sharesEditorialCue(scene, previous, 'featureStudy')) {
     return at('sweep', Math.min(330, scene.durationMs * .16))
   }

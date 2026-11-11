@@ -1,6 +1,8 @@
+import { drawEditorialSequence, editorialSequenceKinds, isEditorialSequence, sequencePose } from './editorial-sequences'
 import { drawEditorialPortraitMotion, editorialMotionLayout, portraitMotionKinds, portraitReactionStyles } from './editorial-portrait-motion'
+import { drawEditorialReferenceScene, editorialReferencePose, isReferenceScene, referenceSceneKinds } from './editorial-reference-scenes'
 import { editorialBoard, editorialBoardKinds, drawEditorialBoard } from './editorial-boards'
-import { mixEditorialPose, type EditorialPortraitPose } from './editorial-layout'
+import { editorialBackground, mixEditorialPose, type EditorialPortraitPose } from './editorial-layout'
 import { isDarkVideoContext, originalVideoContext } from './video-theme'
 import { z } from 'zod'
 import { diffSegments } from 'torph'
@@ -14,12 +16,13 @@ import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
 export const registeredEditorialEvidence = (kind?:string) =>
   kind==='feature-aperture' || kind==='paired-detail' || kind==='feature-stack'
 
-export const editorialKinds = ['callout','network','card-morph','reference-inset','comparison','orbit','color-reveal','line-art','drafting','claim','research','device','domain','view-cone','feature-tray','cursor-tour','focus-grid','tile-expand','evidence-fan','swatch-strip','document-lift','reference-hinge','tool-sweep','feature-aperture','paired-detail','feature-stack','reference-flip',...portraitMotionKinds,...editorialBoardKinds] as const
+export const editorialKinds = ['callout','network','card-morph','reference-inset','comparison','orbit','color-reveal','line-art','drafting','claim','conversation','question-slate','research','device','domain','view-cone','feature-tray','cursor-tour','focus-grid','tile-expand','evidence-fan','swatch-strip','document-lift','reference-hinge','tool-sweep','feature-aperture','paired-detail','feature-stack','reference-flip',...portraitMotionKinds,...editorialBoardKinds,...referenceSceneKinds,...editorialSequenceKinds] as const
 export const editorialPresentationSchema = z.object({
   kind:z.enum(editorialKinds), variant:z.number().int().min(0).max(5).default(0),
   reactionStyle:z.enum(portraitReactionStyles).optional(),
   label:z.string().max(100).optional(), feature:z.enum(visualFeatures).optional(), imageIds:z.array(z.string().min(1).max(160)).max(96).default([]), referenceIndex:z.number().int().min(0).max(95).default(0), referenceMode:z.enum(['feature','asset']).optional(),
   claim:z.object({author:z.string().min(1).max(60),text:z.string().min(1).max(120),previousText:z.string().max(120).optional(),sourceUrl:z.url().refine(url=>/^https?:/.test(url)),reviewed:z.literal(true),avatarIndex:z.number().int().min(0).max(95).optional(),thought:z.boolean().default(false)}).strict().optional(),
+  dialogue:z.array(z.string().min(1).max(120)).min(1).max(3).optional(),
   beats:z.array(z.object({feature:z.enum(visualFeatures),anchor:z.string().min(1).max(160),label:z.string().max(32).optional()}).strict()).max(5).optional(),
   accents:z.array(z.enum(['trace','brackets','tracks','links','scan'])).max(3).optional(),
   interaction:z.enum(['click','double-click','drag']).optional(),
@@ -31,9 +34,20 @@ export const editorialPresentationSchema = z.object({
   referenceCards:z.array(z.object({title:z.string().min(1).max(140),author:z.string().max(80),url:z.url().refine(url=>/^https?:/.test(url)),reviewed:z.literal(true),atMs:z.number().min(0).optional()}).strict()).max(5).optional(),
   studies:z.array(z.enum(['ward-2018','mogilski-welling-2018'])).max(2).optional(),
 }).strict().superRefine((value,ctx)=>{
-  if(value.mediaId && (!['reference-hinge','glass-phone','animated-cutaway'].includes(value.kind) || value.referenceIndex!==0))ctx.addIssue({code:'custom',message:'Context footage needs a reference hinge, phone or cutaway.'})
-  if(value.kind==='reference-flip' && !value.imageIds[value.referenceIndex])ctx.addIssue({code:'custom',message:'A photo flip requires a second source image.'})
+  if(value.mediaId && (!['reference-hinge','glass-phone','animated-cutaway','social-unframe'].includes(value.kind) || value.referenceIndex!==0))ctx.addIssue({code:'custom',message:'Context footage needs a reference hinge, phone or cutaway.'})
+  if(['reference-flip','view-filmstrip'].includes(value.kind) && !value.imageIds[value.referenceIndex])ctx.addIssue({code:'custom',message:'A photo flip requires a second source image.'})
+  if(['example-deck','example-constellation'].includes(value.kind) && (value.imageIds.length < 2 || (value.beats?.length ?? 0) < 2))ctx.addIssue({code:'custom',message:'An example sequence needs three distinct source images and spoken selections.'})
+  if(value.kind==='feature-match-cut' && new Set(value.beats?.map(beat=>beat.feature)).size < 2)ctx.addIssue({code:'custom',message:'A feature match cut needs two spoken feature anchors.'})
+  if(['source-excerpt','source-pin'].includes(value.kind) && (!value.studies?.length || !value.beats?.length))ctx.addIssue({code:'custom',message:'A source excerpt needs curated research and an exact anchor.'})
+  if(['relationship-bridge','landmark-route','cue-index'].includes(value.kind) && new Set(value.beats?.map(beat=>beat.feature)).size < 2)ctx.addIssue({code:'custom',message:'The sequence needs distinct spoken feature anchors.'})
+  if(value.kind==='statement-slit' && (!value.dialogue?.length || !value.beats?.length))ctx.addIssue({code:'custom',message:'A statement reveal needs exact spoken text.'})
+  if(['timing-dial','feature-ordinal'].includes(value.kind) && (!value.label || !value.beats?.length))ctx.addIssue({code:'custom',message:'A timed or ordinal label needs a spoken anchor.'})
+  if(value.kind==='social-unframe' && !value.mediaId)ctx.addIssue({code:'custom',message:'Unframing needs supplied, sourced footage.'})
+  if(value.kind==='chapter-defocus' && (!value.label || !value.beats?.length))ctx.addIssue({code:'custom',message:'A chapter needs its spoken title.'})
   if(value.kind==='claim'&&!value.claim)ctx.addIssue({code:'custom',message:'A claim carrier requires a reviewed attribution and source.'})
+  if(value.kind==='premise-revision' && (value.dialogue?.length!==2 || value.beats?.length!==2))ctx.addIssue({code:'custom',message:'A premise revision requires two spoken anchors.'})
+  if(value.kind==='source-docket' && (!value.studies?.length || !value.beats?.length))ctx.addIssue({code:'custom',message:'A source docket requires a reviewed study and spoken anchor.'})
+  if(['conversation','question-slate','reply-highlight'].includes(value.kind)&&!value.claim&&!value.dialogue?.length)ctx.addIssue({code:'custom',message:'A conversation needs an attributed comment or text from the script.'})
   if(value.kind==='research'&&!value.studies?.length&&!value.referenceCards?.length)ctx.addIssue({code:'custom',message:'A research stack requires curated study IDs.'})
 })
 export const editorialAccentProfiles=[['trace','brackets'],['tracks','links'],['trace','scan'],['brackets','links'],['trace','links'],['tracks','trace','links']] as const
@@ -432,6 +446,43 @@ export function drawEditorialText(ctx:CanvasRenderingContext2D,previous:string,v
   for(const [id,to] of b){const from=a.get(id);ctx.save();ctx.globalAlpha*=from?1:t;ctx.fillText(to.text,x+mix(from?.x??to.x,to.x,t),y+mix(from?.y??to.y+8,to.y,t));ctx.restore()}
   for(const [id,from] of a)if(!b.has(id)){ctx.save();ctx.globalAlpha*=1-t;ctx.fillText(from.text,x+from.x,y+from.y-8*t);ctx.restore()}
 }
+function drawEditorialConversation(
+  ctx: CanvasRenderingContext2D, presentation: EditorialPresentation, time: number, width: number, height: number,
+  dark: boolean, reduced: boolean, events: EditorialEvent[],
+) {
+  const { claim, variant } = presentation
+  const lines = claim ? [claim.text] : presentation.dialogue ?? []
+  const maxWidth = width * .65, gap = 22, inset = width * .07
+  const font = '500 33px "Mogging Share",Arial,sans-serif'
+  const reply = variant % 2 === 0
+  ctx.save()
+  let y = height * (reply ? .57 : .63)
+  const visible = lines.map((line, index) => ({ line, index, at: events[index]?.atMs ?? (index ? Infinity : 0) }))
+    .filter(item => time >= item.at).slice(-2)
+  for (const { line, index, at } of visible) {
+    const enter = reduced ? 1 : editorialEase((time - at) / 380)
+    ctx.font = font
+    const card = Math.min(maxWidth, Math.max(242, ctx.measureText(line).width + 64))
+    const rows = Math.max(1, Math.ceil(ctx.measureText(line).width / (card - 56)))
+    const cardHeight = 86 + 38 * rows
+    const x = (index % 2 === 0) === reply ? width - card - inset : inset
+    const top = y + (1 - enter) * 24
+    ctx.save(); ctx.globalAlpha *= enter
+    ctx.fillStyle = dark ? '#28282aee' : '#fffffff5'
+    ctx.shadowColor = '#00000021'; ctx.shadowBlur = 34; ctx.shadowOffsetY = 9
+    ctx.beginPath(); ctx.roundRect(x, top, card, cardHeight, variant % 3 === 2 ? 22 : 38); ctx.fill()
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0
+    ctx.fillStyle = dark ? '#bcbcc0' : '#5e6066'
+    ctx.font = '500 20px "Mogging Share",Arial,sans-serif'
+    ctx.fillText(claim?.author ?? 'QUOTED IN THE SCRIPT', x + 28, top + 36, card - 56)
+    ctx.fillStyle = dark ? '#f2f2f2' : '#202022'; ctx.font = font
+    drawEditorialText(ctx, '', line, x + 28, top + 76, enter, card - 56, 38)
+    ctx.restore()
+    y += cardHeight + gap
+  }
+  ctx.restore()
+}
+
 export function drawEditorialAcquisition(ctx:CanvasRenderingContext2D,item:EditorialPhoto,feature:typeof visualFeatures[number],time:number,variant=0,reduced=false){
   if(time<0)return
   const g=editorialFeatureGeometry(item,feature);if(!g)return
@@ -593,7 +644,7 @@ function isSharedMotion(kind: EditorialPresentation['kind']): kind is typeof por
 
 export function hasEditorialPortraitPose(presentation?: EditorialPresentation) {
   return Boolean(presentation && !presentation.mediaId &&
-    (registeredFullPortraitKinds.has(presentation.kind) || isEditorialBoard(presentation.kind) || isSharedMotion(presentation.kind) && (presentation.kind !== 'glass-phone' || !presentation.imageIds.length)))
+    (isEditorialSequence(presentation.kind) && !['example-deck','example-constellation','social-unframe'].includes(presentation.kind) || isReferenceScene(presentation.kind) && presentation.kind !== 'view-filmstrip' || registeredFullPortraitKinds.has(presentation.kind) || isEditorialBoard(presentation.kind) || isSharedMotion(presentation.kind) && (presentation.kind !== 'glass-phone' || !presentation.imageIds.length)))
 }
 
 export function editorialSharedPose(
@@ -601,6 +652,8 @@ export function editorialSharedPose(
   size: { width: number; height: number }, time: number, duration: number, events: EditorialEvent[],
 ) {
   const { kind } = presentation
+  if (isEditorialSequence(kind)) return sequencePose(kind, primary, size, { time, duration, events, reduced: false }, editorialFeatureGeometry)
+  if (isReferenceScene(kind)) return editorialReferencePose(kind, primary, size, { time, events, reduced: false })
   if (registeredFullPortraitKinds.has(kind)) return fullPortraitPose(primary, feature, size, time, presentation.variant, false)
   if (isEditorialBoard(kind)) return editorialBoard(kind, presentation, primary, references, size, time, duration, events, false).main.pose
   if (isSharedMotion(kind)) return editorialMotionLayout(kind, primary, editorialFeatureGeometry(primary, feature),
@@ -612,6 +665,16 @@ export function renderEditorialScene(ctx:CanvasRenderingContext2D,presentation:E
   const dark=isDarkVideoContext(ctx)
   ctx=originalVideoContext(ctx)
   const {width:W,height:H}=size,v=presentation.variant,t=reduced?1:editorialEase(time/760),hero={x:0,y:0,width:W,height:H},g=editorialFeatureGeometry(primary,feature),label=presentation.label??labels[feature],secondary=references[presentation.referenceIndex]
+  if (isEditorialSequence(presentation.kind)) {
+    drawEditorialSequence(ctx, presentation.kind, presentation, feature, primary, references, size,
+      { time, duration, events: events ?? [], reduced }, dark, editorialFeatureGeometry, handoff)
+    return
+  }
+  if (isReferenceScene(presentation.kind)) {
+    drawEditorialReferenceScene(ctx, presentation.kind, presentation, feature, primary, references, size,
+      { time, events: events ?? [], reduced }, dark, editorialFeatureGeometry, drawEditorialText, editorialPhotoSwatches, handoff)
+    return
+  }
   if (isEditorialBoard(presentation.kind)) {
     const board = editorialBoard(presentation.kind, presentation, primary, references, size, time, duration, events ?? [], reduced)
     const shared = handoff?.from && mixEditorialPose(handoff.from, board.main.pose, handoff.amount)
@@ -629,7 +692,7 @@ export function renderEditorialScene(ctx:CanvasRenderingContext2D,presentation:E
       return
   }
   const registeredFull = registeredFullPortraitKinds.has(presentation.kind)
-  ctx.fillStyle = registeredFull && handoff?.from ? (dark ? '#151515' : '#f5f4f3') : '#fff'
+  ctx.fillStyle = editorialBackground(Boolean(dark && registeredFull && handoff?.from))
   ctx.fillRect(0, 0, W, H)
   const sourceSpace = (draw: () => void, item = primary) => {
     const pose = fullPortraitPose(item, feature, size, time, registeredFull || presentation.kind === 'drafting' ? v : 0, reduced)
@@ -652,6 +715,34 @@ export function renderEditorialScene(ctx:CanvasRenderingContext2D,presentation:E
     ctx.restore()
   }
   switch(presentation.kind){
+    case 'conversation':
+      base()
+      drawEditorialConversation(ctx, presentation, time, W, H, dark, reduced, events ?? [])
+      break
+    case 'question-slate': {
+      base()
+      const age = time - (events?.[0]?.atMs ?? 0)
+      if (age < 0) break
+      const show = reduced ? 1 : editorialEase(age / 480)
+      const wash = ctx.createLinearGradient(0, H * .54, 0, H * .92)
+      wash.addColorStop(0, dark ? '#15151500' : '#f7f7f700')
+      wash.addColorStop(.75, dark ? '#151515f0' : '#f7f7f7f0')
+      wash.addColorStop(1, dark ? '#151515' : '#f7f7f7')
+      ctx.save()
+      ctx.globalAlpha *= show
+      ctx.fillStyle = wash
+      ctx.fillRect(0, H * .54, W, H * .46)
+      ctx.translate(W * .09, H * .72 + (1 - show) * 22)
+      ctx.fillStyle = dark ? '#d8d8db' : '#5c5c60'
+      ctx.font = '500 24px monospace'
+      ctx.fillText('THE QUESTION', 0, 0)
+      ctx.fillRect(0, 19, W * .18 * show, 2)
+      ctx.fillStyle = dark ? '#fafafa' : '#1c1c1e'
+      ctx.font = v % 2 ? 'italic 62px Georgia,serif' : '400 57px "Mogging Share",Arial,sans-serif'
+      drawEditorialText(ctx, '', presentation.dialogue?.[0] ?? '', 0, 87, show, W * .72, 67)
+      ctx.restore()
+      break
+    }
     case 'feature-stack':
       base();drawEditorialFeatureStack(ctx,primary,size,time,duration,presentation,reduced,events??[]);break
     case 'reference-flip':

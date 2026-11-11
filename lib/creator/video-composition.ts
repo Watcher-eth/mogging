@@ -86,7 +86,7 @@ export const videoSceneSchema = z.object({
   framing: z.enum(['full', 'captioned', 'device', 'detail']).default('full'), tracks: z.array(motionTrackSchema).max(30),
   layout: z.enum(['stacked', 'split', 'portrait']).default('stacked'),
   words: z.array(spokenWordSchema).max(5000).optional(),
-  scoreCallouts: z.array(z.object({ label: z.string().max(120), value: z.number().min(0).max(10), word: z.number().int().min(0) }).strict()).max(6).optional(),
+  scoreCallouts: z.array(z.object({ label: z.string().max(120), value: z.number().min(0).max(10), word: z.number().int().min(0), from: z.number().min(0).max(10).optional(), fromWord: z.number().int().min(0).optional() }).strict()).max(6).optional(),
   graphic: explainerGraphicSchema.optional(),
   photoStudy: photoStudySchema.optional(),
   presentation: editorialPresentationSchema.optional(),

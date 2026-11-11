@@ -24,8 +24,8 @@ export const mentionsVisualFeature = (text: string, feature: SemanticBeat['featu
 const operationPatterns: Array<[SemanticBeat['operation'], RegExp]> = [
   ['remove', /\b(?:remove[sd]?|removing|without|erase[sd]?|shave[sd]?)\b/i],
   ['add', /\b(?:add(?:s|ed|ing)?|grow|apply)\b/i], ['shorten', /\b(?:shorten\w*|shorter|raise|moves? up)\b/i],
-  ['lengthen', /\b(?:lengthen\w*|longer|lower(?:ing|ed)? (?:the )?(?:mouth|lip|brow)|moves? down)\b/i], ['narrow', /\b(?:narrow\w*|slimmer|reduce\w*|smaller)\b/i],
-  ['widen', /\b(?:widen\w*|broader|bigger|enlarge\w*)\b/i], ['align', /\b(?:align\w*|level|average height)\b/i], ['replace', /\b(?:replace\w*|switch out|swap\w*)\b/i],
+  ['lengthen', /\b(?:lengthen\w*|longer|lower(?:ing|ed)? (?:the )?(?:mouth|lip|brow)|moves? down)\b/i], ['narrow', /\b(?:narrow\w*|thinner|slimmer|reduce\w*|smaller)\b/i],
+  ['widen', /\b(?:widen\w*|fuller|broader|bigger|enlarge\w*)\b/i], ['align', /\b(?:align\w*|level|average height)\b/i], ['replace', /\b(?:replace\w*|switch out|swap\w*)\b/i],
 ]
 export function decodeVisualBeat(quote: string, fallback: SemanticBeat['feature'] = 'whole'): SemanticBeat {
   // Explicitly negated changes and explanatory caveats never author an edit.
@@ -36,12 +36,17 @@ export function decodeVisualBeat(quote: string, fallback: SemanticBeat['feature'
   const action = operationPatterns.find(([name]) => name === operation)?.[1].exec(quote)
   const candidates = featurePatterns.flatMap(([feature, pattern]) => { const match = pattern.exec(quote); return match ? [{ feature, distance: action ? Math.abs(match.index - action.index) : match.index }] : [] })
   const attention = quote.match(/\b(?:focus on|watch(?:ing)?|look at|follow|attention on)\s+(.+)/i)?.[1]
-  const attended = attention ? featurePatterns.find(([, pattern]) => pattern.test(attention))?.[0] : undefined
-  const feature = attended ?? candidates.toSorted((a, b) => a.distance - b.distance)[0]?.feature ?? fallback
+  const attended = attention ? featurePatterns.flatMap(([feature, pattern]) => {
+    const match = pattern.exec(attention)
+    return match ? [{ feature, index: match.index }] : []
+  }).toSorted((a, b) => a.index - b.index)[0]?.feature : undefined
+  const nearest = candidates.toSorted((a, b) => a.distance - b.distance)[0]?.feature
+  const feature = (action ? nearest : attended ?? nearest) ?? fallback
   const view = /\b(?:profile|side view|from the side)\b/i.test(quote) ? 'profile' : /\b(?:three-quarter|another angle|different angle)\b/i.test(quote) ? 'three-quarter' : 'front'
   const comparison = /\b(?:compare|comparison|before and after|versions|side by side|beside each other|together|same scale)\b/i.test(quote)
   const actionRequested = /\b(?:add(?:s|ed|ing)?|remov\w*|eras\w*|shav\w*|shorten\w*|lengthen\w*|widen\w*|narrow\w*|align\w*|replace\w*|adjust\w*|edit\w*|moves?|make|turn|apply|swap\w*|switch out)\b/i.test(quote)
-  const edit = !negated && !caveat && (operation !== 'none' && actionRequested || /\b(?:edit|edited version|shape edit|mouth position moves|local edit|reversible)\b/i.test(quote))
+  const descriptiveShape = /\b(?:cheeks?|cheekbones?|face|jaw(?:line)?|outline)\s+(?:(?:naturally|gradually)\s+)?(?:narrows?|widens?)\s+(?:into|towards?|at)\b/i.test(quote)
+  const edit = !descriptiveShape && !negated && !caveat && (operation !== 'none' && actionRequested || /\b(?:edit|edited version|shape edit|mouth position moves|local edit|reversible)\b/i.test(quote))
   const consistent = /\b(?:keep|use)\b[^.!?]{0,100}\b(?:consistent|similar|unchanged|fixed)\b/i.test(quote) && !edit && !comparison
   const intent: SemanticBeat['intent'] = /\b(?:report|score|app)\b|\bMogging(?:\.com)?\s+(?:shows?|separates?|compares?|explains?)\b/i.test(quote) ? 'report'
     : caveat || negated || consistent ? 'context' : /\b(?:light(?:ing)?|shadows?|illuminat\w*)\b/i.test(quote) && !edit && !comparison ? 'lighting'
@@ -50,11 +55,16 @@ export function decodeVisualBeat(quote: string, fallback: SemanticBeat['feature'
   return { quote, feature, intent, operation: negated || caveat || !['edit', 'compare'].includes(intent) ? 'none' : operation, view, confidence: candidates.length ? .86 : .62,
     rationale: negated || caveat ? 'Explain the limitation without inventing a transformation.' : `Show ${feature === 'whole' ? 'the whole portrait' : feature} to support this ${intent} beat.` }
 }
+export const spokenPremise = /\b(?:people assume|the assumption is|the claim is)\s+([^.!?;]{8,100}?),?\s+(but\s+[^.!?;]{8,96})/i
+
 export function decodeVisualSection(text: string, fallback: SemanticBeat['feature'] = 'whole'): SemanticSection {
   const sentences = text.split(/(?<=[.!?;])\s+|\s+(?=(?:while|but|whereas)\s+(?:a |the |this |that |softer |soft |three-quarter|frontal))/iu).map(part => part.trim()).filter(Boolean)
   const chunks: string[] = []
   for (const sentence of sentences) {
-    if (chunks.length && (sentence.split(/\s+/).length < 6 || chunks.at(-1)!.split(/\s+/).length < 6)) chunks[chunks.length - 1] += ` ${sentence}`
+    const previous = chunks.at(-1)
+    if (previous && (sentence.split(/\s+/).length < 6 || previous.split(/\s+/).length < 6 || /^but\s/i.test(sentence) && spokenPremise.test(`${previous} ${sentence}`))) {
+      chunks[chunks.length - 1] += ` ${sentence}`
+    }
     else chunks.push(sentence)
   }
   if (chunks.length > 1 && chunks.at(-1)!.split(/\s+/).length < 6) chunks[chunks.length - 2] += ` ${chunks.pop()}`

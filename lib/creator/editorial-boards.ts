@@ -1,4 +1,4 @@
-import { drawEditorialPortrait, editorialCoverPose, mixEditorialPose, type EditorialPortraitPose } from './editorial-layout'
+import { editorialBackground, drawEditorialPortrait, editorialCoverPose, mixEditorialPose, type EditorialPortraitPose } from './editorial-layout'
 import { editorialEase } from './editorial-motion'
 import type { EditorialEvent, EditorialFrame, EditorialPhoto, EditorialPresentation } from './editorial-scenes'
 
@@ -92,7 +92,7 @@ export function drawEditorialBoard(
 ) {
   const { width: W, height: H } = size
   ctx.save()
-  ctx.fillStyle = dark ? '#151515' : '#f5f4f3'
+  ctx.fillStyle = editorialBackground(dark)
   ctx.fillRect(0, 0, W, H)
   if (board.grid) {
     const { x, y, radius } = board.grid

@@ -4,7 +4,7 @@ import { scriptTokens, sceneSpeechWords } from './video-script'
 import type { ReportCategory } from './mobile-overlay-engine/report-data'
 import type { VideoScene } from './video-composition'
 
-const numbers: Record<string, number> = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10 }
+const numbers: Record<string, number> = { zero:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10 }
 const names: Record<string, RegExp> = { overall:/^overall$/, eyes:/^eyes?$/, brows:/^(?:brows?|eyebrows?)$/, jaw:/^(?:jaw|jawline|chin)$/, mouth:/^(?:mouth|lips?)$/, cheeks:/^(?:cheeks?|cheekbones?)$/, symmetry:/^symmetry$/, nose:/^nose$/ }
 
 // Only show numbers actually spoken and supported by the saved photo assessment.
@@ -39,9 +39,31 @@ export function spokenScoreCallouts(text: string, reports: ReportCategory[], fal
   return result.length ? result.slice(0, 6) : undefined
 }
 
+const scoreNumber = '(?:10(?:\\.0+)?|[0-9](?:\\.[0-9]+)?|zero|one|two|three|four|five|six|seven|eight|nine|ten)(?: point (?:zero|one|two|three|four|five|six|seven|eight|nine))?'
+const scoreRange = new RegExp(`\\b(?:from (${scoreNumber}) (?:up |down )?to|between (${scoreNumber}) and) (${scoreNumber})\\b`, 'i')
+function numericScore(text: string) {
+  const [integer, fraction] = text.toLowerCase().split(' point ')
+  return (numbers[integer] ?? Number(integer)) + (fraction ? (numbers[fraction] ?? 0) / 10 : 0)
+}
+
+export function spokenScoreRange(text: string, reports: ReportCategory[], category: string) {
+  const match = scoreRange.exec(text)
+  if (!match || !/\b(?:scores?|ratings?|out of (?:ten|10))\b/i.test(text)) return
+  const from = numericScore(match[1] ?? match[2]), value = numericScore(match[3])
+  if (from === value || Math.max(from, value) > 10) return
+  const matches = reports.filter(report => report.id === category && report.assessmentImageId)
+  const before = matches.find(report => report.score === from), after = matches.find(report => report.score === value)
+  const example = /\b(?:imagine|hypothetic\w*|for example|suppose|illustrative)\b/i.test(text)
+  if (!example && (!before || !after || before.assessmentImageId === after.assessmentImageId)) return
+  const fromText = match[1] ?? match[2]
+  const fromWord = scriptTokens(text.slice(0, match.index + match[0].indexOf(fromText) + fromText.length)).length - 1
+  const word = scriptTokens(text.slice(0, match.index + match[0].length)).length - 1
+  return { imageIds: example ? [] : [before!.assessmentImageId!, after!.assessmentImageId!], callout: { label: example ? 'Example score' : after!.title, from, fromWord, value, word } }
+}
+
 export function activeSpokenScores(scene: VideoScene, localMs: number) {
   const words = sceneSpeechWords(scene)
-  const last = scene.scoreCallouts?.findLast(cue => localMs >= (words[cue.word]?.startMs ?? Infinity))
+  const last = scene.scoreCallouts?.findLast(cue => localMs >= (words[cue.fromWord ?? cue.word]?.startMs ?? Infinity))
   return last ? scene.scoreCallouts!.filter(cue => cue.word === last.word) : []
 }
 export function activeSpokenScore(scene: VideoScene, localMs: number) {
@@ -58,7 +80,7 @@ export function drawSpokenScore(ctx: CanvasRenderingContext2D, scene: VideoScene
   const cue = active.at(-1);
   if (!cue)
     return;
-  const start = sceneSpeechWords(scene)[cue.word].startMs;
+  const start = sceneSpeechWords(scene)[cue.fromWord ?? cue.word].startMs;
   const amount = reduced ? 1 : smoothMotion((localMs - start) / 360);
   const meter = reduced ? 1 : smoothMotion((localMs - start - 80) / 720);
   const width = videoContent.width, left = videoContent.inset, top = scorePresentation.top;
@@ -82,9 +104,13 @@ export function drawSpokenScore(ctx: CanvasRenderingContext2D, scene: VideoScene
     ctx.fillStyle = ink;
     ctx.font = '500 68px "Mogging Share",Arial,sans-serif';
     ctx.textAlign = "right";
-    ctx.fillText(`${item.value.toFixed(1)} / 10`, width, 48);
+    const changeAt = sceneSpeechWords(scene)[item.word]?.startMs ?? scene.durationMs
+    const range = item.from !== undefined
+    const target = range && localMs < changeAt ? item.from! : item.value
+    const travel = reduced ? Number(localMs >= changeAt) : smoothMotion((localMs - changeAt) / 670)
+    ctx.fillText(range && localMs >= changeAt ? `${item.from!.toFixed(1)} → ${item.value.toFixed(1)}` : `${target.toFixed(1)} / 10`, width, 48);
     ctx.translate(0, 74);
-    drawMetricTimeline(ctx, { width, height: active.length > 1 ? 100 : 200, position: item.value / 10, progress: meter, variant: 0, ink, muted: dark ? "#b5c3bc" : "#777", line: dark ? "#536461" : "#ddd", accent: dark ? "#e9bc7e" : "#ff9900", labels: true, maximum: 10 });
+    drawMetricTimeline(ctx, { width, height: active.length > 1 ? 100 : 200, position: range ? (item.from! + (item.value - item.from!) * travel) / 10 : item.value / 10, progress: range ? 1 : meter, variant: 0, ink, muted: dark ? "#b5c3bc" : "#777", line: dark ? "#536461" : "#ddd", accent: dark ? "#e9bc7e" : "#ff9900", labels: true, maximum: 10 });
     ctx.restore();
   }
   ctx.restore();

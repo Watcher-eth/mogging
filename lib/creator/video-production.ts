@@ -1,7 +1,10 @@
+import { isEditorialSequence } from './editorial-sequences'
 import { cephraWritingBrief, planSculptureScenes } from './cephra-study'
-import { referenceEditorialBrief, referenceEditorialDirection, referenceFeatureStack, referencePortraitMotion } from './editorial-planning'
+import { isReferenceScene } from './editorial-reference-scenes'
+import { referenceEditorialBrief, referenceEditorialDirection, referenceExampleSequence, referenceFeatureStack, referencePortraitMotion } from './editorial-planning'
 import { scientificWritingBrief } from './creator-studies'
 import { compileDocumentaryVideo } from './video-documentary-plan'
+import { applyNarratedEvidence, narratedPhotoDependencies } from './video-narrated-evidence'
 import { narratedNoseChange } from './video-nose-change'
 import { isVideoInvitation } from './video-branding'
 import type { CreatorSubjectAnalysis } from './creator-stories'
@@ -66,10 +69,14 @@ export function reviseProductionScript(script: VideoScript, cues: VideoScript['c
 export function productionCut(master: VideoScript, seconds: ProductionLength, sectionIds?: string[]): VideoScript {
   validateProductionScript(master)
   const byId = new Map(master.cues.map(cue => [cue.section!.id, cue]))
+  const photoDependencies = narratedPhotoDependencies(master.cues)
+  const dependencies = (id: string) => [...byId.get(id)!.section!.dependsOn, ...(photoDependencies.has(id) ? [photoDependencies.get(id)!] : [])]
   let cues: VideoScript['cues']
   if (sectionIds) {
     if (new Set(sectionIds).size !== sectionIds.length || sectionIds.some(id => !byId.has(id))) throw new Error('Choose unique sections from this master script.')
     cues = sectionIds.map(id => byId.get(id)!)
+    if (sectionIds.some((id, index) => photoDependencies.has(id) && !sectionIds.slice(0, index).includes(photoDependencies.get(id)!)))
+      throw new Error('Keep the comparison before the section that refers to one of its photos.')
   } else {
     const required = new Set(master.cues.filter(cue => ['hook', 'cta', 'takeaway'].includes(cue.section!.role)).map(cue => cue.section!.id))
     // Keep product proof in every cut and a second contextual mention in longer cuts.
@@ -80,8 +87,8 @@ export function productionCut(master: VideoScript, seconds: ProductionLength, se
       const mention = master.cues.find(cue => mentionsBrand(cue.text))
       if (mention) required.add(mention.section!.id)
     }
-    const include = (id: string) => { if (required.has(id)) return; required.add(id); byId.get(id)!.section!.dependsOn.forEach(include) }
-    for (const id of [...required]) byId.get(id)!.section!.dependsOn.forEach(include)
+    const include = (id: string) => { if (required.has(id)) return; required.add(id); dependencies(id).forEach(include) }
+    for (const id of [...required]) dependencies(id).forEach(include)
     const duration = () => master.cues.filter(cue => required.has(cue.section!.id)).reduce((ms, cue) => ms + sectionDurationMs(cue), 0)
     for (const cue of [...master.cues].sort((a, b) => b.section!.priority - a.section!.priority)) {
       const before = new Set(required)
@@ -109,7 +116,7 @@ export function productionVisualPlan(script: VideoScript, input: AnalysisPostInp
 }
 export function compileProductionVideo(script: VideoScript, input: AnalysisPostInput, images: GeneratorImage[], reports: ReportCategory[], recipe: VideoRecipe, voice: VoiceDirection, variant = 0, featureTopic: FeatureTopic = 'philtrum', featureAmount = 1, authoredDirections: Record<string, VideoDirection> = {}, media: import('./media-asset').MediaAsset[] = []): VideoComposition {
   validateProductionScript(script)
-  if (recipe === 'documentary-studio') return parseComposition(compileDocumentaryVideo(script, input, images, reports, voice, variant, script.cues.map(cue => sectionDurationMs(cue)), media))
+  if (recipe === 'documentary-studio') return parseComposition(applyNarratedEvidence(compileDocumentaryVideo(script, input, images, reports, voice, variant, script.cues.map(cue => sectionDurationMs(cue)), media), images, reports))
   const qoves = recipe === 'editorial-story' || recipe === 'feature-study'
   const invitation = script.cues.findLast(cue => isVideoInvitation(cue))
   const editorialHistory: import('./editorial-scenes').EditorialPresentation['kind'][] = []
@@ -126,7 +133,7 @@ export function compileProductionVideo(script: VideoScript, input: AnalysisPostI
     if (qoves && (isVideoInvitation(shot.cue) || index >= closingStart)) {
       return {...shot,direction:{kind:'report' as const,categoryId:closing?.report.id ?? 'overall',imageId:closing?.report.assessmentImageId && images.some(image=>image.id===closing.report.assessmentImageId) ? closing.report.assessmentImageId : images[0]?.id,focus:closing?.metric ? `feature:${closing.metric}` : 'category-score',emphasis:'section-lift' as const,closingReport:true}}
     }
-    const direction = qoves ? referenceEditorialDirection(merged,shot.beat,shot.cue.section!,images,(scriptVisualSeed(input.subject,shot.beat.quote)+variant)%10000,shot.decision,editorialHistory,variant%6) : merged
+    const direction = qoves ? referenceEditorialDirection(merged,shot.beat,shot.cue.section!,images,(scriptVisualSeed(input.subject,shot.beat.quote)+variant)%10000,shot.decision,editorialHistory,variant%6,media) : merged
     if(recipe==='sculpture-study' && isVideoInvitation(shot.cue) && !authored?.closingReport) {
       const categoryId=direction.categoryId && direction.categoryId!=='overall' ? direction.categoryId : shotsCategory(script)
       const report=reports.find(report=>report.id===categoryId) ?? reports.find(report=>report.id==='overall')
@@ -141,6 +148,15 @@ export function compileProductionVideo(script: VideoScript, input: AnalysisPostI
     const group=shots.slice(first,end)
     const photo=group[0].direction.imageId
     const cue=group[0].cue, source=images.find(image=>image.id===photo)
+    const examples = group.every(({direction,id}) => !authoredDirections[id] && direction.kind === 'portrait'
+      && !direction.photoStudy && !direction.study && !direction.profileStudy && !direction.scoreCallouts?.length
+      && !direction.featureStudy?.edit && !direction.featureStudy?.opening
+      && !['compare','grid','evidence'].includes(direction.featureStudy?.layout ?? ''))
+      ? referenceExampleSequence(cue.text, images, variant) : undefined
+    if (examples) for (const shot of group) {
+      shot.direction = { ...shot.direction, ...examples, featureStudy: undefined, portraitProgram: undefined, portraitCrop: undefined, portraitFX: undefined, overlay: 'none' }
+      shot.decision.reason += ` Continuous view sequence: ${examples.presentation.kind}.`
+    }
     const previousKinds=shots.slice(Math.max(0,first-4),first).flatMap(shot=>shot.direction.presentation?.kind??[])
     if (source && !source.retouch && !/profile/.test(source.id) && sectionDurationMs(cue)>2200 && group.every(({direction,id})=>
       direction.kind==='portrait' && direction.imageId===photo && !authoredDirections[id]?.presentation &&
@@ -148,7 +164,7 @@ export function compileProductionVideo(script: VideoScript, input: AnalysisPostI
       !direction.profileStudy && !direction.portraitFX?.lighting &&
       !direction.featureStudy?.edit && !direction.featureStudy?.opening &&
       !['compare','grid','evidence'].includes(direction.featureStudy?.layout??'') &&
-      (!direction.presentation || !['reference-flip','reference-hinge','research','claim','spotlight-sheet','context-triptych','portrait-radar'].includes(direction.presentation.kind)))) {
+      (!direction.presentation || !isReferenceScene(direction.presentation.kind) && !isEditorialSequence(direction.presentation.kind) && !['reference-flip','reference-hinge','research','claim','conversation','question-slate','spotlight-sheet','context-triptych','portrait-radar'].includes(direction.presentation.kind)))) {
       const named=group.find(shot=>shot.beat.feature!=='whole')?.beat.feature??'whole'
       const list=group.length>1 && group.every(shot=>shot.direction.presentation) ? referenceFeatureStack(cue.text,variant) : undefined
       const motion = referencePortraitMotion(cue.text, named, variant, previousKinds)
@@ -184,7 +200,7 @@ export function compileProductionVideo(script: VideoScript, input: AnalysisPostI
     return { ...scene, ...(['editorial-story','feature-study'].includes(recipe)?{captionScale:.9}:{}), ...(invitation ? { source: { ...scene.source, overlay: 'none' as const }, portraitFX: undefined, featureStudy: undefined, photoStudy: undefined, profileStudy: undefined, study: undefined, scoreCallouts: [] } : {}),
       tracks: scene.tracks.filter(track => (!scene.presentation || ['text','content'].includes(track.target)) && (!invitation || track.target !== 'overlay')).map(track => ({ ...track, ...(track.wordId ? { wordId: `${scene.scriptRange.cueId}/word:${scene.scriptRange.startWord + (track.wordIndex ?? 0)}` } : {}) })) }
   })
-  return parseComposition({ ...compiled, voice, script, scenes:recipe==='sculpture-study'?planSculptureScenes(scenes,input.subject,variant):scenes })
+  return parseComposition(applyNarratedEvidence({ ...compiled, voice, script, scenes:recipe==='sculpture-study'?planSculptureScenes(scenes,input.subject,variant):scenes }, images, reports))
 }
 
 function editorialClosingReport(shots:ReturnType<typeof productionVisualPlan>, authored:Record<string,VideoDirection>, reports:ReportCategory[]) {
@@ -284,7 +300,7 @@ export function productionWritingBrief(script: VideoScript, subjectAnalysis?: Cr
       'Start with an asset-backed observation, choice or reversible experiment that can be seen immediately. Write several different hook mechanisms, not synonyms of one question.',
       'Write the answer to the hook before expanding the middle. Each sentence must add evidence, explain a mechanism, answer an objection or advance the resolution.',
       'Use spoken clauses, contractions and concrete verbs: follow, lift, trace, compare. Introduce anatomy only when it helps, and translate it into plain language.',
-      'Use this/that/these only when the exact referent is visible. Make clipped sections self-contained or declare dependsOn. No orphaned setup or missing payoff in short cuts.',
+      'Use this/that/these only when the exact referent is visible. Before saying the first, second or right-hand photo, establish the actual pair and preserve the same order. Make clipped sections self-contained or declare dependsOn. No orphaned setup or missing payoff in short cuts.',
       'Choose one story structure independently of the five visual formats. Variations preserve claim, source, edit operation and comparison conditions; vary only evidence-equivalent framing, guide style, reveal and cut.',
       'For every exact narration beat, specify claim, evidence source, asset IDs, protected features, operation and axis, crop, anchor geometry, short label phrase, reveal word and exit destination. Mark missing assets rather than inventing proof.',
       'Distinguish brow translation from brow arch, lip thickness from lip width, natural eye corner from eyeliner, beard edge from jaw anatomy, and expression change from image warping.',

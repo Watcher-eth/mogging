@@ -1,5 +1,5 @@
 import { editorialEase, drawEditorialLeader } from './editorial-motion'
-import { mixEditorialPose, type EditorialPortraitPose } from './editorial-layout'
+import { editorialBackground, mixEditorialPose, type EditorialPortraitPose } from './editorial-layout'
 import { applyGlassInk } from './glass-overlay'
 import type { EditorialEvent, EditorialFrame, EditorialPhoto } from './editorial-scenes'
 
@@ -292,7 +292,7 @@ export function drawEditorialPortraitMotion(ctx: CanvasRenderingContext2D, kind:
   const { frame: view, radius } = pose
   const window = kind === 'face-window', phone = kind === 'glass-phone', cutaway = kind === 'animated-cutaway'
   const checklist = kind === 'feature-checklist', pan = kind === 'ink-pan', expressionRail = kind === 'expression-rail', fountain = kind === 'reaction-fountain'
-  const theme = dark ? '#151515' : '#f5f4f3', text = dark ? '#fff' : '#272626'
+  const theme = editorialBackground(dark), text = dark ? '#fff' : '#272626'
   const luminance = portraitLuminance(item.image, dark ? .09 : .93)
   const project = (point:Point) => ({x:x+point.x*scale,y:y+point.y*scale})
   const screenLuminance = (point: Point) => luminance({ x: (point.x - x) / scale, y: (point.y - y) / scale })

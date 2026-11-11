@@ -17,13 +17,14 @@ export const photoStudySchema = z.object({
   cursor: z.boolean().optional(),
   effect: z.enum(['shape','brow-contrast']).optional(),
   startWord: z.number().int().nonnegative().optional(),
+  inferred: z.boolean().optional(),
 }).strict().superRefine((study,ctx)=>{if(study.effect==='brow-contrast' && study.feature!=='brows')ctx.addIssue({code:'custom',message:'Brow contrast requires the detected brow contours.'})})
 export type PhotoStudy = z.infer<typeof photoStudySchema>
 
-export function drawPhotoStudyCueLabel(ctx: CanvasRenderingContext2D) {
+export function drawPhotoStudyCueLabel(ctx: CanvasRenderingContext2D, study: PhotoStudy) {
   ctx.save()
   ctx.font = '500 25px "Mogging Share", Arial, sans-serif'
-  const label = 'Width illustration', width = ctx.measureText(label).width + 40
+  const label = study.mode === 'pinch' ? 'Width illustration' : 'Shape illustration', width = ctx.measureText(label).width + 40
   const x = 150, y = videoSize.height * .76
   ctx.fillStyle = '#f9f9f9'
   ctx.beginPath(); ctx.roundRect(x, y, width, 48, 24); ctx.fill()

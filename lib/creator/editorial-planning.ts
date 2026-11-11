@@ -1,14 +1,23 @@
+import { sourceUnframeViewport } from './editorial-sequences'
+import { mediaCropFit, type MediaAsset } from './media-asset'
 import {editorialAccentProfiles} from './editorial-scenes'
 import type { EditorialPresentation } from './editorial-scenes'
 import type { VisualDecision } from './video-director'
 import type { VideoDirection } from './video-composition'
 import type { ScriptSection } from './video-script'
-import { visualFeatures } from './video-semantics'
+import { spokenPremise, visualFeatures } from './video-semantics'
 import type { SemanticBeat } from './video-semantics'
 import type { GeneratorImage } from './content-generator'
 
 export const referenceEditorialBrief = {
   sources: [
+    { id:'facial-bloating-visuals', title:'Facial Bloating: Why Your Face Looks Puffy & How To Fix It!', url:'https://www.youtube.com/watch?v=ZMtaeucIsuQ', study:'docs/qoves-sequence-reference.md' },
+    { id:'uncommon-features-visuals', title:'The Top 10 Uncommon Features For An Attractive Face', url:'https://www.youtube.com/watch?v=VPPoVUqwfYE', study:'docs/qoves-sequence-reference.md' },
+    { id:'mens-hair-proportion', title:'Finding Your Perfect Hairstyle Is Surprisingly Easy', url:'https://www.youtube.com/watch?v=yfk0c18xPcE', study:'docs/qoves-sequence-reference.md' },
+    { id:'womens-hair-framing', title:'A Woman’s Guide To Choosing The Perfect Hairstyle', url:'https://www.youtube.com/watch?v=0H94d2q916A', study:'docs/qoves-sequence-reference.md' },
+    { id:'grooming-mistakes', title:'7 Mistakes Killing Your Attractiveness as a Man', url:'https://www.youtube.com/watch?v=rjn2Ut_8FAc', study:'docs/qoves-sequence-reference.md' },
+    { id:'landscape-photo-evidence', title:"Here's Why You Look Different In Pictures", url:'https://www.youtube.com/watch?v=Ho3RcNMro5Y', study:'docs/qoves-landscape-evidence.md' },
+    { id:'landscape-conversation-ruler', title:'How ChatGPT Can Help You Glow-up', url:'https://www.youtube.com/watch?v=3w_YYzZ_Brg', study:'docs/qoves-landscape-evidence.md' },
     { id:'trust-contact-sheets', title:'Too hot to trust?', url:'https://www.youtube.com/watch?v=3YBVWun37tA', study:'docs/qoves-trust-reference.md' },
     { id:'soft-tissue-overlays', title:'Why is everyone obsessed with Bad Bunny’s aesthetics?', url:'https://www.linkedin.com/posts/qoves_why-is-everyone-obsessed-with-bad-bunnys-activity-7447936678704422912-i9_T' },
     { id:'evidence-hinge', title:'Do you have a masculine or feminine face?', url:'https://www.linkedin.com/posts/qoves_do-you-have-a-masculine-or-feminine-face-activity-7445080324637696000-7QDl' },
@@ -47,8 +56,18 @@ export const referenceEditorialBrief = {
     rule:'Add a reviewed technique to its existing owner and compatible pool. Keep unsupported assets explicit. A new reference should expand the grammar, never add another independent rendering pipeline.',
   },
   motion: [
+    'For a section that explains three genuine views, carry one deck or circular example group across all its caption fragments. Advance the selected source on its spoken view; never substitute an edit for a pose.',
+    'A chapter can defocus the same portrait behind its exact spoken title and resolve back to that portrait. Keep captions on their established clock and use one chapter action per transition.',
+    'For shape and proportions, build the measured outline on the real face before transferring it to a schematic. Anatomical thirds require a true hairline; available face-mesh spans are labelled by their actual endpoints.',
+    'To explain covering the forehead, show a visibility mask and the actual region behind it. The mask illustrates occlusion and never invents a new hairstyle.',
+    'A supplied source clip can enter as a credited social window and unframe into the content stage. Preserve credit, source clock and native resolution.',
+    'An explicit local reshape may use a visible deformation lattice. Start the lattice on pointer-down and carry the actual pixel deformation and cursor on the same gesture clock. A descriptive taper never requests a reshape.',
     'The portrait, feature tray, caption, source card and cursor have independent lifetimes. Caption splits never restart the treatment.',
     'Use one dominant action at a time: target → acquire → demonstrate → hold → restore. Bind the arrival to its exact recorded phrase, not a guessed fraction of the sentence.',
+    'A spoken photo comparison needs two distinct sources visible together. Expand the same photo when the narrator singles it out and restore the same layout on a return cue. Supply an explicit pair for before and after. Use an explicitly labelled mirror of one source only to illustrate reversal.',
+    'Use a feature extraction, tracked loupe or dot-led contour for a named feature with usable registration. For color, draw samples from the feature itself. For a premise and correction, reveal each clause when it is spoken.',
+    'Anchor a folded source docket to the exact supported phrase. It can replace the compact citation when the phrase has enough room for the portrait and card.',
+    'When the script quotes a message, reveal the quoted words at that line. Attribute external comments only when the exact text and source are supplied. Show spoken score ranges on a ruler, using the measured photos or explicitly marking the score as an example.',
     'For a location cue, open a tracked aperture on the named feature. For a relationship, let the first detail settle before the second joins it. Keep the full portrait available as context and use a single source for comparisons between regions.',
     'For a perception hook, start with one spoken attribute over the portrait. Use small neutral reactions or a continuous dot-to-line pan. Reserve an expression rail or an animated inset for a later explanatory beat.',
     'Use a compact dark-glass citation only on the supported phrase. Shrink the same portrait into a face crop or a phone before revealing separate footage inside it.',
@@ -83,14 +102,30 @@ export function referenceFeatureStack(text:string,variation:number):EditorialPre
   if (beats.length<3 || variation%3===0) return
   return {kind:'feature-stack',variant:variation%6,referenceIndex:0,imageIds:[],feature:'whole',beats,...(colorCue.test(text)?{sampleColors:true}:{})}
 }
+export function referenceExampleSequence(text: string, images: GeneratorImage[], variant: number) {
+  if (variant % 3 === 0 || /\b(?:scores?|edited|before and after|original and edited)\b/i.test(text)) return
+  const matches = [...text.matchAll(/\b(?:from the front|front view|three[- ]quarter(?: view)?|profile|side view)\b/gi)]
+  const views = matches.map(match => /profile|side/i.test(match[0]) ? 'profile' : /three/i.test(match[0]) ? 'three-quarter' : 'front')
+  if (views.length !== 3 || views[0] !== 'front' || new Set(views).size !== 3) return
+  const photos = views.map(view => images.find(image => image.id.includes(view) && !image.retouch && !image.comparison && ['ready', 'warning'].includes(image.status)))
+  if (photos.some(image => !image) || new Set(photos.map(image => image!.dataUrl)).size !== 3) return
+  const presentation: EditorialPresentation = {
+    kind: variant % 3 === 1 ? 'example-deck' : 'example-constellation',
+    variant: variant % 6, feature: 'whole', referenceIndex: 0,
+    imageIds: photos.slice(1).map(image => image!.id),
+    beats: matches.map(match => ({ feature: 'whole', anchor: match[0] })),
+  }
+  return { presentation, imageId: photos[0]!.id }
+}
+
 const relation = /\b(?:between|relative to|against|beside|compared with|compared to|sits (?:inside|below|above)|frames?)\b/i
 const editorialFamilies: ReadonlyArray<ReadonlyArray<EditorialKind>> = [
-  ['feature-tray', 'cursor-tour', 'feature-aperture', 'paired-detail', 'glass-phone'],
-  ['tile-expand', 'focus-grid', 'card-morph', 'spotlight-sheet', 'face-window'],
-  ['drafting', 'line-art', 'view-cone', 'dash-timeline', 'ink-pan'],
+  ['feature-tray', 'cursor-tour', 'feature-aperture', 'paired-detail', 'glass-phone', 'feature-loupe'],
+  ['tile-expand', 'focus-grid', 'card-morph', 'spotlight-sheet', 'face-window', 'crop-extraction'],
+  ['drafting', 'line-art', 'view-cone', 'dash-timeline', 'ink-pan', 'contour-relay'],
   ['network', 'feature-stack', 'callout', 'feature-checklist', 'portrait-radar'],
-  ['reference-hinge', 'reference-flip', 'evidence-fan', 'orbit', 'context-triptych', 'comparison'],
-  ['swatch-strip', 'color-reveal', 'document-lift', 'tool-sweep', 'reaction-fountain', 'animated-cutaway', 'expression-rail'],
+  ['reference-hinge', 'reference-flip', 'evidence-fan', 'orbit', 'context-triptych', 'comparison', 'view-filmstrip'],
+  ['swatch-strip', 'color-reveal', 'document-lift', 'tool-sweep', 'reaction-fountain', 'animated-cutaway', 'expression-rail', 'sample-matrix'],
 ]
 
 function editorialFamily(kind: EditorialKind) {
@@ -166,7 +201,7 @@ export function planEditorialPresentation(text:string,feature:SemanticBeat['feat
 
   if (hasReference && hasViewCue) {
     for (const kind of ['reference-hinge', 'evidence-fan', 'orbit', 'comparison', 'reference-inset', 'focus-grid'] as const) choices.add(kind)
-    if (registeredEvidence && viewCue.test(text)) choices.add('reference-flip')
+    if (registeredEvidence && viewCue.test(text)) { choices.add('reference-flip'); choices.add('view-filmstrip') }
   }
   if (hasReference && registeredEvidence && (hasViewCue || viewContext)) {
     choices.add('spotlight-sheet'); choices.add('context-triptych')
@@ -179,15 +214,17 @@ export function planEditorialPresentation(text:string,feature:SemanticBeat['feat
   }
   if (colorCue.test(text)) {
     choices.add('swatch-strip'); choices.add('color-reveal')
+    if (featureNamed) choices.add('sample-matrix')
     if (hasReference && /\b(?:monochrome|black[- ]and[- ]white|reference|photo)\b/i.test(text)) choices.add('document-lift')
   }
   if (contour) {
+    if (featureNamed) choices.add('contour-relay')
     for (const kind of ['drafting', 'line-art', 'view-cone', 'network'] as const) choices.add(kind)
     if (hasReference && /\b(?:angles?|spacing|proportions?|structure)\b/i.test(text)) choices.add('portrait-radar')
   }
   if (detail) {
     choices.add('reference-inset'); choices.add('tile-expand'); choices.add('line-art')
-    if (featureNamed) choices.add('face-window')
+    if (featureNamed) { choices.add('face-window'); choices.add('feature-loupe'); choices.add('crop-extraction') }
   }
   if (!choices.size) {
     for (const kind of ['feature-tray', 'focus-grid', 'card-morph', 'tile-expand', 'view-cone', 'network', 'line-art'] as const) choices.add(kind)
@@ -204,9 +241,25 @@ export function planEditorialPresentation(text:string,feature:SemanticBeat['feat
 }
 
 /** Apply after saved directions so the take owns the edit while authored evidence owns the claim. */
-export function referenceEditorialDirection(direction:VideoDirection,beat:SemanticBeat,section:ScriptSection,images:GeneratorImage[],variation:number,decision?:VisualDecision,history:EditorialKind[]=[],family=variation%6):VideoDirection {
+export function referenceEditorialDirection(direction:VideoDirection,beat:SemanticBeat,section:ScriptSection,images:GeneratorImage[],variation:number,decision?:VisualDecision,history:EditorialKind[]=[],family=variation%6,media:ReadonlyArray<MediaAsset>=[]):VideoDirection {
   const study=direction.featureStudy
   const variant=variation%6
+  const sourceClip = direction.presentation?.mediaId && media.find(asset => asset.id === direction.presentation!.mediaId)
+  const mediaCue = /\b(?:clip|video|footage|social|post|Instagram|TikTok)\b/i.exec(beat.quote)?.[0]
+  if (direction.presentation && ['reference-hinge','glass-phone','animated-cutaway'].includes(direction.presentation.kind)
+    && mediaCue && family % 3 === 2 && sourceClip && sourceClip.kind === 'video' && sourceClip.scope.kind === 'public' && sourceClip.source.usage !== 'review'
+    && mediaCropFit(sourceClip, sourceUnframeViewport).native) {
+    return { ...direction, presentation: { ...direction.presentation, kind: 'social-unframe',
+      beats: [{ feature: beat.feature, anchor: mediaCue }] } }
+  }
+  const question = /\b(?:here(?:['’]s| is) the question|the question is)[:,]?\s+([^.!?]{8,100}\?)/i.exec(beat.quote)?.[1]
+  if (question && direction.kind === 'portrait' && !direction.presentation && !direction.photoStudy && !direction.profileStudy && !direction.study && !study?.edit && !study?.opening && !['cta','product'].includes(section.role)) {
+    const feature = beat.feature
+    history.push('question-slate')
+    return { ...direction, featureStudy: undefined, portraitProgram: undefined, portraitFX: undefined, overlay: 'none',
+      presentation: { kind: 'question-slate', variant, imageIds: [], referenceIndex: 0, dialogue: [question],
+        beats: [{ feature, anchor: question }] } }
+  }
   if (study?.edit || study?.opening || ['compare','grid','evidence'].includes(study?.layout??'')) {
     if (!study) return direction
     const registered=study.editMode==='photo' && images.some(image=>study.images.includes(image.id) && image.retouch?.baselineImageId===direction.imageId)
@@ -217,14 +270,99 @@ export function referenceEditorialDirection(direction:VideoDirection,beat:Semant
       ...(study.edit && !study.opening ? {comparison:comparisons[family%comparisons.length]} : {}),
       ...(registered?{tool:study.topic==='facial-hair'?'clipper':'brush'}:{})}}
   }
-  if (direction.kind!=='portrait' || direction.presentation || direction.scoreCallouts?.length || direction.photoStudy || direction.study || direction.profileStudy || direction.portraitFX?.lighting || ['cta','product'].includes(section.role)) return direction
+  if (direction.kind!=='portrait' || direction.presentation || direction.scoreCallouts?.length || direction.photoStudy || direction.study || ['cta','product'].includes(section.role)) return direction
   const category=direction.categoryId==='mouth'?'lips':direction.categoryId
   const feature=beat.feature==='whole' && visualFeatures.includes(category as SemanticBeat['feature'])?category as SemanticBeat['feature']:beat.feature
   const source=images.find(image=>image.id===direction.imageId)
-  if (!source || source.retouch || /profile/.test(source.id)) return direction
+  if (!source || source.retouch || source.comparison) return direction
+  const usePresentation = (presentation: EditorialPresentation): VideoDirection => {
+    history.push(presentation.kind)
+    if (decision) decision.reason += ` Editorial treatment: ${presentation.kind}.`
+    return { ...direction, presentation, featureStudy: undefined, profileStudy: undefined, portraitCrop: undefined, portraitProgram: undefined, portraitFX: undefined, overlay: 'none' }
+  }
+  const exact = (kind: EditorialKind, anchors: string[], extra: Partial<EditorialPresentation> = {}) =>
+    usePresentation({ kind, variant, feature, imageIds: [], referenceIndex: 0, beats: anchors.map(anchor => ({ feature, anchor })), ...extra })
+  const named = distinctFeatures(beat.quote)
+  const target = named[0]
+  const evidence = section.evidence?.find(binding => binding.anchor.length <= 120 && beat.quote.includes(binding.anchor))
+  if (!direction.profileStudy && !direction.portraitFX?.lighting && beat.intent !== 'edit' && beat.intent !== 'report') {
+    const take = family % 3
+    const key = (kind: EditorialKind, anchors = named.slice(0, 3)) =>
+      exact(kind, anchors.map(item => item.anchor), { feature: anchors[0].feature, beats: anchors })
+    const rank = /\b(?:ranks?|ranked|comes in|places?)\s+(?:at\s+)?(?:number\s+)?(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|\d{1,2}(?:st|nd|rd|th))\b/i.exec(beat.quote)
+    if (target && rank && take === 2) {
+      const ranked = namedFeatures(beat.quote.slice(0, rank.index)).at(-1) ?? target
+      return exact('feature-ordinal', [rank[0]], { feature: ranked.feature, label: rank[1], beats: [{ feature: ranked.feature, anchor: rank[0] }] })
+    }
+    const time = /\b(?:\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|twenty|thirty)\s+(?:seconds?|minutes?|hours?)\b/i.exec(beat.quote)
+    if (target && time && /\b(?:hold|wait|lasts?|within|over|takes?|for|after)\b/i.test(beat.quote) && take === 1) {
+      return exact('timing-dial', [time[0]], { feature: target.feature, label: time[0] })
+    }
+    const statement = /\b(?:the point is|here['’]s the takeaway|the takeaway is|what matters is|in other words)[:,]?\s+([^.!?]{12,82})/i.exec(beat.quote)?.[1]
+    if (statement && take === 2) return exact('statement-slit', [statement], { dialogue: [statement] })
+    if (evidence && take === 0 && target) return exact('source-pin', [evidence.anchor], {
+      feature: target.feature, studies: [evidence.studyId], beats: [{ feature: target.feature, anchor: evidence.anchor }],
+    })
+    if (named.length >= 3 && /\b(?:look at|check|notice|first|start with|three features)\b/i.test(beat.quote) && take === 2) return key('cue-index')
+    if (named.length >= 2 && /\b(?:points? toward|follows? (?:the|his|her)|runs? (?:from|toward)|leads? (?:down|up|to)|continues? (?:to|toward))\b/i.test(beat.quote) && take === 0) return key('landmark-route')
+    if (named.length >= 2 && /\b(?:compare|relationship|relative to|versus|beside)\b/i.test(beat.quote) && take === 2) return key('relationship-bridge', named.slice(0, 2))
+    if (target && /\b(?:left and right|both sides|either side|outer corners|inner corners)\b/i.test(beat.quote) && take === 2) return key('paired-leaders', [target])
+    if (target && ['eyes','lips'].includes(target.feature) && /\b(?:isolate|mask|only the|outline alone|in isolation|focus just on)\b/i.test(beat.quote) && take === 1) return key('contour-matte', [target])
+    if (target && /\b(?:project|projection|reference line|baseline|datum)\b/i.test(beat.quote) && take === 1) return key('measurement-projection', [target])
+  }
+  const movesAttention = named.length >= 2
+    && /\b(?:from|toward|attention|leads? (?:down|up|to)|moves? (?:down|up|to)|between|overlap(?:s|ping)?|relative to)\b/i.test(beat.quote)
+    && !/\b(?:edit|chang|narrow|widen|shorten|lengthen)\w*/i.test(beat.quote)
+  if (!direction.portraitFX?.lighting && movesAttention && family % 3 === 1
+    && (!direction.profileStudy || direction.profileStudy.view === 'three-quarter' && !direction.profileStudy.contours)) {
+    return exact('feature-match-cut', named.slice(0, 3).map(item => item.anchor), { beats: named.slice(0, 3) })
+  }
+  if (direction.profileStudy) return direction
+  const sectionTitle = /\b(?:next|first|second|third|finally|start with|now for)[,:]?\s+(?:let['’]s (?:look at|talk about)\s+|the\s+)?((?:brows?|eyes?|nose|jaw(?:line)?|cheekbones?|facial (?:thirds|symmetry)|face (?:shape|length)|forehead|mouth|lips?))\b/i.exec(beat.quote)
+  if (sectionTitle && family % 3 === 0 && !direction.portraitFX?.lighting) {
+    return exact('chapter-defocus', [sectionTitle[0]], { label: sectionTitle[1] })
+  }
+  const premise = spokenPremise.exec(beat.quote)
+  if (premise && (!direction.portraitFX?.lighting || family % 2 === 0)) {
+    return exact('premise-revision', [premise[1], premise[2]], { dialogue: [premise[1], premise[2]] })
+  }
+  if (direction.portraitFX?.lighting) return direction
   const cue=viewCue.exec(beat.quote)?.[0]
   const prefer=/three[- ]quarter/i.test(cue??'')?'three-quarter':/profile|side/i.test(cue??'')?'profile':''
-  const references=images.filter(image=>image.id!==source.id && !image.retouch && /three-quarter|profile/.test(image.id))
+  const portraits = images.filter(image => !image.retouch && !image.comparison && ['ready', 'warning'].includes(image.status))
+  const example = referenceExampleSequence(beat.quote, images, family)
+  if (example) return { ...usePresentation(example.presentation), imageId: example.imageId }
+  if (cue && prefer && source.id.includes(prefer) && family % 3 === 1) {
+    const front = portraits.find(image => /(?:^|-)front(?:-|$)/i.test(image.id) && image.dataUrl !== source.dataUrl)
+    if (front) {
+      const companion = portraits.find(image => /three-quarter|profile/.test(image.id) && ![front.dataUrl, source.dataUrl].includes(image.dataUrl))
+      return { ...exact('view-filmstrip', [cue], { imageIds: [source.id, ...(companion ? [companion.id] : [])] }), imageId: front.id }
+    }
+  }
+  if (/profile/.test(source.id)) return direction
+  const mirror = /\b(?:mirror(?: image)?|flipped|reversed)\b/i.exec(beat.quote)?.[0]
+  if (mirror && /\b(?:selfies?|photos?|pictures?|portraits?|face|reflection)\b/i.test(beat.quote)) {
+    return exact('mirror-pair', [mirror])
+  }
+  const thirds = /\b(?:facial thirds|upper third|middle third|lower third|forehead to (?:the )?brows)\b/i.exec(beat.quote)
+  if (thirds && family % 3 === 1) return exact('thirds-transfer', [thirds[0]], { feature: 'whole' })
+  const coverage = /\b(?:(?:hair|fringe|bangs)[^.!?]{0,45}(?:covers?|hides?|reveals?|exposes?|away from|sits? close to (?:the )?brows)|(?:cover|uncover|reveal|expose)[^.!?]{0,30}(?:forehead|brows))\b/i.exec(beat.quote)
+  if (coverage && family % 3 === 2) return exact('coverage-sweep', [coverage[0]], { label: coverage[0], feature: 'whole' })
+  const axes = [...beat.quote.matchAll(/\b(?:width|height|length|horizontal|vertical)\b/gi)]
+  if (family % 3 === 0 && axes.some(match => /width|horizontal/i.test(match[0])) && axes.some(match => /height|length|vertical/i.test(match[0]))) {
+    return exact('axis-tension', axes.slice(0, 4).map(match => match[0]),
+      { feature: /\bface\b/i.test(beat.quote) ? 'whole' : feature, beats: axes.slice(0, 4).map(match => ({ feature, anchor: match[0], label: match[0] })) })
+  }
+  const shape = /\b(?:face shape|oval|round face|square face|outline of (?:the |this )?face|facial outline)\b/i.exec(beat.quote)
+    ?? (/\b(?:face|chin|jawline)\b/i.test(beat.quote) ? /\b(?:outline|outlined|tapers? into)\b/i.exec(beat.quote) : null)
+  if (shape && family % 3 === 2) return exact('contour-construction', [shape[0]], { feature: 'whole' })
+  if (evidence && family % 3 !== 0) return exact(family % 3 === 1 ? 'source-excerpt' : 'source-docket', [evidence.anchor], { studies: [evidence.studyId], dialogue: [evidence.anchor] })
+  const dialogue = /\b(?:comments?|messages?|repl(?:y|ies|ied)|someone (?:said|asked|wrote)|people (?:say|ask|wrote)|(?:we|I) asked)\b/i.test(beat.quote)
+    ? [...beat.quote.matchAll(/["“]([^"”]{3,120})["”]/g)].map(match => match[1]).slice(0, 3) : []
+  if (dialogue.length) {
+    return exact(family === 3 || family === 5 ? 'reply-highlight' : 'conversation', dialogue, { dialogue })
+  }
+  const references=portraits.filter(image=>image.dataUrl !== source.dataUrl && /three-quarter|profile/.test(image.id))
     .sort((a,b)=>Number(Boolean(prefer)&&b.id.includes(prefer))-Number(Boolean(prefer)&&a.id.includes(prefer))).slice(0,2)
   let presentation=planEditorialPresentation(beat.quote,feature,variation,references.length>0,history,family)
   if (!presentation) return direction
@@ -233,15 +371,13 @@ export function referenceEditorialDirection(direction:VideoDirection,beat:Semant
   if (presentation.kind === 'evidence-fan' && references.length < 2) presentation = { ...presentation, kind: 'reference-hinge' }
   if (presentation.kind==='card-morph' && feature!=='whole') presentation={...presentation,kind:'tile-expand'}
   if (presentation.kind==='feature-stack' && colorCue.test(beat.quote)) presentation={...presentation,sampleColors:true}
-  if (presentation.kind==='reference-flip' && prefer && !references[0]?.id.includes(prefer)) presentation={...presentation,kind:'reference-inset'}
+  if (['reference-flip','view-filmstrip'].includes(presentation.kind) && prefer && !references[0]?.id.includes(prefer)) return direction
   if (presentation.kind==='reference-hinge' || presentation.kind==='reference-flip') presentation={...presentation,referenceMode:'asset',assetCaption:references[0]?.name}
-  const named=namedFeatures(beat.quote)
+  const namedAnchors=namedFeatures(beat.quote)
   const distinct=distinctFeatures(beat.quote)
-  const beats=presentation.kind==='reference-flip' && cue?[{feature,anchor:cue}]:
+  const beats=['reference-flip','view-filmstrip'].includes(presentation.kind) && cue?[{feature,anchor:cue}]:
     presentation.kind==='feature-stack'?distinct:
     presentation.kind==='paired-detail'?distinct.slice(0,2):
-    named.length?named:[{feature,anchor:beat.quote.split(/\s+/).slice(0,6).join(' ')}]
-  history.push(presentation.kind)
-  if(decision)decision.reason+=` Editorial treatment: ${presentation.kind}.`
-  return {...direction,presentation:{...presentation,feature,imageIds:references.map(image=>image.id),beats},featureStudy:undefined,portraitCrop:undefined,portraitProgram:undefined,portraitFX:undefined,overlay:'none'}
+    namedAnchors.length?namedAnchors:[{feature,anchor:beat.quote.split(/\s+/).slice(0,6).join(' ')}]
+  return usePresentation({...presentation,feature,imageIds:references.map(image=>image.id),beats})
 }

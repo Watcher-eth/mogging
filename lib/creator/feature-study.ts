@@ -1,3 +1,5 @@
+import { editorialBackground } from './editorial-layout'
+import { photoStudyGesture, photoStudyRegions } from './video-photo-study'
 import { sampleEditorialCursor, drawEditorialCursor, editorialCursorTiming } from './editorial-cursor'
 import { drawEditorialTool, drawEditorialFeatheredReveal, drawEditorialInset, drawEditorialLeader, drawEditorialLocator, drawEditorialWipeHandle } from './editorial-motion'
 import { applyGlassInk } from './glass-overlay'
@@ -7,6 +9,8 @@ import { measuredProportionWarp, drawNaturalFreckles } from './portrait-detail-e
 import { drawPortraitActivity, drawPortraitLabel, type PortraitActivity } from './portrait-program'
 import { visualFeatures } from './video-semantics'
 import { smoothMotion, videoContent, videoSize } from './video-layout'
+import { sceneWordStart } from './video-script'
+import type { VideoScene } from './video-composition'
 import { originalVideoContext, isDarkVideoContext } from './video-theme'
 import { drawPortraitColorExtension, drawPortraitProgressiveBlur } from './report-portrait'
 import { portraitImageFrame, portraitDetailRegion } from './video-portrait'
@@ -16,6 +20,7 @@ import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
 export const featureTopics = ['philtrum', 'freckles', 'facial-hair', 'ears', 'symmetry', 'dimorphism'] as const
 export type FeatureTopic = typeof featureTopics[number]
 export const featureTopicLabels: Record<FeatureTopic, string> = { philtrum: 'Philtrum length', freckles: 'Freckles', 'facial-hair': 'Facial hair', ears: 'Ear prominence', symmetry: 'Facial symmetry', dimorphism: 'Facial shape' }
+export const narratedEvidenceLayouts = ['columns', 'offset', 'stacked', 'contact-sheet', 'overlap', 'gate'] as const
 export const featureStudySchema = z.object({
   editorial: z.boolean().optional(),
   opening: z.enum(['lip-choice', 'jaw-choice', 'jaw-width-choice', 'smile-choice']).optional(),
@@ -25,7 +30,14 @@ export const featureStudySchema = z.object({
   guidesDuringEdit: z.boolean().optional(),
   annotationStyle: z.enum(['circle', 'guide', 'leader']).optional(),
   tool: z.enum(['brush','clipper']).optional(),
-  comparison: z.enum(['blend', 'wipe', 'spotlight']).optional(),
+  comparison: z.enum(['blend', 'wipe', 'spotlight', 'drop', 'mesh']).optional(),
+  editWord: z.number().int().nonnegative().optional(),
+  axis: z.enum(['x', 'y', 'both']).optional(),
+  evidence: z.object({
+    layout: z.enum(narratedEvidenceLayouts),
+    initial: z.number().int().min(0).max(1).optional(),
+    events: z.array(z.object({ photo: z.number().int().min(0).max(1).nullable(), word: z.number().int().nonnegative() }).strict()).max(4),
+  }).strict().optional(),
   revealWord: z.number().int().nonnegative().optional(),
   labels: z.array(z.string().max(60)).max(4).optional(),
   footnote: z.string().max(120).optional(),
@@ -136,9 +148,14 @@ export function featureTarget(landmarks: FaceLandmarksPayload, topic: FeatureStu
     : midpoint(midpoint(left, right), chin)
   return { center, eyeWidth }
 }
-export function featureWarp(landmarks: FaceLandmarksPayload, topic: FeatureStudy['topic'], amount: number, adjustment?: 'thirds'|'width'): PortraitWarp | undefined {
+export function featureWarp(landmarks: FaceLandmarksPayload, topic: FeatureStudy['topic'], amount: number, adjustment?: 'thirds'|'width', axis?: FeatureStudy['axis']): PortraitWarp | undefined {
   if (adjustment) return measuredProportionWarp(landmarks,adjustment,amount)
-  if (!(featureTopics as readonly string[]).includes(topic) || ['freckles','facial-hair'].includes(topic) || !amount) return
+  if (!amount) return
+  if (topic === 'eyes' || topic === 'brows' || topic === 'nose' || topic === 'lips' || topic === 'jaw' || topic === 'cheeks') {
+    const regions = photoStudyRegions(landmarks, topic)
+    return photoStudyGesture({ feature: topic, axis: axis ?? 'x', mode: 'stretch', amount: amount * .055 }, regions, 1, 2, true, landmarks).warp
+  }
+  if (!(featureTopics as readonly string[]).includes(topic) || ['freckles','facial-hair'].includes(topic)) return
   const { eyeWidth } = featureTarget(landmarks, topic), a = landmarks.anchors
   const ratio = landmarks.image.width / landmarks.image.height
   const points = topic === 'philtrum' ? [a.mouthCenter ?? a.upperLip] : topic === 'ears' ? [a.leftCheek, a.rightCheek] : topic === 'symmetry' ? [a.leftPupil, a.rightPupil, a.mouthLeft, a.mouthRight] : [a.jawLeft, a.jawRight, a.leftBrow, a.rightBrow]
@@ -432,7 +449,242 @@ function drawFeatureOpening(ctx: CanvasRenderingContext2D, study: FeatureStudy, 
   if (smile) drawGuessSpinner(ctx, maskY + 175, clockMs, (1 - smoothMotion(reveal * 4)) * (1 - expansion), reduced)
 }
 
-export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureStudy, photo: FeaturePhoto, variants: FeaturePhoto[], localMs: number, _durationMs: number, reduced: boolean, previous?: FeatureStudy, activity?: PortraitActivity, instrument?: PortraitInstrument, clockMs = localMs, captureMetric?: (ctx: CanvasRenderingContext2D, width: number, height: number, warp?: ReturnType<typeof featureWarp>) => void, comparisonClock: { timeMs: number; durationMs: number; previousFrame?: Frame; matteProgress?: number; revealMs?: number } = { timeMs: localMs, durationMs: _durationMs }) {
+export function narratedEvidenceFrames(layout: NonNullable<FeatureStudy['evidence']>['layout'], focus?: number): Frame[] {
+  const { width, height } = videoSize
+  const margin = width * .055, gap = width * .02, card = (width - margin * 2 - gap) / 2
+  const frame = (x: number, y: number, w: number, h: number) =>
+    ({ x: width * x, y: height * y, width: width * w, height: height * h })
+  const frames = (() => {
+    switch (layout) {
+      case 'stacked': return [frame(.12, .25, .63, .29), frame(.25, .57, .63, .29)]
+      case 'contact-sheet': return [frame(.085, .31, .40, .50), frame(.515, .31, .40, .50)]
+      case 'overlap': return [frame(.055, .28, .47, .49), frame(.455, .40, .49, .48)]
+      case 'gate': return [frame(0, .24, .496, .66), frame(.504, .24, .496, .66)]
+      default: return [
+        { x: margin, y: height * (layout === 'offset' ? .285 : .33), width: card, height: height * .49 },
+        { x: margin + card + gap, y: height * (layout === 'offset' ? .39 : .33), width: card, height: height * .49 },
+      ]
+    }
+  })()
+  if (focus === undefined) return frames
+  frames[focus] = { x: 0, y: height * .20, width, height: height * .8 }
+  frames[1 - focus] = layout === 'stacked'
+    ? { ...frames[1 - focus], y: focus === 0 ? height + gap : -frames[0].height - gap }
+    : { ...frames[1 - focus], x: focus === 0 ? width + gap : -frames[0].width - gap }
+  return frames
+}
+
+function narratedEvidencePlacement(item: FeaturePhoto, frame: Frame, focused: boolean) {
+  if (focused) return featurePlacement(item, 'hero', frame, 'whole')
+  const image = item.image
+  const scale = Math.max(frame.width / image.width, frame.height / image.height)
+  const width = image.width * scale, height = image.height * scale
+  const anchors = item.landmarks?.anchors
+  const x = anchors?.noseTip?.x ?? .5
+  const y = anchors?.forehead && anchors.chin ? (anchors.forehead.y + anchors.chin.y) / 2 : .44
+  const position = (target: number, frameSize: number, scaledSize: number) => Math.max(frameSize - scaledSize, Math.min(0, frameSize / 2 - scaledSize * target))
+  return { x: frame.x + position(x, frame.width, width), y: frame.y + position(y, frame.height, height), width, height }
+}
+
+export function narratedEvidenceClock(scenes: VideoScene[], scene: VideoScene, localMs: number) {
+  let index = scenes.indexOf(scene)
+  const study = scene.featureStudy!
+  const evidence = study.evidence!
+  let initial = evidence.initial
+  const events = evidence.events.map(event => ({ photo: event.photo, at: sceneWordStart(scene, event.word) }))
+  while (index > 0) {
+    const prior = scenes[--index], previous = prior.featureStudy
+    if (!previous?.evidence || previous.evidence.layout !== evidence.layout ||
+        previous.images[0] !== study.images[0] || previous.images[1] !== study.images[1] ||
+        previous.labels?.join('|') !== study.labels?.join('|')) break
+    const last = previous.evidence.events.at(-1)
+    const settled = last ? last.photo ?? undefined : previous.evidence.initial
+    if (settled !== initial) break
+    const offset = prior.startMs - scene.startMs
+    if (last ? offset + sceneWordStart(prior, last.word) + 560 <= 0 : offset + prior.durationMs + 560 <= 0) break
+    initial = previous.evidence.initial
+    events.unshift(...previous.evidence.events.map(event => ({ photo: event.photo, at: offset + sceneWordStart(prior, event.word) })))
+  }
+  return { events, initial, localMs }
+}
+
+export function drawNarratedEvidence(
+  ctx: CanvasRenderingContext2D, study: FeatureStudy, photos: FeaturePhoto[],
+  { events, initial, localMs }: ReturnType<typeof narratedEvidenceClock>, reduced: boolean, dark = isDarkVideoContext(ctx),
+) {
+  const evidence = study.evidence
+  if (!evidence || photos.length < 2) return
+  const contact = evidence.layout === 'contact-sheet'
+  const gate = evidence.layout === 'gate'
+  const pose = (focus?: number) => ({
+    focus,
+    zoom: focus === undefined ? 0 : 1,
+    photos: narratedEvidenceFrames(evidence.layout, focus).map((frame, index) => ({
+      frame, appearance: narratedEvidencePlacement(photos[index], frame, focus === index),
+      radius: gate || focus === index ? 0 : 24,
+    })),
+  })
+  const interpolate = (from: ReturnType<typeof pose>, to: ReturnType<typeof pose>, elapsed: number) => {
+    if (elapsed >= 560 || reduced) return to
+    const amount = smoothMotion(elapsed / 560)
+    return {
+      focus: to.focus,
+      zoom: from.zoom + (to.zoom - from.zoom) * amount,
+      photos: to.photos.map((target, index) => ({
+        frame: featureFrameAt(from.photos[index].frame, target.frame, elapsed),
+        appearance: featureFrameAt(from.photos[index].appearance, target.appearance, elapsed),
+        radius: from.photos[index].radius + (target.radius - from.photos[index].radius) * amount,
+      })),
+    }
+  }
+  let from = pose(initial), to = from, at = -560
+  for (const event of events) {
+    if (event.at > localMs) break
+    from = interpolate(from, to, event.at - at)
+    to = pose(event.photo ?? undefined)
+    at = event.at
+  }
+  const { focus, zoom, photos: positions } = interpolate(from, to, localMs - at)
+  const { height, width } = videoSize
+  ctx = originalVideoContext(ctx)
+  ctx.save()
+  ctx.fillStyle = editorialBackground(dark)
+  ctx.fillRect(0, 0, width, height)
+  if (contact && zoom < 1) {
+    ctx.save()
+    ctx.globalAlpha *= 1 - zoom
+    ctx.fillStyle = dark ? '#242426' : '#e9e9e6'
+    ctx.beginPath(); ctx.roundRect(width * .062, height * .282, width * .876, height * .568, 28); ctx.fill()
+    ctx.fillStyle = dark ? '#626268' : '#a9a9a5'
+    for (let i = 0; i < 12; i++) {
+      const x = width * (.095 + i * .0735)
+      ctx.fillRect(x, height * .292, 19, 8)
+      ctx.fillRect(x, height * .824, 19, 8)
+    }
+    ctx.restore()
+  }
+  for (const index of focus === 0 && evidence.layout !== 'overlap' ? [1, 0] : [0, 1]) {
+    const item = photos[index], { frame, appearance, radius } = positions[index]
+    if (frame.x > width || frame.x + frame.width < 0 || frame.y > height || frame.y + frame.height < 0) continue
+    const raw = item.original ?? item.image
+    ctx.save()
+    ctx.beginPath(); ctx.roundRect(frame.x, frame.y, frame.width, frame.height, radius); ctx.clip()
+    ctx.drawImage(raw, appearance.x, appearance.y, appearance.width, appearance.height)
+    const label = study.labels?.[index]
+    if (!label) { ctx.restore(); continue }
+    ctx.font = '500 26px "Mogging Share",Arial,sans-serif'
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'
+    const labelWidth = ctx.measureText(label).width
+    const alignRight = index === 1 && (gate || evidence.layout === 'overlap')
+    const x = alignRight ? Math.min(frame.x + frame.width - labelWidth - 49, width * .865 - labelWidth - 32) : Math.max(frame.x, 36) + 16
+    const y = frame.y + 28
+    ctx.fillStyle = dark ? '#202022eb' : '#fffffff2'
+    ctx.beginPath(); ctx.roundRect(x, y, labelWidth + 32, 48, 24); ctx.fill()
+    ctx.fillStyle = dark ? '#f5f5f5' : '#232325'
+    ctx.fillText(label, x + 16, y + 24)
+    ctx.restore()
+  }
+  if (gate && zoom < 1) {
+    ctx.save()
+    ctx.globalAlpha *= 1 - zoom
+    ctx.strokeStyle = dark ? '#f5f5f570' : '#60606590'
+    ctx.lineWidth = 2
+    ctx.setLineDash([5, 12])
+    ctx.beginPath(); ctx.moveTo(width / 2, height * .23); ctx.lineTo(width / 2, height * .91); ctx.stroke()
+    ctx.restore()
+  }
+  if (zoom) {
+    ctx.globalAlpha *= zoom
+    const fade = ctx.createLinearGradient(0, height * .84, 0, height)
+    fade.addColorStop(0, editorialBackground(dark) + '00')
+    fade.addColorStop(1, editorialBackground(dark))
+    ctx.fillStyle = fade; ctx.fillRect(0, height * .84, width, height * .16)
+  }
+  ctx.restore()
+}
+
+function retouchMeshGesture(photo: FeaturePhoto, study: FeatureStudy, placement: Frame, time: number, at: number, reduced: boolean) {
+  if (!photo.landmarks) return
+  const warp = featureWarp(photo.landmarks, study.topic, study.edit, study.adjustment, study.axis)
+  if (!warp?.regions.length) return
+  const region = warp.regions[0]
+  const origin = warp.axis === 'y' ? { x: region.x, y: region.y + region.ry * .53 } : { x: region.x + region.rx * .53, y: region.y }
+  const moved = warpDestinationPoint(origin, warp)
+  const screen = (point: Point) => ({ x: placement.x + placement.width * point.x, y: placement.y + placement.height * point.y })
+  const from = screen(origin), to = screen(moved)
+  const cursor = sampleEditorialCursor(time, from, to, at + 440, 0, 'drag', reduced)
+  const elapsed = Math.max(0, Math.min(1, (time - cursor.downAtMs) / Math.max(1, cursor.clickAtMs - cursor.downAtMs)))
+  const strength = reduced ? Number(time >= at) : 1 - (1 - elapsed) ** 3
+  return { warp, cursor, strength, region }
+}
+
+function drawRetouchMesh(ctx: CanvasRenderingContext2D, gesture: NonNullable<ReturnType<typeof retouchMeshGesture>>, placement: Frame, time: number) {
+  const { warp, region, cursor, strength } = gesture
+  const opacity = smoothMotion((time - cursor.downAtMs) / 160) * (1 - smoothMotion((time - cursor.clickAtMs - 740) / 380))
+  const cursorKind = warp.axis === 'y' ? 'crosshair' : 'resize-horizontal'
+  if (!opacity) { drawEditorialCursor(ctx, cursor, cursorKind); return }
+  const partial = { ...warp, strengths: warp.strengths.map(value => value * strength), shifts: warp.shifts?.map(point => ({ x: point.x * strength, y: point.y * strength })) }
+  const width = region.rx * 1.30, height = region.ry * 1.25
+  const project = (x: number, y: number) => {
+    const point = warpDestinationPoint({ x, y }, partial)
+    return { x: placement.x + point.x * placement.width, y: placement.y + point.y * placement.height }
+  }
+  ctx.save(); ctx.globalAlpha *= opacity
+  applyGlassInk(ctx, 1, 2.35)
+  ctx.setLineDash([3, 6])
+  for (let axis = 0; axis < 2; axis++) for (let i = 0; i < 5; i++) {
+    ctx.beginPath()
+    for (let j = 0; j < 13; j++) {
+      const x = region.x + width * ((axis ? j / 12 : i / 4) * 2 - 1)
+      const y = region.y + height * ((axis ? i / 4 : j / 12) * 2 - 1)
+      const point = project(x, y)
+      if (j) ctx.lineTo(point.x, point.y); else ctx.moveTo(point.x, point.y)
+    }
+    ctx.stroke()
+  }
+  ctx.setLineDash([])
+  for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) {
+    const point = project(region.x + width * (i / 2 - 1), region.y + height * (j / 2 - 1))
+    ctx.beginPath(); ctx.arc(point.x, point.y, 3.5, 0, Math.PI * 2); ctx.fill()
+  }
+  ctx.restore()
+  drawEditorialCursor(ctx, cursor, cursorKind)
+}
+
+function drawRetouchDrop(ctx: CanvasRenderingContext2D, photo: FeaturePhoto, frame: Frame, target: { x: number; y: number }, at: number, time: number, dark: boolean) {
+  const size = 170, origin = { x: target.x < videoSize.width / 2 ? videoSize.width * .76 : videoSize.width * .23, y: Math.max(frame.y + 155, target.y - 300) }
+  const cursor = sampleEditorialCursor(time, origin, target, at, 1, 'drag')
+  const start = smoothMotion((time - Math.max(0, cursor.downAtMs - 180)) / 180)
+  const burst = smoothMotion(cursor.effectMs / 620), end = 1 - smoothMotion((cursor.effectMs - 520) / 230)
+  if (!start || !end) return
+  ctx.save()
+  ctx.globalAlpha *= start * end
+  if (!cursor.clicked) {
+    const x = cursor.x - size * .5, y = cursor.y - size * .72
+    ctx.save(); ctx.shadowColor = '#00000033'; ctx.shadowBlur = 30
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(x, y, size, size, 24); ctx.fill(); ctx.restore()
+    ctx.save(); ctx.beginPath(); ctx.roundRect(x + 6, y + 6, size - 12, size - 12, 20); ctx.clip()
+    const crop = Math.min(photo.image.width, photo.image.height) * .68
+    ctx.drawImage(photo.image, (photo.image.width - crop) * .5, (photo.image.height - crop) * .37, crop, crop, x + 6, y + 6, size - 12, size - 12)
+    ctx.restore()
+  } else if (burst < 1) {
+    const step = 14, radius = 30 + burst * 155
+    ctx.fillStyle = dark ? '#ffffff' : '#e8e8e8'
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2
+    for (let row = -12; row <= 12; row++) for (let col = -12; col <= 12; col++) {
+      const distance = Math.hypot(row, col) * step
+      if (Math.abs(distance - radius) > 24) continue
+      ctx.globalAlpha = (1 - burst) * (1 - Math.abs(distance - radius) / 24) * .78
+      ctx.fillRect(target.x + col * step, target.y + row * step, 3, 3)
+    }
+    ctx.globalAlpha = (1 - burst) * .7
+    ctx.beginPath(); ctx.arc(target.x, target.y, radius * .54, 0, Math.PI * 2); ctx.stroke()
+  }
+  ctx.restore()
+  drawEditorialCursor(ctx, cursor)
+}
+
+export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureStudy, photo: FeaturePhoto, variants: FeaturePhoto[], localMs: number, _durationMs: number, reduced: boolean, previous?: FeatureStudy, activity?: PortraitActivity, instrument?: PortraitInstrument, clockMs = localMs, captureMetric?: (ctx: CanvasRenderingContext2D, width: number, height: number, warp?: ReturnType<typeof featureWarp>) => void, comparisonClock: { timeMs: number; durationMs: number; previousFrame?: Frame; matteProgress?: number; revealMs?: number; editMs?: number } = { timeMs: localMs, durationMs: _durationMs }) {
   const dark = isDarkVideoContext(ctx), ink = dark ? '#f2eee5' : '#171717', panel = dark ? '#1b1b1b' : '#f5f4f1'
   ctx = originalVideoContext(ctx)
   if (study.layout === 'evidence') {
@@ -535,6 +787,8 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
   const wipeProgress = featureWipeProgress(comparisonClock.timeMs,comparisonClock.durationMs,reduced)
   const continuedWipe = wipe && comparisonClock.timeMs>localMs
   const count = Math.max(frames.length, prior.length)
+  const editAt = comparisonClock.editMs
+  const dropAt = editAt === undefined ? undefined : Math.max(200, editAt)
   let primary: Frame | undefined
   for (let index = 0; index < count; index++) {
     const target = frames[index] ?? prior[index], from = prior[index] ?? frames[index]
@@ -550,7 +804,12 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
     const placement = continuedWipe || comparing && (!previous || previous.layout === 'compare') ? after : featureFrameAt(before, after, localMs, reduced)
     if (index === 0) primary = placement
     const initialEdit = previous ? editForCell(previous, index) : 0
-    const development = reduced || study.comparison === 'wipe' || textureEdit && study.layout === 'compare' ? 1 : smoothMotion(localMs / Math.max(700, _durationMs * .78))
+    const elapsed = editAt === undefined ? localMs : localMs - (study.comparison === 'drop' ? dropAt! : editAt)
+    const mesh = index === 0 && study.comparison === 'mesh' && editAt !== undefined
+      ? retouchMeshGesture(item, study, placement, localMs, editAt, reduced) : undefined
+    const development = mesh ? mesh.strength : editAt === undefined
+      ? reduced || wipe || textureEdit && comparing ? 1 : smoothMotion(localMs / Math.max(700, _durationMs * .78))
+      : reduced || wipe ? Number(elapsed >= 0) : smoothMotion(elapsed / 620)
     const edit = initialEdit + (editForCell(study, index) - initialEdit) * development
     ctx.save()
     // The persistent first portrait is always opaque. Only arriving/departing cards fade.
@@ -567,7 +826,7 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
       if (textureEdit) {
         if (edit && variant) registeredWarp = drawRegisteredEdit(target, source, variant, study.topic, edit)
         else target.drawImage(raw ? item.original ?? item.image : item.image, 0, 0)
-      } else if (edit && item.landmarks) drawPortraitEffects(target, raw ? item.original ?? item.image : item.image, { landmarks: item.landmarks, warp: featureWarp(item.landmarks, study.topic, edit, study.adjustment) })
+      } else if (edit && item.landmarks) drawPortraitEffects(target, raw ? item.original ?? item.image : item.image, { landmarks: item.landmarks, warp: featureWarp(item.landmarks, study.topic, edit, study.adjustment, study.axis) })
       else target.drawImage(raw ? item.original ?? item.image : item.image, 0, 0)
     }
     if ((comparing || comparisonClock.previousFrame) && photo.original) {
@@ -576,7 +835,7 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
       drawBackgroundRoll(ctx,item.image.width,item.image.height,Math.max(comparisonClock.matteProgress ?? 0,comparing ? expansion : Math.max(expansion,progress)),target=>drawEdit(target,true),target=>drawEdit(target))
     } else if (study.comparison === 'wipe' && edit) {
       ctx.drawImage(item.image, 0, 0)
-      const reveal = study.editorial && reduced ? 1 : wipeProgress
+      const reveal = editAt !== undefined ? reduced ? 1 : smoothMotion((localMs - editAt) / 450) : study.editorial && reduced ? 1 : wipeProgress
       if (study.editorial && typeof document !== 'undefined') {
         drawEditorialFeatheredReveal(ctx, item.image.width, item.image.height, reveal, drawEdit)
       } else {
@@ -598,12 +857,13 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
       if(!activity) drawPortraitInstruments(ctx,item.landmarks,item.image.width,item.image.height,instrument,cursorDetail?guideElapsed:localMs,reduced)
     }
     if (index === 0 && activity && showGuides) {
-      const warp=registeredWarp ?? (!textureEdit && item.landmarks ? featureWarp(item.landmarks,study.topic,edit,study.adjustment) : undefined)
+      const warp=registeredWarp ?? (!textureEdit && item.landmarks ? featureWarp(item.landmarks,study.topic,edit,study.adjustment,study.axis) : undefined)
       drawPortraitActivity(ctx,cursorDetail?{...activity,phase:Math.min(activity.phase,smoothMotion(guideElapsed/650)),blend:Math.min(activity.blend,smoothMotion(guideElapsed/650)),labelPhase:Math.min(activity.labelPhase,smoothMotion(guideElapsed/650)),elapsedMs:Math.min(activity.elapsedMs,guideElapsed)}:activity,item.image.width,item.image.height,warp)
       if (frames.length === 1 && prior.length === 1) captureMetric?.(ctx, item.image.width, item.image.height, warp)
     }
     if (showGuides && !activity && !instrumentOwnsGuides(instrument) && index === 0 && frames.length === 1) drawNote(ctx, photo, study, reduced ? 1 : smoothMotion(guideElapsed / 650))
     ctx.restore()
+    if (mesh && !reduced) drawRetouchMesh(ctx, mesh, placement, localMs)
     const fadeOpacity = (prior.length === 1 ? 1 - progress : 0) + (frames.length === 1 ? progress : 0)
     if (index === 0 && fadeOpacity > 0) {
       ctx.save(); ctx.globalAlpha *= fadeOpacity; ctx.translate(0, frame.y)
@@ -628,11 +888,17 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
     ctx.fillStyle = fade; ctx.fillRect(0, videoSize.height - 330, videoSize.width, 330); ctx.restore()
   }
   if (study.editorial && study.comparison === 'wipe' && study.edit && !reduced && !comparing && primary) {
-    const amount = wipeProgress
+    const amount = editAt === undefined ? wipeProgress : smoothMotion((localMs - editAt) / 450)
     const frame = featureClipFrame(study.layout,frames[0])
     const focus = photo.landmarks ? featureTarget(photo.landmarks,study.topic).center : {y:.48}
     const y=Math.min(frame.y+frame.height-160,Math.max(videoSize.height*.30,primary.y+primary.height*focus.y))
     drawEditorialWipeHandle(ctx,{x:frame.x,y:frame.y,w:frame.width,h:frame.height*.89},primary.x+primary.width*amount,y,amount)
+  }
+  if (primary && photo.landmarks && study.comparison === 'drop' && dropAt !== undefined && !reduced) {
+    const target = featureTarget(photo.landmarks, study.topic).center
+    drawRetouchDrop(ctx, textureEdit ? variants[0] ?? photo : photo, featureFrames(study.layout)[0], {
+      x: primary.x + primary.width * target.x, y: primary.y + primary.height * target.y,
+    }, dropAt, localMs, dark)
   }
   const reference = variants[1]
   if (cursorDetail && reference && reference.landmarks && photo.landmarks && primary) {

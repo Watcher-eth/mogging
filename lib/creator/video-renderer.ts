@@ -1,3 +1,4 @@
+import { sourceUnframeViewport } from './editorial-sequences'
 import { videoExportCacheKey, readVideoExport, saveVideoExport } from './video-export-cache'
 import { drawSculptureReport, drawSculptureReportInvitation, sculptureReportMetric } from './sculpture-report'
 import { drawSculptureCaption } from './sculpture-script-renderer'
@@ -18,7 +19,7 @@ import { drawSpokenScore } from './spoken-score'
 import { drawScientificEvidence } from './video-research'
 import { editorialCueTiming, scriptVisualSeed, sceneWordStart } from './video-script'
 import { portraitOverlayWindowMs, narratedPortraitProgram, portraitProgramRuns, preparePortraitProgram, samplePortraitProgram, drawPortraitActivity, drawStudyPortraitActivity, drawStudyMarginDiagram, type PortraitProgramRun, type PreparedPortraitProgram } from './portrait-program'
-import { drawFeatureStudy, prepareFeatureEdit, type FeaturePhoto } from './feature-study'
+import { narratedEvidenceClock, drawNarratedEvidence, drawFeatureStudy, prepareFeatureEdit, type FeaturePhoto } from './feature-study'
 import { videoThemeContext, originalVideoContext, darkVideoColor } from './video-theme'
 import { portraitOverlayAppearance } from './portrait-print'
 import { preparePortraitPrint } from './editorial-posters'
@@ -80,7 +81,11 @@ async function prepareContextForVideo(prepared:PreparedVideo){
       const duration=(p.mediaOffsetMs??0)+(p.holdMediaAtMs??clock.duration)
       const asset=prepared.composition.media!.find(asset=>asset.id===id)!
       let video=videos.get(id)
-      if(!video){video=await loadContextVideo(asset,duration,{width:1080*.76,height:1920*.28});videos.set(id,video)}
+      if(!video){
+        const expands = shots.some(shot => shot.presentation?.mediaId === id && shot.presentation.kind === 'social-unframe')
+        const viewport = expands ? sourceUnframeViewport : { width: 1080 * .76, height: 1920 * .28 }
+        video=await loadContextVideo(asset,duration,viewport);videos.set(id,video)
+      }
       else if(video.duration*1000+34<duration)throw new Error('Choose footage long enough for every referenced scene')
       const target=prepared.scenes.get(scene.id)!
       target.presentationPhotos=[target.presentationPhotos![0],{image:video,label:asset.source.author}]
@@ -129,7 +134,7 @@ function surface() {
 }
 
 export async function prepareVideo(compositionValue: VideoComposition, images: GeneratorImage[], purpose: 'video' | 'selection' = 'video', options: { keepPortraitBackground?: boolean; registerPortraits?: boolean; signal?: AbortSignal } = {}): Promise<PreparedVideo> {
-  const composition = parseComposition(compositionValue)
+  let composition = parseComposition(compositionValue)
   const { signal } = options
   signal?.throwIfAborted()
   const requiredIds = videoImageIds(composition.scenes)
@@ -142,7 +147,7 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
   const decoded = new Map<string, HTMLImageElement>()
   const editImageIds = new Set(composition.scenes.flatMap(scene => scene.featureStudy?.edit
     ? [scene.source.imageId, ...(scene.featureStudy.editMode === 'photo' ? scene.featureStudy.images : [])]
-    : []))
+    : scene.photoStudy ? [scene.source.imageId] : []))
   const needsRegistration = required.filter(source => source.purpose !== 'reference' && (
     !source.landmarks && (options.registerPortraits || editImageIds.has(source.id) || composition.recipe === 'documentary-studio')
     || source.landmarks?.source === 'mediapipe-face-landmarker' && source.landmarks.contours?.leftBrow?.length === 5
@@ -171,6 +176,21 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
     purpose === 'video' && composition.scenes.some(scene => scene.presentation || scene.featureStudy?.editorial) ? prepareEditorialCursors() : undefined,
   ])
   signal?.throwIfAborted()
+  const checkedMorphs = new Map<string, boolean>()
+  const scenesWithUsableMorphs = composition.scenes.map(scene => {
+    const feature = scene.photoStudy?.inferred ? scene.photoStudy.feature
+      : scene.featureStudy?.editWord !== undefined && scene.featureStudy.axis && scene.featureStudy.editMode === 'warp' ? scene.featureStudy.topic : undefined
+    if (!feature || !scene.source.imageId || !['eyes', 'brows', 'nose', 'lips', 'jaw', 'cheeks', 'face-width'].includes(feature)) return scene
+    const key = `${scene.source.imageId}/${feature}`
+    if (!checkedMorphs.has(key)) {
+      try {
+        photoStudyRegions(imageById.get(scene.source.imageId)?.landmarks, feature as Parameters<typeof photoStudyRegions>[1])
+        checkedMorphs.set(key, true)
+      } catch { checkedMorphs.set(key, false) }
+    }
+    return checkedMorphs.get(key) ? scene : { ...scene, photoStudy: undefined, featureStudy: undefined }
+  })
+  if (scenesWithUsableMorphs.some((scene, index) => scene !== composition.scenes[index])) composition = { ...composition, scenes: scenesWithUsableMorphs }
   if (composition.recipe === 'documentary-studio') {
     const { prepareDocumentary } = await import('./video-documentary')
     return { composition, brand, scenes: new Map(), incoming: surface(), outgoing: surface(), documentary: await prepareDocumentary(composition, [...imageById.values()], decoded, brand) }
@@ -218,7 +238,7 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
   let priorFrame: VideoFrame | undefined
   let previousScene: VideoScene | undefined
   const annotationRuns=portraitProgramRuns(composition.scenes.map((scene,index)=>{
-    const photographed=!scene.sculpture && scene.photoStudy?.startWord === undefined && scene.featureStudy?.revealWord === undefined && (scene.source.kind==='portrait'||scene.source.kind==='report'&&['scores','features'].includes(scene.focus))
+    const photographed=!scene.sculpture && scene.photoStudy?.startWord === undefined && scene.featureStudy?.revealWord === undefined && scene.featureStudy?.editWord === undefined && !scene.featureStudy?.evidence && (scene.source.kind==='portrait'||scene.source.kind==='report'&&['scores','features'].includes(scene.focus))
     return {...scene,portraitProgram:photographed?scene.portraitProgram??(!scene.profileStudy?narratedPortraitProgram(scene.narration,composition.recipe,index,scene.source.categoryId):undefined):undefined}
   }))
   const programs=new Map<PortraitProgramRun,PreparedPortraitProgram>()
@@ -318,7 +338,7 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
       if (!asset.graphicSpecimen) throw new Error('Feature graphics need a detected portrait. Add and analyze a face photo first.')
     }
     if (scene.featureStudy) {
-      asset.featurePhotos = scene.featureStudy.revealWord === undefined
+      asset.featurePhotos = scene.featureStudy.revealWord === undefined && !scene.featureStudy.evidence
         ? await Promise.all(scene.featureStudy.images.map(featurePhoto))
         : scene.featureStudy.images.map(id => ({ image: decoded.get(id)!, landmarks: imageById.get(id)?.landmarks }))
       if (scene.featureStudy.editMode === 'photo' && scene.featureStudy.edit && asset.portrait && asset.featurePhotos[0]) prepareFeatureEdit({ image: asset.portrait, landmarks: asset.studyLandmarks }, asset.featurePhotos[0], scene.featureStudy.topic)
@@ -904,14 +924,17 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
     const hold = !reduced && sharesEditorialPortrait(scene, next)
     renderEditorialScene(ctx, editorial.presentation, editorial.feature, editorial.primary, editorial.references, size,
       editorial.clock.time, editorial.clock.duration, reduced, editorial.events, { from, amount: editorial.clock.time / transitionMs, hold })
+  } else if (scene.featureStudy?.evidence) {
+    drawNarratedEvidence(ctx, scene.featureStudy, asset.featurePhotos ?? [],
+      narratedEvidenceClock(prepared.composition.scenes, scene, localMs), reduced)
   } else if (scene.featureStudy && asset.portrait) {
     const previous = prepared.composition.scenes[prepared.composition.scenes.indexOf(scene) - 1]
-    const revealWord = scene.featureStudy.revealWord
-    const clock = scene.featureStudy.comparison==='wipe' && !scene.featureStudy.opening && revealWord===undefined
+    const { revealWord, editWord } = scene.featureStudy
+    const clock = scene.featureStudy.comparison==='wipe' && !scene.featureStudy.opening && revealWord===undefined && editWord===undefined
       ? editorialSceneClock(prepared.composition.scenes,scene,localMs,'featureStudy') : undefined
     const comparisonClock = clock ? {timeMs:clock.time,durationMs:clock.duration}
       : revealWord === undefined ? undefined : { timeMs: localMs, durationMs: scene.durationMs, revealMs: sceneWordStart(scene, revealWord) }
-    drawFeatureStudy(ctx, scene.featureStudy, { image: asset.portrait, landmarks: asset.studyLandmarks, headTop: asset.portraitHeadTop }, asset.featurePhotos ?? [], localMs, scene.durationMs, reduced, previous?.source.imageId === scene.source.imageId ? previous.featureStudy : undefined, activity, scene.portraitFX?.instrument, localMs, undefined, comparisonClock)
+    drawFeatureStudy(ctx, scene.featureStudy, { image: asset.portrait, landmarks: asset.studyLandmarks, headTop: asset.portraitHeadTop }, asset.featurePhotos ?? [], localMs, scene.durationMs, reduced, previous?.source.imageId === scene.source.imageId ? previous.featureStudy : undefined, activity, scene.portraitFX?.instrument, localMs, undefined, editWord === undefined ? comparisonClock : { timeMs: localMs, durationMs: scene.durationMs, editMs: sceneWordStart(scene, editWord) })
   } else if (scene.source.kind === 'explainer') {
     const previous = prepared.composition.scenes[prepared.composition.scenes.findIndex(item => item.id === scene.id) - 1]
     drawExplainer(ctx, scene, localMs, reduced, paint, previous?.source.kind === 'explainer' ? previous.graphic : undefined, measuring ? undefined : prepared.anatomy, asset.anatomyRegistration, asset.graphicCaptionHeight, asset.graphicSpecimen, asset.graphicStartMs === undefined ? undefined : { elapsed: scene.startMs + localMs - asset.graphicStartMs, duration: asset.graphicEndMs! - asset.graphicStartMs })
@@ -1142,9 +1165,9 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
     if (localMs < track.startMs) continue
     if (track.target === 'decoration' || track.primitive === 'metric-bar-fill' || track.primitive === 'shimmer-pass') drawDecoration(ctx, prepared, scene, track, localMs, accent, reduced)
   }
-  if (!measuring && scene.photoStudy?.startWord !== undefined) drawPhotoStudyCueLabel(originalVideoContext(ctx))
-  if (!measuring) drawSpokenScore(ctx,scene,localMs,reduced)
-  if (!measuring) drawScientificEvidence(ctx,prepared.composition,scene.startMs+localMs,reduced)
+  if (!measuring && scene.photoStudy?.startWord !== undefined && localMs >= sceneWordStart(scene, scene.photoStudy.startWord)) drawPhotoStudyCueLabel(originalVideoContext(ctx), scene.photoStudy)
+  if (!measuring) drawSpokenScore(originalVideoContext(ctx),scene,localMs,reduced,prepared.composition.theme)
+  if (!measuring && !['source-docket', 'source-excerpt', 'source-pin'].includes(scene.presentation?.kind ?? '')) drawScientificEvidence(ctx,prepared.composition,scene.startMs+localMs,reduced)
   if (chrome && studyColors) drawPrivateStudyChrome(ctx, prepared.composition, scene, localMs, reduced, studyColors, prepared.studyAvatar)
   else if (chrome) drawSceneChrome(ctx, prepared, scene, localMs, reduced, paint, measuring, captionHandoff)
   ctx.restore()
