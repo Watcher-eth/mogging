@@ -275,13 +275,13 @@ export function referenceEditorialDirection(direction:VideoDirection,beat:Semant
   const feature=beat.feature==='whole' && visualFeatures.includes(category as SemanticBeat['feature'])?category as SemanticBeat['feature']:beat.feature
   const source=images.find(image=>image.id===direction.imageId)
   if (!source || source.retouch || source.comparison) return direction
-  const usePresentation = (presentation: EditorialPresentation): VideoDirection => {
+  const applyPresentation = (presentation: EditorialPresentation): VideoDirection => {
     history.push(presentation.kind)
     if (decision) decision.reason += ` Editorial treatment: ${presentation.kind}.`
     return { ...direction, presentation, featureStudy: undefined, profileStudy: undefined, portraitCrop: undefined, portraitProgram: undefined, portraitFX: undefined, overlay: 'none' }
   }
   const exact = (kind: EditorialKind, anchors: string[], extra: Partial<EditorialPresentation> = {}) =>
-    usePresentation({ kind, variant, feature, imageIds: [], referenceIndex: 0, beats: anchors.map(anchor => ({ feature, anchor })), ...extra })
+    applyPresentation({ kind, variant, feature, imageIds: [], referenceIndex: 0, beats: anchors.map(anchor => ({ feature, anchor })), ...extra })
   const named = distinctFeatures(beat.quote)
   const target = named[0]
   const evidence = section.evidence?.find(binding => binding.anchor.length <= 120 && beat.quote.includes(binding.anchor))
@@ -331,7 +331,7 @@ export function referenceEditorialDirection(direction:VideoDirection,beat:Semant
   const prefer=/three[- ]quarter/i.test(cue??'')?'three-quarter':/profile|side/i.test(cue??'')?'profile':''
   const portraits = images.filter(image => !image.retouch && !image.comparison && ['ready', 'warning'].includes(image.status))
   const example = referenceExampleSequence(beat.quote, images, family)
-  if (example) return { ...usePresentation(example.presentation), imageId: example.imageId }
+  if (example) return { ...applyPresentation(example.presentation), imageId: example.imageId }
   if (cue && prefer && source.id.includes(prefer) && family % 3 === 1) {
     const front = portraits.find(image => /(?:^|-)front(?:-|$)/i.test(image.id) && image.dataUrl !== source.dataUrl)
     if (front) {
@@ -379,5 +379,5 @@ export function referenceEditorialDirection(direction:VideoDirection,beat:Semant
     presentation.kind==='feature-stack'?distinct:
     presentation.kind==='paired-detail'?distinct.slice(0,2):
     namedAnchors.length?namedAnchors:[{feature,anchor:beat.quote.split(/\s+/).slice(0,6).join(' ')}]
-  return usePresentation({...presentation,feature,imageIds:references.map(image=>image.id),beats})
+  return applyPresentation({...presentation,feature,imageIds:references.map(image=>image.id),beats})
 }
