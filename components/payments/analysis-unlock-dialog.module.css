@@ -141,10 +141,6 @@
 .offerSparks i { position: absolute; width: 4px; height: 9px; border-radius: 2px; background: #fbf8ee; box-shadow: 0 1px 4px #12182027; }
 .offerSparks i:nth-child(3n + 1) { background: #b3d8eb; }
 .offerSparks i:nth-child(3n + 2) { background: #edcf9a; height: 5px; }
-@media (max-height: 640px) {
-  .dialog[data-desktop-analysis] .content { display: block; overflow-y: auto; }
-  .dialog[data-desktop-analysis] .scroll { overflow: visible; }
-}
 @media (max-width: 500px) {
   .dialog[data-desktop-analysis] .scroll, .dialog[data-desktop-analysis] .footer { padding-inline: 18px; }
   .desktopArt { margin-inline: -18px; }

@@ -409,6 +409,7 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
           if (showIntro && intro) {
             if (!deadline || deadline <= Date.now()) { expireIntro(); return }
             track('plan_selected', { plan: webStarterIntro.product, offering: 'starter_intro' })
+            track('onboarding_interaction', { action: 'checkout_tapped', product: webStarterIntro.product, offering: 'starter_intro' })
             onCheckout(webStarterIntro.product, { currency: intro.currency, unitAmount: intro.renewal, starterIntro: true, experiment })
             return
           }

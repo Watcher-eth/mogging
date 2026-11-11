@@ -82,6 +82,8 @@ export function normalizeStripeLifecycle(event: Stripe.Event | CheckoutObservati
         payment_status: value.payment_status ?? null,
         expires_at_ms: typeof value.expires_at === 'number' ? value.expires_at * 1000 : null,
       } : {}),
+      ...(event.type === 'invoice.payment_failed' && value.billing_reason === 'subscription_create'
+        ? stripeJourneyProperties(metadata as Record<string, string | undefined>) : {}),
       creator_discount: typeof metadata.creatorDiscount === 'string' ? metadata.creatorDiscount : undefined,
       creator_click_id: typeof metadata.creatorClickId === 'string' ? metadata.creatorClickId : null,
       invoice_id: event.type === 'invoice.paid' ? id(value) : null,

@@ -61,6 +61,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const channelMetadata: Record<string, string> = webSurface ? { webSurface } : {}
     const signedIn = await getRequestUserId(req, res)
     const productId = input.product
+    if (productId === 'mobile_subscription_weekly') {
+      throw new ApiError(410, 'This weekly offer has ended. Reopen the paywall to select a current plan.')
+    }
     const webPlan = isWebAnalysisProduct(productId)
     const mobileWeb = input.webPriceVariant === 'mobile'
     const isAnalysisCheckout = input.returnTo === 'analysis' && input.source === 'web_analysis'
@@ -210,6 +213,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                   ...channelMetadata,
                   ...((webPlan || useTreatmentPrice) && price ? { recurringAmount: String(price.unit_amount), recurringCurrency: price.currency } : {}),
                   product: input.product,
+                  ...(isAnalysisCheckout && input.flowId && input.attemptId ? { flowId: input.flowId, attemptId: input.attemptId } : {}),
                   mobileInstallId: input.mobileInstallId,
                   source,
                   ...(activationCode ? { activationCode } : {}),

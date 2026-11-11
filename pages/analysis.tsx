@@ -316,6 +316,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
   const [returnProduct, setReturnProduct] = useState<string>()
   const preferredPlan = isWebAnalysisProduct(router.query.plan) ? router.query.plan : undefined
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+  const [paywallPlacement, setPaywallPlacement] = useState<'automatic' | 'manual' | 'restored'>('manual')
   const [paywallPlan, setPaywallPlan] = useState<WebAnalysisProduct>()
   const [paywallIntro, setPaywallIntro] = useState<PaywallIntroCheckpoint>()
   const [autoPaywall, setAutoPaywall] = useState(false)
@@ -350,8 +351,8 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
     if (!walkthrough && viewedAnalysisId) trackWebEvent('report_viewed', { report_id: viewedAnalysisId, surface: 'web_analysis', flow_id: webJourneyContext().flow_id })
   }, [viewedAnalysisId, walkthrough])
   useEffect(() => {
-    if (!walkthrough && paymentDialogOpen) trackWebEvent('paywall_viewed', { surface: 'web_analysis', paywall_id: 'web_analysis', paywall_version: mobileScan ? '2' : '3', flow_id: webJourneyContext().flow_id, ...paywallExperimentProperties(onboardingExperiment) })
-  }, [mobileScan, onboardingExperiment, paymentDialogOpen, walkthrough])
+    if (!walkthrough && paymentDialogOpen) trackWebEvent('paywall_viewed', { surface: 'web_analysis', paywall_id: 'web_analysis', paywall_version: mobileScan ? '2' : '3', placement: paywallPlacement, flow_id: webJourneyContext().flow_id, ...paywallExperimentProperties(onboardingExperiment) })
+  }, [mobileScan, onboardingExperiment, paymentDialogOpen, paywallPlacement, walkthrough])
   const [checkoutStatus, setCheckoutStatus] = useState<string | null>(null)
   const checkoutLoading = checkoutStatus !== null
   const checkoutInFlight = useRef(false)
@@ -406,6 +407,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
     setPaywallPlan(checkpoint?.paywallPlan)
     setPaywallIntro(checkpoint?.paywallIntro)
     setAnalysisUnlocked(false)
+    if (canPreview && checkpoint?.paywallOpen) setPaywallPlacement('restored')
     setPaymentDialogOpen(canPreview && Boolean(checkpoint?.paywallOpen))
     setAutoPaywall(canPreview && Boolean(checkpoint?.autoPaywall))
     const savedStep = checkpoint?.step ?? entryStep
@@ -725,7 +727,8 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
     else setAutoPaywall(true)
   }, [])
 
-  const showPlans = useCallback(() => {
+  const showPlans = useCallback((placement: 'automatic' | 'manual' = 'manual') => {
+    setPaywallPlacement(placement)
     setAutoPaywall(false)
     if (desktopPreview) completeStep()
     setPaymentDialogOpen(true)
@@ -735,7 +738,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
   useEffect(() => { openPlansRef.current = showPlans }, [showPlans])
   useEffect(() => {
     if (!desktopPreview || !autoPaywall || paymentDialogOpen) return
-    const timer = window.setTimeout(() => openPlansRef.current(), 10_000)
+    const timer = window.setTimeout(() => openPlansRef.current('automatic'), 10_000)
     return () => window.clearTimeout(timer)
   }, [desktopPreview, autoPaywall, paymentDialogOpen])
 

@@ -73,6 +73,17 @@ async function testPaywall(browser: Browser, surface: PaywallSurface, arm: Paywa
     const dialog = page.locator(mobile ? '[data-scan-fullscreen][role=dialog]' : '[data-desktop-analysis][role=dialog]')
     const cta = dialog.getByRole('button', { name: /unlock now/i })
     await cta.waitFor()
+    if (!mobile) {
+      for (const height of [640, 768, 950]) {
+        await page.setViewportSize({ width: 1440, height })
+        await page.waitForFunction(() => {
+          const button = document.querySelector<HTMLButtonElement>('[data-desktop-analysis] footer button')
+          if (!button || button.disabled) return false
+          const rect = button.getBoundingClientRect()
+          return rect.height > 0 && rect.top >= 0 && rect.bottom <= innerHeight
+        })
+      }
+    }
     const expected = '$' + (amount / 100).toFixed(2)
     await dialog.getByText(expected, { exact: true }).first().waitFor()
     assert.equal(await dialog.getAttribute('data-paywall-length'), mobile && treatment ? 'short' : null)
@@ -131,7 +142,7 @@ async function testOnboarding(surface: PaywallSurface, arm: PaywallExposure['arm
     await page.goto(new URL('/analysis?start=1', origin).href, { waitUntil: 'domcontentloaded' })
     if (mobile) {
       await page.getByRole('button', { name: 'I’m ready to Mog' }).click()
-      const steps = ['impressions', 'dating', 'motivation', 'relevance', 'agency', 'transformation', 'mechanism', 'goals',
+      const steps = ['dating', 'motivation', 'relevance', 'agency', 'transformation', 'goals',
         ...(short ? [] : ['obstacle', 'experience']), 'evidence', 'age', 'gender', ...(short ? [] : ['time']), 'commit']
       for (const step of steps) {
         const panel = page.locator(`[data-mobile-onboarding-step="${step}"]`)

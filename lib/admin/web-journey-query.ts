@@ -76,7 +76,16 @@ export function webJourneyCTEs(start: string, end: string, days: number, version
     select s.checkout_id,s.flow_id,s.attempt_id,coalesce(s.account_id,v.account_id) as account_id,s.created_at,s.analysis_checkout_at,
       coalesce(v.paid_at,min(b.occurred_at) filter(where b.event_name='one_time_purchase' or (b.event_name='checkout_confirmed' and b.properties->>'payment_status'='paid'))) as paid_at,
       coalesce(v.subscription,false) or coalesce(bool_or(b.event_name='checkout_confirmed' and b.properties->>'payment_status'='paid'),false) as subscription,
-      bool_or(b.event_name='payment_failed') as provider_failed,
+      coalesce(bool_or(b.event_name='payment_failed'),false) or bool_or(exists (
+        select 1 from subscription_events failure
+        where failure.provider='stripe' and failure.environment='production'
+          and failure.event_name='billing_issue_started'
+          and failure.properties->>'billing_reason'='subscription_create'
+          and failure.properties->>'attempt_id'=s.attempt_id
+          and failure.properties->>'flow_id'=s.flow_id
+          and failure.occurred_at >= s.created_at - interval '5 minutes'
+          and failure.occurred_at < ${end}::timestamp
+      )) as provider_failed,
       bool_or(b.event_name='checkout_completed_without_payment' or (b.event_name='checkout_status_observed' and b.properties->>'payment_status'='no_payment_required')) as free_checkout,
       bool_or(b.event_name='checkout_payment_pending' or (b.event_name='checkout_status_observed' and b.properties->>'status'='complete' and b.properties->>'payment_status'='unpaid')) as processing,
       bool_or(b.event_name='checkout_status_observed' and b.properties->>'status'='open' and b.occurred_at>${end}::timestamp-interval '2 hours') as open,

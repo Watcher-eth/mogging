@@ -51,6 +51,13 @@ function route(file: string, overrides: Record<string, unknown> = {}) {
       { setHeader: (name: string, value: unknown) => { headers[name] = value } }) }
 }
 
+test('retired weekly membership cannot create a new web Stripe session', async () => {
+  const f = route('web-checkout')
+  const response = await f.run({ product: 'mobile_subscription_weekly', mobileInstallId: 'fixture-install', source: 'web_analysis', returnTo: 'analysis' } as any)
+  expect(response.status).toBe(410)
+  expect(f.calls).toHaveLength(0)
+})
+
 test('website checkout returns to analysis, not mobile handoff', async () => {
   const f = route('checkout'); await f.run({ imageCount: 1, mobileInstallId: 'fixture-install' } as any)
   expect(f.calls[0].success_url).toBe('https://www.mogging.com/analysis?checkout=success&session_id={CHECKOUT_SESSION_ID}')
@@ -86,7 +93,7 @@ test('paid return restores the saved photo and gender, confirms ownership and ru
   const draft = { gender: 'male', images: [{ id: 'photo', dataUrl: 'fixture-photo' }], preferences, desktopConsent: true, requestIds: ['saved-scan-id'] }
   const restored: unknown[] = []
   const restoredConsent: boolean[] = []
-  const scope: any = { useCallback: (fn: unknown) => fn, guestReturn: false, session: null, mutate() {},
+  const scope: any = { useCallback: (fn: unknown) => fn, guestReturn: false, mobileScan: false, session: null, mutate() {},
     readStripeAttempt: () => null, clearStripeAttempt() {}, restoreWebJourney() {}, stripeAttemptProperties: () => ({}),
     trackWebEvent() {}, activatedCheckout: { current: null }, loadedAnalysisIdRef: { current: null },
     router: { replace: async (target: unknown) => { calls.push(['navigate', target]) } }, setLoginOpen() {}, setAutoPaywall() {}, setError() {}, setAnalysisUnlocked() {}, setPaymentDialogOpen() {}, setProgress() {}, setImages() {}, setSelectedImageId() {}, setGender() {},
