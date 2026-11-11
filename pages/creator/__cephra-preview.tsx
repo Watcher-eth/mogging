@@ -7,6 +7,8 @@ import {
 } from "@/lib/creator/sculpture-renderer";
 import {
   sculptureFeatures,
+  sculptureBackgrounds,
+  sculptureEditorialEffects,
   sculptureModels,
   sculptureModelLabels,
   sculptureMaterialLabels,
@@ -220,7 +222,7 @@ export default function CephraPreview() {
     recording,
     pausedTime,
   ]);
-  const update = (key: keyof SculptureStudy, value: string) => {
+  const update = (key: keyof SculptureStudy, value: string | undefined) => {
     setScriptId("");
     position.current = 0;
     setTime(0);
@@ -236,7 +238,7 @@ export default function CephraPreview() {
         [key]: value,
         ...(key === "model" && value !== "classical" && displayStudy.material === "chrome" ? {material:"matte"} : {}),
         ...(key === "treatment" &&
-        ["angle", "fold-ratio", "profile-plane"].includes(value)
+        ["angle", "fold-ratio", "profile-plane"].includes(value ?? "")
           ? {
               view: /jaw|chin|gonial|nose|midface|forehead/.test(
                 displayStudy.feature,
@@ -444,7 +446,7 @@ export default function CephraPreview() {
               value={displayStudy.background}
               onChange={(e) => update("background", e.target.value)}
             >
-              {["none", "tracking-frame", "checker"].map((value) => (
+              {sculptureBackgrounds.map((value) => (
                 <option key={value} value={value}>
                   {value}
                 </option>
@@ -463,6 +465,16 @@ export default function CephraPreview() {
                   {value}
                 </option>
               ))}
+            </select>
+          </label>
+          <label>
+            Editorial effect
+            <select
+              value={displayStudy.editorial ?? ""}
+              onChange={(event) => update("editorial", event.target.value || undefined)}
+            >
+              <option value="">None</option>
+              {sculptureEditorialEffects.map(effect => <option key={effect}>{effect}</option>)}
             </select>
           </label>
           <label>

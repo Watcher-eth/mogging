@@ -59,6 +59,88 @@ export function drawSculptureBackdrop(
       bounds.width + pad * 2,
       bounds.height + pad * 2,
     );
-  } else drawSpecimenFrame(ctx, bounds, time, reduced, "#5c5a57");
+  } else if (study.background === "tracking-frame") {
+    drawSpecimenFrame(ctx, bounds, time, reduced, "#5c5a57");
+  } else {
+    drawBackdropPattern(ctx, study.background, bounds, reduced ? 0 : time / 1000);
+  }
   ctx.restore();
+}
+
+function drawBackdropPattern(
+  ctx: CanvasRenderingContext2D,
+  pattern: SculptureStudy["background"],
+  bounds: {x: number; y: number; width: number; height: number},
+  seconds: number,
+) {
+  const w = ctx.canvas.width, h = ctx.canvas.height;
+  const drift = Math.sin(seconds*.65);
+  const x = w*.5, y = Math.max(h*.38, Math.min(h*.53, bounds.y+bounds.height*.45));
+  const unit = w / 1080;
+  function bloom(cx: number, cy: number, rx: number, ry: number, color: string) {
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.scale(rx,ry);
+    const colorField = ctx.createRadialGradient(0,0,0,0,0,1);
+    colorField.addColorStop(0,`rgba(${color},.44)`);
+    colorField.addColorStop(.5,`rgba(${color},.18)`);
+    colorField.addColorStop(1,`rgba(${color},0)`);
+    ctx.fillStyle = colorField;
+    ctx.fillRect(-1,-1,2,2);
+    ctx.restore();
+  }
+  if (pattern === "mesh" || pattern === "studio-halo") {
+    bloom(x + drift*w*.05, y, w*.68, h*.38, "217,222,227");
+    if (pattern === "mesh") {
+      bloom(w*.17,y+h*.14,w*.52,h*.31,"223,220,214");
+      bloom(w*.84,y-h*.12,w*.43,h*.28,"210,214,221");
+    }
+    return;
+  }
+  const radius = Math.min(w*.49, bounds.width*1.12);
+  const gap = 35*unit;
+  const extent = Math.ceil(radius/gap);
+  const offset = drift*gap*.45;
+  const fade = (distance: number) => .34 * (1-sculptureEase(distance/radius));
+  const stroke = (alpha: number) => {
+    ctx.strokeStyle = `rgba(113,119,128,${alpha})`;
+    ctx.lineWidth = unit;
+    ctx.stroke();
+  };
+  if (pattern === "interference") {
+    for (let i=1;i<=9;i++) {
+      ctx.beginPath();
+      ctx.ellipse(x+offset,y,gap*i,gap*i*.72,-.22,0,Math.PI*2);
+      stroke(fade(gap*i)*.7);
+    }
+    return;
+  }
+  for (let i=-extent;i<=extent;i++) {
+    if (pattern === "dot-field") {
+      for (let j=-extent;j<=extent;j++) {
+        const alpha=fade(Math.hypot(i,j)*gap);
+        if (alpha < .02) continue;
+        ctx.fillStyle=`rgba(105,112,121,${alpha})`;
+        ctx.beginPath(); ctx.arc(x+i*gap+offset,y+j*gap,1.8*unit,0,Math.PI*2); ctx.fill();
+      }
+    } else if (pattern === "depth-grid") {
+      const horizon = y - 2*gap, base = y+5*gap;
+      ctx.beginPath();
+      ctx.moveTo(x+i*gap*.32,horizon); ctx.lineTo(x+i*gap*1.22+offset,base);
+      stroke(fade(Math.abs(i)*gap));
+      if (i>0) {
+        const row=horizon+(base-horizon)*Math.pow(i/extent,1.8);
+        const half=radius*(.32+.68*i/extent);
+        ctx.beginPath(); ctx.moveTo(x-half,row); ctx.lineTo(x+half,row);
+        stroke(fade(i*gap)*.85);
+      }
+    } else {
+      const d=i*gap, half=Math.sqrt(Math.max(0,radius*radius-d*d));
+      if (!half) continue;
+      ctx.beginPath();
+      ctx.moveTo(x+d+offset,y-half); ctx.lineTo(x+d+offset,y+half);
+      ctx.moveTo(x-half,y+d); ctx.lineTo(x+half,y+d);
+      stroke(fade(Math.abs(d))*(i%4===0 ? .88 : .53));
+    }
+  }
 }

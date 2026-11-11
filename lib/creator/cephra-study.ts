@@ -93,6 +93,90 @@ export function sculptureFinishes(model: SculptureModel): readonly SculptureMate
   return model === "classical" ? sculptureMaterials : sculptureMaterials.slice(0, 2);
 }
 
+export const sculptureEditorialEffects = [
+  "datum-drop", "offset-bridge", "cupid-fork", "length-transfer",
+  "eye-level-reference", "tilt-wedge", "cheek-coordinate", "width-transfer",
+  "hinge-lock", "arc-envelope", "cutaway-edge", "focal-reticle",
+  "perspective-frustum", "matched-crops", "rolling-comparison", "support-lattice",
+] as const;
+
+type Effect = (typeof sculptureEditorialEffects)[number];
+
+export function sculptureEditorialForCue(
+  study: Pick<SculptureStudy, "feature" | "demo" | "treatment" | "from" | "to" | "view" | "showGuides">,
+  text: string,
+  variation: number,
+  durationMs?: number,
+): Effect | undefined {
+  const { feature, demo, treatment, from, to } = study;
+  if (study.showGuides === false || /^(arch|bite|crowding|smile)$/.test(demo ?? "")) return;
+  if (/research|material|card-merge|comparison/.test(treatment)) return;
+  const changing = Math.abs(from - to) > .05;
+  let choices: readonly Effect[];
+  if (demo === "lens-detail") return; // The authored detail cards already occupy this shot.
+  if (feature === "camera-distance") choices = ["perspective-frustum", "focal-reticle", "matched-crops", "rolling-comparison"];
+  else if (feature === "eye-tilt") choices = ["eye-level-reference", "tilt-wedge"];
+  else if (feature === "gonial-angle") choices = /bone-window|layer-peel/.test(treatment) && /bone|skin|tissue/i.test(text)
+    ? ["cutaway-edge", "hinge-lock"] : ["hinge-lock", "arc-envelope"];
+  else if (feature === "philtrum-length") choices = ["cupid-fork", "length-transfer"];
+  else if (/cheek/.test(feature)) choices = ["cheek-coordinate", "width-transfer", "support-lattice"];
+  else if (/projection|slope/.test(feature)) choices = ["datum-drop", "offset-bridge", "support-lattice"];
+  else if (/width|taper/.test(feature)) choices = ["focal-reticle", "width-transfer"];
+  else choices = ["focal-reticle", "length-transfer"];
+  if (changing && !demo && treatment === "morph") choices = [...choices, "matched-crops", "rolling-comparison"];
+  const eligible = choices.filter(effect => {
+    if (effect === "cupid-fork" && study.view === "profile") return false;
+    if (effect === "width-transfer" && study.view === "profile") return false;
+    if (effect === "matched-crops" || effect === "rolling-comparison")
+      return (changing || demo === "lens-mirror") && (durationMs === undefined || durationMs >= 2000);
+    return true;
+  });
+  if (/\b(?:compare|before|after|same face|same nose|different profile)\b/i.test(text)) {
+    eligible.sort((a,b) => Number(b.includes("comparison") || b === "matched-crops") - Number(a.includes("comparison") || a === "matched-crops"));
+  }
+  return eligible[Math.abs(variation) % (eligible.length + 1)];
+}
+
+export const sculptureBackgrounds = [
+  "none", "tracking-frame", "checker", "mesh", "draft-grid",
+  "dot-field", "depth-grid", "interference", "studio-halo",
+] as const;
+
+export function sculptureBackgroundForCue(variation: number, cue: number) {
+  return sculptureBackgrounds[(Math.abs(variation) * 4 + cue * 5) % sculptureBackgrounds.length];
+}
+
+/** One policy for Studio stories, the script preview and generated narration. */
+export function sculptureCueConfiguration(
+  study: Pick<SculptureStudy, "feature" | "demo" | "treatment" | "from" | "to" | "view" | "showGuides" | "profileGuide" | "anglePhase" | "morphReturnMs" | "guideEndMs" | "lighting">,
+  text: string,
+  variation: number,
+  cue: number,
+  durationMs?: number,
+): Pick<SculptureStudy, "background" | "editorial" | "morphCurve"> {
+  const seed = Math.abs(variation) + cue * 7;
+  const dental = /^(arch|bite|crowding|smile)$/.test(study.demo ?? "");
+  const lighting = study.lighting === "sweep";
+  const backgrounds: readonly SculptureStudy["background"][] = dental || lighting
+    ? ["none", "studio-halo", "mesh"]
+    : sculptureBackgrounds;
+  const preferred = dental || lighting ? "studio-halo"
+    : study.feature === "camera-distance" ? "depth-grid"
+    : study.view === "profile" ? "draft-grid"
+    : /\b(?:surface|shadow|light)\b/i.test(text) ? "mesh"
+    : /\b(?:points?|landmarks?)\b/i.test(text) ? "dot-field"
+    : "none";
+  const phase = backgrounds.findIndex(background => background === preferred);
+  const background = backgrounds[(Math.abs(variation) * 4 + cue * 5 + phase) % backgrounds.length];
+  const editorial = lighting ? undefined : sculptureEditorialForCue(study, text, seed, durationMs);
+  const editable = !study.demo && !study.profileGuide && !study.anglePhase &&
+    study.morphReturnMs === undefined && study.guideEndMs === undefined &&
+    Math.abs(study.to - study.from) > .05 &&
+    /^(morph|datum|region|landmark-gauge)$/.test(study.treatment);
+  const morphCurve = editable ? ([undefined, "two-stage", "recoil"] as const)[seed % 3] : undefined;
+  return { background, editorial, morphCurve };
+}
+
 export const sculptureSchema = z
   .object({
     feature: z.enum(sculptureFeatures),
@@ -105,7 +189,8 @@ export const sculptureSchema = z
     accent: z
       .enum(["none", "surface-net", "contour", "section-scan"])
       .default("none"),
-    background: z.enum(["none", "tracking-frame", "checker"]).default("none"),
+    background: z.enum(sculptureBackgrounds).default("none"),
+    editorial: z.enum(sculptureEditorialEffects).optional(),
     instrument: z
       .enum(["none", "auto", "linear", "arc", "dial"])
       .default("auto"),
@@ -126,6 +211,7 @@ export const sculptureSchema = z
     demo: z.enum(["eye-dots", "eye-line", "eye-tilt", "eye-level", "lens-detail", "lens-mirror", "arch", "bite", "crowding", "smile"]).optional(),
     profileGuide: z.enum(["datum", "offset", "persist"]).optional(),
     anglePhase: z.enum(["guides", "bone"]).optional(),
+    morphCurve: z.enum(["two-stage", "recoil"]).optional(),
     morphReturnMs: z.number().nonnegative().optional(),
     restore: z.boolean().default(true),
     showGuides: z.boolean().default(true),
@@ -169,7 +255,8 @@ export function sculpturePrimitiveVariation(
       treatment === "profile-chain" ? "profile" : ["level-gauge","reference-ratio"].includes(treatment) ? "front" : ["angle", "profile-plane", "fold-ratio", "profile-offset"].includes(treatment) && side
         ? "profile"
         : (["front", "three-quarter", "profile"] as const)[seed % 3],
-    background: (["checker", "tracking-frame", "none"] as const)[seed % 3],
+    background: sculptureBackgroundForCue(seed, 0),
+    editorial: sculptureEditorialEffects[seed % sculptureEditorialEffects.length],
     accent: (["section-scan", "surface-net", "contour", "none"] as const)[
       seed % 4
     ],
@@ -401,9 +488,15 @@ export function sculptureSample(
       duration * 0.7,
     ),
     restore = Math.min(sculptureTiming.restoreMs, duration - restoreAt);
+  const phase = clamp((time - changeAt) / forward);
+  const sweep = study.morphCurve === "two-stage"
+    ? .62 * sculptureEase(phase / .4) + .38 * sculptureEase((phase - .48) / .52)
+    : study.morphCurve === "recoil"
+      ? sculptureEase(phase / .76) + .075 * Math.sin(Math.PI * clamp((phase - .6) / .4))
+      : sculptureEase(phase);
   const progress = reduced
     ? 0.5
-    : sculptureEase((time - changeAt) / forward) *
+    : Math.min(sweep, Math.abs(study.to) > .92 ? 1 : 1.075) *
       (study.morphReturnMs !== undefined
         ? 1 - sculptureEase((time - study.morphReturnMs) / forward)
         : study.restore
@@ -429,7 +522,7 @@ export const sculptureUnderEar = /\b(?:below|under|beneath)\s+(?:(?:the|your|his
 export function sculptureFeatureForText(text: string): SculptureFeature {
   if (sculptureUnderEar.test(text) || /gonial|jaw angle|corner of the jaw/i.test(text)) return "gonial-angle";
   if (/camera|selfie|lens|distance/i.test(text)) return "camera-distance";
-  if (/philtrum|below the nose/i.test(text)) return "philtrum-length";
+  if (/philtrum|below the nose|(?:space|gap) (?:between|above) .{0,30}(?:upper lip|nose)/i.test(text)) return "philtrum-length";
   if (/forehead/i.test(text)) return "forehead-slope";
   if (/brow.*arch/i.test(text)) return "brow-arch";
   if (/brow.*height|higher brows/i.test(text)) return "brow-height";
@@ -453,6 +546,11 @@ export function sculptureFeatureForText(text: string): SculptureFeature {
 /** The shared brief is a reusable contract, not permission to reuse another creator's words. */
 export const cephraWritingBrief = {
   referenceBreakdowns: cephraReferences.references,
+  cueMatching: [
+    "Name the visual relationship in the sentence that introduces it. For example, distinguish philtrum length from lip fullness and jaw angle from jaw width.",
+    "Comparison cues should identify what changes and what stays fixed. Explicitly distinguish camera, lighting and anatomical changes.",
+    "Stage a baseline, landmark construction, controlled change and return on separate beats when the explanation needs them. Give the report its own closing beat.",
+  ],
   hookFormats: [
     {
       id: "viewer-check",
@@ -660,13 +758,11 @@ export function planSculptureScenes(
           variant % 3 !== 1,
       );
     }
+    const geometry = { feature, treatment, from: 0, to: changing ? (variant % 2 ? -0.45 : 0.45) : 0 };
     const sculpture = sculptureSchema.parse({
-      feature,
-      treatment,
+      ...geometry,
       accent:
         variant === 3 ? "surface-net" : variant === 4 ? "contour" : "none",
-      background:
-        variant === 1 ? "tracking-frame" : variant === 4 ? "checker" : "none",
       instrument: instruments.get(cue)
         ? /angle|tilt|slope|rotation/.test(feature) && variant % 2 === 0
           ? "dial"
@@ -675,8 +771,6 @@ export function planSculptureScenes(
       model: /zendaya/i.test(subject) ? "female" : "male",
       material: variant % 3 === 0 ? "reflective" : "matte",
       camera: viewChange ? "orbit" : variant % 3 === 0 ? "push" : "hold",
-      from: 0,
-      to: changing ? (variant % 2 ? -0.45 : 0.45) : 0,
       view:
         treatment === "reference-ratio" ? "front" : treatment === "profile-chain" ? "profile" : feature === "gonial-angle" ||
         feature === "midface-projection" ||
@@ -689,7 +783,10 @@ export function planSculptureScenes(
     });
     return {
       ...scene,
-      sculpture,
+      sculpture: {
+        ...sculpture,
+        ...sculptureCueConfiguration(sculpture, text, variation, groups.get(group)!),
+      },
       captionScale: 0.88,
       source: { ...scene.source, overlay: "none" },
       presentation: undefined,

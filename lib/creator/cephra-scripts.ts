@@ -1,5 +1,6 @@
 import {
   sculptureSchema,
+  sculptureCueConfiguration,
   sculptureNarrationGuides,
   sculptureStagedTreatment,
   sculptureUnderEar,
@@ -163,11 +164,29 @@ export const legacySculptureScripts: SculptureScript[] = [
   },
 ];
 
-export const sculptureScripts = approved as SculptureScript[];
+const philtrumStory = legacySculptureScripts.find(script => script.id === "mouth-in-context")!;
+const philtrumStudies: Partial<Record<SculptureScript["sections"][number]["role"], Partial<SculptureStudy>>> = {
+  hook: { showGuides: false },
+  locate: {},
+  reveal: { to: .48, instrument: "linear", showMeasurements: true },
+  demonstrate: { from: .48 },
+};
+
+export const sculptureScripts: SculptureScript[] = [
+  ...approved as SculptureScript[],
+  {
+    ...philtrumStory,
+    authored: true,
+    reportMetricId: "mouth.philtrum",
+    cuts: { 30: ["hook", "reveal", "demonstrate", "qualify", "close"] },
+    sections: philtrumStory.sections.map(section => ({
+      ...section,
+      study: { from: 0, to: 0, showMeasurements: false, instrument: "none", ...philtrumStudies[section.role] },
+    })),
+  },
+];
 export const sculptureScriptById = (id?: string) =>
-  [...sculptureScripts, ...legacySculptureScripts].find(
-    (script) => script.id === id,
-  );
+  sculptureScripts.find(script => script.id === id) ?? legacySculptureScripts.find(script => script.id === id);
 export const sculptureReportSection = (
   section: SculptureScript["sections"][number],
 ) => section.role === "qualify" || section.role === "close";
@@ -423,7 +442,7 @@ export function sculptureStoryTreatments(
   return sequence;
 }
 
-export function sculptureScriptStudy(
+function baseSculptureScriptStudy(
   script: SculptureScript,
   index: number,
   variation = 0,
@@ -436,14 +455,19 @@ export function sculptureScriptStudy(
     : undefined;
   if (script.authored) {
     const study = section.study;
+    const words = script.id === philtrumStory.id && section.role === "reveal"
+      ? sculptureRecording(script)?.sections[index]?.words
+      : undefined;
+    const narrationTriggerMs = words?.find(word => /^philtrum$/i.test(word.text))?.startMs;
+    const morphAt = words?.find(word => /^lengthen$/i.test(word.text))?.startMs;
     const variant = (variation + index) % 6;
-    const background = study?.demo || sculptureReportSection(section) || study?.profileGuide
-      ? "none" : (["none", "tracking-frame", "checker"] as const)[(variation + Math.floor(variation / 6)) % 3];
     return sculptureSchema.parse({
       feature: script.feature, model: script.model, material: script.material ?? "matte",
-      treatment: section.treatment, camera: section.camera, restore: false, variant, background,
+      treatment: section.treatment, camera: section.camera, restore: false, variant,
       zoom: study?.profileGuide ? 1.17 : script.feature === "camera-distance" || study?.demo ? 1 : 1.04 + (variation % 3) * .04,
       ...study,
+      ...(narrationTriggerMs === undefined ? {} : { narrationTriggerMs }),
+      ...(morphAt === undefined ? {} : { guideEndMs: morphAt - 240 }),
     });
   }
   if (section.study) {
@@ -494,9 +518,6 @@ export function sculptureScriptStudy(
       section.study.reference
         ? "none"
         : accents[(variation + index) % accents.length];
-    const background = (["none", "tracking-frame", "checker"] as const)[
-      (variation + index + Math.floor(variation / 6)) % 3
-    ];
     const view =
       treatment === "profile-chain" ? "profile" : ["level-gauge","reference-ratio"].includes(treatment) ? "front" : experiment ||
       measurement ||
@@ -524,7 +545,6 @@ export function sculptureScriptStudy(
       showGuides: treatment !== "morph" || section.study.showGuides !== false,
       camera,
       accent: staged ? "none" : accent,
-      background,
       view,
       instrument,
       zoom: experiment
@@ -581,12 +601,6 @@ export function sculptureScriptStudy(
     restore: false,
     triggerMs: index === 0 ? 200 : 650,
     accent: index === 3 && variation % 2 ? "contour" : "none",
-    background:
-      index === 1 && variation % 3 === 0
-        ? "tracking-frame"
-        : index === 3 && variation % 3 === 1
-          ? "checker"
-          : "none",
     // Alternate the explanatory beat that owns the instrument, never both.
     // Other beats can retain a small surface-anchored value without a bottom rail.
     instrument:
@@ -612,6 +626,17 @@ export function sculptureScriptStudy(
     variant: (index + variation) % 6,
   });
 }
+export function sculptureScriptStudy(script: SculptureScript, index: number, variation = 0): SculptureStudy {
+  const study = baseSculptureScriptStudy(script, index, variation);
+  const section = script.sections[index];
+  if (sculptureReportSection(section)) return study;
+  const clip = sculptureRecording(script)?.sections[index];
+  return {
+    ...study,
+    ...sculptureCueConfiguration(study, section.text, variation, index, clip?.durationMs),
+  };
+}
+
 export function sculptureScriptFrame(
   script: SculptureScript,
   time: number,

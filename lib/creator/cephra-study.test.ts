@@ -17,6 +17,7 @@ import {
   legacySculptureScripts,
   sculptureScriptFrame,
   sculptureScriptDuration,
+  sculptureReportSection,
   sculptureScriptStudy,
   sculptureRecording,
   sculptureStoryTreatments,
@@ -44,6 +45,8 @@ import {
   sculptureFrameCenter,
   sculpturePrimitiveVariation,
   sculptureFeatures,
+  sculptureBackgrounds,
+  sculptureEditorialEffects,
   sculptureModels,
   sculptureTreatments,
   sculptureInsetFrame,
@@ -115,6 +118,10 @@ test("approved Cephra performances assemble every observed word and their matchi
         revealLabel: "",
       },
     };
+    if (story.id === "mouth-in-context") {
+      const short = creatorStoryCut(saved.script, 30, selected);
+      expect(short.cues.map(cue => cue.sourceId)).toEqual(["hook", "reveal", "demonstrate", "qualify", "close"]);
+    }
     const directions = creatorStoryDirections(
       selected,
       saved.script,
@@ -446,13 +453,38 @@ test("primitive variations explore all registered features and compositions", ()
     ["material", 3],
     ["view", 3],
     ["camera", 6],
-    ["background", 3],
+    ["background", sculptureBackgrounds.length],
+    ["editorial", sculptureEditorialEffects.length],
     ["accent", 4],
     ["instrument", 4],
   ] as const) {
     expect(new Set(takes.map((take) => take[key])).size).toBe(count);
   }
 });
+test("recorded takes use reference effects without changing anatomy cues or replacing the closing report", () => {
+  const backgrounds = new Set<string>();
+  const effects = new Set<string>();
+  const morphCurves = new Set<string>();
+  for (const script of sculptureScripts) {
+    for (let seed = 0; seed < 24; seed++) {
+      for (const [index, section] of script.sections.entries()) {
+        const shot = sculptureScriptStudy(script, index, seed);
+        if (sculptureReportSection(section)) expect(shot.editorial).toBeUndefined();
+        if (section.study?.demo) {
+          expect(shot.demo).toBe(section.study.demo);
+          expect(shot.morphCurve).toBeUndefined();
+        }
+        backgrounds.add(shot.background);
+        if (shot.editorial) effects.add(shot.editorial);
+        if (shot.morphCurve) morphCurves.add(shot.morphCurve);
+      }
+    }
+  }
+  expect(backgrounds.size).toBe(sculptureBackgrounds.length);
+  expect([...effects].sort()).toEqual([...sculptureEditorialEffects].sort());
+  expect([...morphCurves].sort()).toEqual(["recoil", "two-stage"]);
+});
+
 test("shot handoffs and report chapters stay deterministic across seeks and caption splits", () => {
   for (const script of sculptureScripts) {
     let start = 0;

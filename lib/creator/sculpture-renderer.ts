@@ -32,6 +32,7 @@ import {
 } from "./editorial-cursor";
 import { applyGlassInk } from "./glass-overlay";
 import { drawVideoTextMorph } from "./video-pill-morph";
+import { drawSculptureEditorial, sculptureEditorialUsesBaseline } from "./sculpture-editorial";
 import { drawSculptureBackdrop } from "./sculpture-backdrop";
 import { drawCaptionBackdrop } from "./video-progressive-blur";
 import { drawNativeReportMetric } from "./native-report-metric";
@@ -847,7 +848,7 @@ export async function prepareSculptureRenderer(
         previous && previous.study.model === study.model
           ? sculptureHandoff(time, duration, reduce)
           : 1;
-      const usesBaseline = (shot?:SculptureStudy) => shot?.treatment === "comparison" || shot?.demo?.startsWith("lens-");
+      const usesBaseline = (shot?:SculptureStudy) => shot?.treatment === "comparison" || shot?.demo?.startsWith("lens-") || sculptureEditorialUsesBaseline(shot?.editorial);
       const comparison = usesBaseline(study) ? study : usesBaseline(previous?.study) && blend < 1 ? previous?.study : undefined;
       if (comparison) {
         const key = JSON.stringify([comparison, reduce]);
@@ -1277,6 +1278,12 @@ export function drawSculptureComposition(
   const roll = study.demo === "eye-level" && !reduced
     ? .11 * sculptureEase((time - sample.clickAt) / 400) * (1 - sculptureEase((time - (study.morphReturnMs ?? duration * .7)) / 550)) : 0;
   if (roll) {ctx.translate(W * .5, H * .47);ctx.rotate(roll);ctx.translate(-W * .5, -H * .47);}
+  const overlayPoint = (key: string): P => {
+    const point = p(key);
+    if (!roll) return point;
+    const x = point.x - W*.5, y = point.y - H*.47;
+    return { ...point, x:W*.5+x*Math.cos(roll)-y*Math.sin(roll), y:H*.47+x*Math.sin(roll)+y*Math.cos(roll) };
+  };
   ctx.drawImage(image, frame.x, frame.y, frame.width, frame.height);
   if (study.demo === "lens-mirror" && baseline) {
     const sweep = reduced ? 1 : sculptureEase(sample.effectMs / 820);
@@ -1391,11 +1398,7 @@ export function drawSculptureComposition(
   }
   if (eye) {
     const show = (ms: number, span = 340) => reduced ? 1 : sculptureEase((time - ms) / span);
-    const rotate = (point:P) => {
-      const x=point.x-W*.5,y=point.y-H*.47;
-      return {...point,x:W*.5+x*Math.cos(roll)-y*Math.sin(roll),y:H*.47+x*Math.sin(roll)+y*Math.cos(roll)};
-    };
-    const inner = rotate(p("innerCanthus")), outer = rotate(p("outerCanthus"));
+    const inner = overlayPoint("innerCanthus"), outer = overlayPoint("outerCanthus");
     const unit = W / 1080;
     const baseline = {x:outer.x+W*.045,y:inner.y};
     ctx.save();
@@ -2008,6 +2011,7 @@ export function drawSculptureComposition(
     }
     ctx.restore();
   }
+  drawSculptureEditorial(ctx, study, overlayPoint, frame, image, baseline, W, H, age, reduced, theme);
   if (study.showGuides && targetOpacity > 0)
     drawEditorialCursor(ctx, { ...cursor, opacity: cursor.opacity * targetOpacity });
   if (eye || study.profileGuide || !study.showGuides || !study.showMeasurements) {
