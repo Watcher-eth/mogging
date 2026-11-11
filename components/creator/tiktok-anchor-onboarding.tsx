@@ -29,6 +29,17 @@ import {
 } from './types'
 import { discordContactUrl } from './content-guidelines'
 
+const anchorInvites = {
+  primary: {
+    url: TIKTOK_ANCHOR_INVITE,
+    qr: '/creator-guide/tiktok-anchor-qr.svg',
+  },
+  fallback: {
+    url: 'https://www.tiktok.com/t/ZS9UbGge4he6k-yHKKf/',
+    qr: '/creator-guide/tiktok-anchor-qr-fallback.svg',
+  },
+} as const
+
 export function FollowerRangeSelect({
   value,
   onChange,
@@ -83,6 +94,8 @@ export function TikTokAccountDialog({
   const [confirmed, setConfirmed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [inviteVersion, setInviteVersion] = useState<keyof typeof anchorInvites>('primary')
+  const invite = anchorInvites[inviteVersion]
   async function save() {
     setBusy(true)
     setError('')
@@ -107,7 +120,7 @@ export function TikTokAccountDialog({
   }
   async function copyInvite() {
     try {
-      await navigator.clipboard.writeText(TIKTOK_ANCHOR_INVITE)
+      await navigator.clipboard.writeText(invite.url)
       toast.success('Invitation link copied')
     } catch {
       toast.error('Use Open in TikTok to open the invitation')
@@ -189,7 +202,7 @@ export function TikTokAccountDialog({
                 </p>
                 <div className="mx-auto mt-5 w-[252px] max-w-full rounded-[20px] bg-white p-3 shadow-[0_2px_14px_rgba(0,0,0,0.035)]">
                   <Image
-                    src="/creator-guide/tiktok-anchor-qr.svg"
+                    src={invite.qr}
                     alt="Scan in TikTok to join the Mogging project"
                     width={228}
                     height={228}
@@ -203,7 +216,7 @@ export function TikTokAccountDialog({
                 <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                   <Button asChild className="rounded-full px-4">
                     <a
-                      href={TIKTOK_ANCHOR_INVITE}
+                      href={invite.url}
                       target="_blank"
                       rel="noreferrer"
                     >
@@ -218,6 +231,15 @@ export function TikTokAccountDialog({
                   >
                     <Copy className="size-3.5" />
                     Copy link
+                  </button>
+                </div>
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setInviteVersion(current => current === 'primary' ? 'fallback' : 'primary')}
+                    className="min-h-11 px-3 text-xs font-medium text-zinc-600 underline underline-offset-4 hover:text-zinc-900"
+                  >
+                    {inviteVersion === 'primary' ? 'This link doesn’t work for me' : 'Use the original link'}
                   </button>
                 </div>
               </section>
