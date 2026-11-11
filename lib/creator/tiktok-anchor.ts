@@ -1,9 +1,7 @@
 import { z } from 'zod'
 
 export { TIKTOK_ANCHOR_REQUIREMENT } from './post-guidance'
-
-export const TIKTOK_ANCHOR_INVITE =
-  'https://www.tiktok.com/t/ZS9UgQb9Cp1Eq-WbUok/#linkSource=DirectLink'
+export { TIKTOK_CAMPAIGN_ANCHOR_URL as TIKTOK_ANCHOR_INVITE } from './campaign-publishing-policy'
 export const FOLLOWER_RANGES = [
   { value: 'under_1k', label: 'Under 1,000' },
   { value: '1k_5k', label: '1,000–4,999' },
