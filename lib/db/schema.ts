@@ -791,6 +791,12 @@ export const creatorSprints = pgTable('creator_sprints', {
   updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
 })
 
+export const creatorCampaignDisplayAdjustments = pgTable('creator_campaign_display_adjustments', {
+  sprintId: text('sprint_id').primaryKey().references(() => creatorSprints.id, { onDelete: 'cascade' }),
+  usedBudgetCents: integer('used_budget_cents').notNull(),
+  approvedSubmissions: integer('approved_submissions').notNull(),
+})
+
 export const creatorStudioGenerations = pgTable('creator_studio_generations', {
   id: text('id').primaryKey(),
   creatorProfileId: text('creator_profile_id').notNull().references(() => creatorProfiles.id, { onDelete: 'cascade' }),
@@ -1158,6 +1164,14 @@ export const creatorCryptoPayoutHashes = pgTable('creator_crypto_payout_hashes',
   hash: text('hash').notNull(),
   batchId: text('batch_id').notNull().references(() => creatorCryptoPayoutBatches.id),
 }, table => [primaryKey({ columns: [table.chain, table.hash] })])
+
+export const creatorCryptoPayoutAnnouncements = pgTable('creator_crypto_payout_announcements', {
+  channelId: text('channel_id').notNull(),
+  creatorProfileId: text('creator_profile_id').notNull().references(() => creatorProfiles.id, { onDelete: 'cascade' }),
+  payoutDay: date('payout_day', { mode: 'string' }).notNull(),
+  messageId: text('message_id').notNull(),
+  amountCents: bigint('amount_cents', { mode: 'number' }).notNull(),
+}, table => [primaryKey({ columns: [table.channelId, table.creatorProfileId, table.payoutDay] })])
 
 export const creatorPayments = pgTable(
   'creator_payments',

@@ -44,7 +44,7 @@ import {
   sprintPayoutCents,
   sprintMoney,
   sprintViews,
-  type CreatorSprint,
+  type ListedCreatorSprint,
   type SprintProof,
 } from '@/lib/creator/sprints'
 type Props = { campaign: CampaignPreview | null; timeLabel: string | null }
@@ -90,7 +90,7 @@ export default function SprintsPage({ campaign, timeLabel }: Props) {
 function SprintsContent() {
   const router = useRouter()
   const { data, error, isLoading, mutate } = useSWR<{
-    sprints: CreatorSprint[]
+    sprints: ListedCreatorSprint[]
   }>('/api/creator/sprints', apiGet)
   const phase = typeof router.query.phase === 'string' && ['active', 'scheduled', 'past'].includes(router.query.phase) ? router.query.phase : 'active'
   const [versionId, setVersionId] = useState('')
@@ -117,7 +117,7 @@ function SprintsContent() {
     const versions = campaignVersionGroups(data?.sprints || []).find(group => group.some(item => item.id === selected.id)) || [selected]
     return <>
       <div className="mb-6"><CampaignVersionToggle campaigns={versions} selectedId={selected.id} onChange={id => void router.push({ pathname: '/creator/sprints', query: { id } }, undefined, { shallow: true })} /></div>
-      {campaign ? <LaunchCampaignDetail key={selected.id} sprint={selected} campaign={campaign} /> : <SprintDetail sprint={selected} />}
+      {campaign ? <LaunchCampaignDetail key={selected.id} sprint={selected} campaign={campaign} contentAllocatedCents={selected.cardTotals?.contentAllocatedCents} /> : <SprintDetail sprint={selected} />}
     </>
   }
   return (
@@ -171,12 +171,12 @@ function SprintsContent() {
                       {sprint.description}
                     </p>
                     <div className="my-5 border-y border-zinc-100 py-4">
-                      <SprintBudget sprint={sprint} />
+                      <SprintBudget sprint={sprint} contentAllocatedCents={sprint.cardTotals?.contentAllocatedCents} />
                     </div>
                     <div className="flex items-center justify-between text-xs text-zinc-500">
                       <span>
                         {sprint.counts.pending + sprint.counts.in_review}{' '}
-                        pending · {sprint.counts.approved + sprint.counts.paid}{' '}
+                        pending · {sprint.cardTotals?.approvedSubmissions ?? sprint.counts.approved + sprint.counts.paid}{' '}
                         approved · {sprint.counts.rejected} rejected
                       </span>
                       <ArrowRight className="size-4 text-[#00A8EF] transition-transform group-hover:translate-x-1" />
@@ -203,7 +203,7 @@ function SprintsContent() {
     </>
   )
 }
-function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
+function SprintDetail({ sprint }: { sprint: ListedCreatorSprint }) {
   const [tab, setTab] = useState('overview')
   const [audienceTier, setAudienceTier] = useState<string>('A')
   const hasAudienceBands = campaignHasAudienceBands(sprint.terms)
@@ -250,7 +250,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
       >
         <StudioTabContent value="overview">
           <div className="creator-surface p-5 sm:p-7">
-            <SprintBudget sprint={sprint} />
+            <SprintBudget sprint={sprint} contentAllocatedCents={sprint.cardTotals?.contentAllocatedCents} />
             <div className="mt-7 rounded-2xl border border-[#e8ebee] p-5">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold">Milestone payouts</h2>

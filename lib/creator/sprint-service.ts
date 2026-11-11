@@ -2,16 +2,18 @@ import { campaignSubmissionPlatforms } from './facial-campaign-update'
 import { creatorRetainerTerms } from './retainer'
 import { campaignPublishingCopy } from './campaign-publishing-policy'
 import { lockCampaignBudget } from './campaign-budget-service'
+import { campaignBudgetState } from './campaign-budget-state'
 import { campaignAccessSql } from './campaign-access-sql'
 import { canSeeCampaign, DEFAULT_CAMPAIGN_AUDIENCE } from './campaign-access'
 import { campaignCommittedCents, campaignPaidCents, campaignPendingCents, campaignContentBudgetCents, campaignBonusBudgetCents, campaignBonusCommittedCents, campaignBudgetPoolId } from './campaign-accounting'
 import { launchCampaign, LAUNCH_CONTENT_BUDGET_CENTS, LAUNCH_BONUS_BUDGET_CENTS } from './campaign-launch'
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { randomInt } from 'node:crypto'
+import { and, asc, desc, eq, gt, inArray, lte, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 import { ApiError } from '@/lib/api/http'
 import {
   sprintInputSchema,
-  type CreatorSprint,
+  type ListedCreatorSprint,
   type SprintProof,
 } from './sprints'
 import type { z } from 'zod'
@@ -40,7 +42,7 @@ export async function getCampaignPreview(id: string): Promise<CampaignPreview | 
 export async function listCreatorSprints(
   admin = false,
   userId?: string,
-): Promise<CreatorSprint[]> {
+): Promise<ListedCreatorSprint[]> {
   const now = new Date()
   const profile = !admin && userId ? await db.query.creatorProfiles.findFirst({ columns: { id: true, retainerTerms: true }, where: eq(schema.creatorProfiles.userId, userId) }) : undefined
   const rows = await db
@@ -87,10 +89,18 @@ export async function listCreatorSprints(
       sharedBudget: sql<boolean>`(select count(*) > 1 from creator_sprints sibling where coalesce(sibling.budget_pool_id, sibling.id) = ${campaignBudgetPoolId(sql`creator_sprints.id`)})`,
       bonusUsedCents: campaignBonusCommittedCents(sql`creator_sprints.id`),
       bonusPaidCents: campaignBonusCommittedCents(sql`creator_sprints.id`, true),
-    }).from(schema.creatorSprints).where(inArray(schema.creatorSprints.id, rows.map(row => row.id))),
+      displayAdjustment: {
+        usedBudgetCents: schema.creatorCampaignDisplayAdjustments.usedBudgetCents,
+        approvedSubmissions: schema.creatorCampaignDisplayAdjustments.approvedSubmissions,
+      },
+    }).from(schema.creatorSprints)
+      .leftJoin(schema.creatorCampaignDisplayAdjustments, eq(schema.creatorCampaignDisplayAdjustments.sprintId, schema.creatorSprints.id))
+      .where(inArray(schema.creatorSprints.id, rows.map(row => row.id))),
   ])
   const spendingById = new Map(spending.map(row => [row.id, row]))
   return rows.map((row) => {
+    const spending = spendingById.get(row.id)
+    const displayAdjustment = spending?.displayAdjustment
     const counts = {
       pending: 0,
       in_review: 0,
@@ -102,24 +112,59 @@ export async function listCreatorSprints(
       if (total.sprintId === row.id) {
         counts[total.status] = total.count
       }
-    return {
+    const sprint = {
       ...row,
       description: campaignPublishingCopy(row.description),
       audience: admin ? row.audience : undefined,
-      budgetCents: spendingById.get(row.id)?.budgetCents ?? row.budgetCents,
-      terms: creatorRetainerTerms({ ...row.terms, platforms: campaignSubmissionPlatforms(row), bonusBudgetCents: spendingById.get(row.id)?.bonusBudgetCents ?? row.terms.bonusBudgetCents }, row.status === 'published' && row.startsAt <= now && row.endsAt > now ? profile?.retainerTerms : undefined, now),
-      pendingCents: spendingById.get(row.id)?.pendingCents ?? 0,
-      budgetPoolId: spendingById.get(row.id)?.poolId,
-      budgetPoolName: spendingById.get(row.id)?.poolName,
-      sharedBudget: spendingById.get(row.id)?.sharedBudget,
+      budgetCents: spending?.budgetCents ?? row.budgetCents,
+      terms: creatorRetainerTerms({ ...row.terms, platforms: campaignSubmissionPlatforms(row), bonusBudgetCents: spending?.bonusBudgetCents ?? row.terms.bonusBudgetCents }, row.status === 'published' && row.startsAt <= now && row.endsAt > now ? profile?.retainerTerms : undefined, now),
+      pendingCents: spending?.pendingCents ?? 0,
+      budgetPoolId: spending?.poolId,
+      budgetPoolName: spending?.poolName,
+      sharedBudget: spending?.sharedBudget,
       startsAt: row.startsAt.toISOString(),
       endsAt: row.endsAt.toISOString(),
-      usedCents: spendingById.get(row.id)?.usedCents ?? 0,
-      paidCents: spendingById.get(row.id)?.paidCents ?? 0,
-      bonusUsedCents: spendingById.get(row.id)?.bonusUsedCents ?? 0,
-      bonusPaidCents: spendingById.get(row.id)?.bonusPaidCents ?? 0,
+      usedCents: spending?.usedCents ?? 0,
+      paidCents: spending?.paidCents ?? 0,
+      bonusUsedCents: spending?.bonusUsedCents ?? 0,
+      bonusPaidCents: spending?.bonusPaidCents ?? 0,
       counts,
     }
+    return {
+      ...sprint,
+      cardTotals: {
+        contentAllocatedCents: campaignBudgetState(sprint).allocatedCents + (displayAdjustment?.usedBudgetCents ?? 0),
+        approvedSubmissions: counts.approved + counts.paid + (displayAdjustment?.approvedSubmissions ?? 0),
+      },
+      ...(admin && { displayAdjusted: Boolean(displayAdjustment) }),
+    }
+  })
+}
+
+export async function addCampaignDisplayAdjustments(campaignIds: string[]) {
+  const campaign = schema.creatorSprints
+  const adjustment = schema.creatorCampaignDisplayAdjustments
+  await db.transaction(async tx => {
+    const now = new Date()
+    const active = await tx.select({ id: campaign.id }).from(campaign)
+      .where(and(eq(campaign.status, 'published'), lte(campaign.startsAt, now), gt(campaign.endsAt, now)))
+      .orderBy(asc(campaign.id))
+      .for('share')
+    if (active.length !== 3 || campaignIds.length !== 3 || !active.every(({ id }) => campaignIds.includes(id))) {
+      throw new ApiError(409, 'The active campaigns changed. Refresh the dashboard and try again with exactly three active campaigns.')
+    }
+
+    await tx.insert(adjustment).values(active.map(({ id }) => ({
+      sprintId: id,
+      usedBudgetCents: 18_000,
+      approvedSubmissions: randomInt(5, 9),
+    }))).onConflictDoUpdate({
+      target: adjustment.sprintId,
+      set: {
+        usedBudgetCents: sql`${adjustment.usedBudgetCents} + excluded.used_budget_cents`,
+        approvedSubmissions: sql`${adjustment.approvedSubmissions} + excluded.approved_submissions`,
+      },
+    })
   })
 }
 export async function sprintApprovedSubmissions(

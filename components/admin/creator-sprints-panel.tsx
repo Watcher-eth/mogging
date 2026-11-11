@@ -39,6 +39,7 @@ import {
   sprintMoney,
   sprintPhase,
   type CreatorSprint,
+  type ListedCreatorSprint,
   type SprintTerms,
 } from '@/lib/creator/sprints'
 type CampaignCreator = { id: string; displayName: string; socialHandle: string | null }
@@ -58,7 +59,7 @@ export function CreatorSprintsPanel({
   onSelectSubmission: (submission: AdminSubmission) => void
 }) {
   const { data, error, isLoading, mutate } = useSWR<{
-    sprints: CreatorSprint[]
+    sprints: ListedCreatorSprint[]
     creators: CampaignCreator[]
   }>('/api/admin/creator/sprints', apiGet, { refreshInterval: 30_000 })
   const [editing, setEditing] = useState<CreatorSprint | 'new' | null>(null)
@@ -66,7 +67,9 @@ export function CreatorSprintsPanel({
   const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [submissionStatus, setSubmissionStatus] = useState('all')
+  const [adjustingDisplay, setAdjustingDisplay] = useState(false)
   const campaigns = data?.sprints || []
+  const activeCampaigns = campaigns.filter(campaign => sprintPhase(campaign) === 'active')
   const selected = campaigns.find((campaign) => campaign.id === selectedId)
   const visible = campaigns.filter(
     (campaign) =>
@@ -103,6 +106,21 @@ export function CreatorSprintsPanel({
     { value: 'scheduled', label: 'Scheduled' },
     { value: 'past', label: 'Ended' },
   ]
+
+  async function adjustCampaignDisplay() {
+    setAdjustingDisplay(true)
+    try {
+      await apiPost('/api/admin/creator/campaign-display-adjustments', {
+        campaignIds: activeCampaigns.map(campaign => campaign.id),
+      })
+      await mutate()
+      toast.success('Display totals updated for three campaigns')
+    } catch (error) {
+      toast.error(error instanceof ApiClientError ? error.message : 'Could not update campaign display totals')
+    } finally {
+      setAdjustingDisplay(false)
+    }
+  }
 
   return (
     <>
@@ -260,11 +278,7 @@ export function CreatorSprintsPanel({
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-zinc-500">
               {campaigns.length} campaigns ·{' '}
-              {
-                campaigns.filter(
-                  (campaign) => sprintPhase(campaign) === 'active',
-                ).length
-              }{' '}
+              {activeCampaigns.length}{' '}
               active
             </p>
             <Button onClick={() => setEditing('new')} className="rounded-full">
@@ -272,6 +286,26 @@ export function CreatorSprintsPanel({
               New campaign
             </Button>
           </div>
+          <section className="creator-surface mb-5 flex flex-wrap items-center justify-between gap-3 p-4" aria-label="Campaign display totals">
+            <div>
+              <h2 className="text-sm font-semibold">Campaign display totals</h2>
+              <p id="campaign-display-description" className="mt-1 text-xs leading-5 text-zinc-500">
+                {data && activeCampaigns.length !== 3
+                  ? 'This control is available when exactly three campaigns are active.'
+                  : 'Adds $180 in used budget and a random 5–8 approvals to each active campaign’s displayed totals.'}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-describedby="campaign-display-description"
+              disabled={Boolean(error) || activeCampaigns.length !== 3 || adjustingDisplay}
+              onClick={() => void adjustCampaignDisplay()}
+            >
+              {adjustingDisplay ? 'Updating display…' : 'Add display activity'}
+            </Button>
+          </section>
           <div className="mb-5 flex flex-wrap items-center gap-2">
             <div
               role="group"
@@ -317,6 +351,7 @@ export function CreatorSprintsPanel({
           ) : visible.length ? (
             <div className="grid gap-4 xl:grid-cols-2">
               {visible.map((campaign) => {
+                const labelSuffix = campaign.displayAdjusted ? ' (display adjusted)' : ''
                 const pending =
                   campaign.counts.pending + campaign.counts.in_review
                 const total = Object.values(campaign.counts).reduce(
@@ -351,7 +386,7 @@ export function CreatorSprintsPanel({
                       {campaignDates(campaign)}
                     </p>
                     <div className="my-5 border-y border-zinc-100 py-4">
-                      <SprintBudget sprint={campaign} />
+                      <SprintBudget sprint={campaign} contentAllocatedCents={campaign.cardTotals?.contentAllocatedCents} labelSuffix={labelSuffix} />
                     </div>
                     <div className="mb-5 flex flex-wrap gap-x-4 gap-y-2 text-xs text-zinc-500">
                       <span>
@@ -364,10 +399,7 @@ export function CreatorSprintsPanel({
                         <strong className="font-medium">{pending}</strong> need
                         review
                       </span>
-                      <span>
-                        {campaign.counts.approved + campaign.counts.paid}{' '}
-                        approved
-                      </span>
+                      <span>{campaign.cardTotals?.approvedSubmissions ?? campaign.counts.approved + campaign.counts.paid} approved{labelSuffix}</span>
                     </div>
                     <div className="mt-auto flex items-center justify-between gap-2">
                       <Button

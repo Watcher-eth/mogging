@@ -284,3 +284,93 @@ test.skipIf(!testUrl)('Ethereum finds the finalized native USDC batch after the 
   expect(await queue.readCryptoBatch(batch.id)).toMatchObject({ status: 'paid', paidCreatorCount: 1, hashes: [hash], recipients: [{ outcome: 'paid', hash }] })
   expect(await db.query.creatorPayments.findFirst({ where: eq(schema.creatorPayments.id, payment.id) })).toMatchObject({ status: 'paid', providerReference: hash })
 })
+
+test.skipIf(!testUrl)('Discord combines confirmed crypto and proved PayPal payouts in one daily post per creator', async () => {
+  const { db, schema } = database
+  const { publishCreatorPayouts } = await import('../creator-payout-announcements')
+  const owner = await creator('USDC on Solana', signer.publicKey.toBase58())
+  const other = await creator('USDC on Solana', signer.publicKey.toBase58())
+  const paypalOnly = await creator('USDC on Solana', signer.publicKey.toBase58())
+  const channelId = '123456789012345678'
+  const solanaHash = bs58.encode(Buffer.alloc(64, 4))
+  const baseHash = `0x${'6'.repeat(64)}`
+  const previousEnv = { ...process.env }
+  const messages = new Map<string, string>()
+  let posts = 0
+  let edits = 0
+  const discord = (async (url, init) => {
+    const path = new URL(String(url)).pathname
+    if (init?.method === 'GET') return Response.json([{ id: channelId, type: 0, name: '✅・verified-payouts' }])
+    const payload = JSON.parse(String(init?.body))
+    expect(payload.allowed_mentions).toEqual({ parse: [] })
+    if (init?.method === 'POST') {
+      expect(payload.enforce_nonce).toBe(true)
+      expect(path).toEndWith(`/channels/${channelId}/messages`)
+      const id = String(BigInt(channelId) + BigInt(++posts))
+      messages.set(id, payload.content)
+      return Response.json({ id, content: payload.content })
+    }
+    expect(init?.method).toBe('PATCH')
+    const id = path.split('/').at(-1)!
+    expect(messages.has(id)).toBe(true)
+    edits++
+    messages.set(id, payload.content)
+    return Response.json({ id, content: payload.content })
+  }) as typeof fetch
+  const paidAt = new Date()
+  async function confirmed(chain: 'solana' | 'base', hash: string, amounts: { creatorProfileId: string; amountCents: number }[]) {
+    const id = crypto.randomUUID()
+    await db.insert(schema.creatorCryptoPayoutBatches).values({
+      id, chain, sender: 'fixture', adminUserId: 'fixture-admin', status: 'paid', outputs: [],
+      proof: chain === 'solana' ? { chain, transfers: [] } : { chain, startBlock: '1' },
+    })
+    await db.insert(schema.creatorCryptoPayoutHashes).values({ batchId: id, chain, hash })
+    await db.insert(schema.creatorPayments).values(amounts.map(amount => ({
+      ...amount, cryptoBatchId: id, providerReference: hash, paidAt, status: 'paid' as const, paymentOption: 'crypto' as const,
+    })))
+  }
+  try {
+    process.env.DISCORD_PAYOUTS_CHANNEL = 'verified payouts'
+    process.env.DISCORD_PAYOUTS_START_AT = paidAt.toISOString()
+    process.env.DISCORD_PAYPAL_PAYOUTS_START_AT = paidAt.toISOString()
+    process.env.DISCORD_BOT_TOKEN = 'fixture-token'
+    await db.insert(schema.creatorSocialAccounts).values([
+      { creatorProfileId: owner.id, platform: 'tiktok', status: 'approved', handle: '@silver.psl' },
+      { creatorProfileId: other.id, platform: 'tiktok', status: 'approved', handle: 'another.creator' },
+      { creatorProfileId: paypalOnly.id, platform: 'tiktok', status: 'approved', handle: 'paypal.creator' },
+    ])
+    await db.insert(schema.creatorPayments).values({ creatorProfileId: owner.id, amountCents: 1000, paymentOption: 'crypto', status: 'paid', paidAt, providerReference: 'manual' })
+    await confirmed('solana', solanaHash, [
+      { creatorProfileId: owner.id, amountCents: 1200 },
+      { creatorProfileId: owner.id, amountCents: 1050 },
+      { creatorProfileId: other.id, amountCents: 700 },
+    ])
+    await Promise.all([publishCreatorPayouts(discord), publishCreatorPayouts(discord)])
+    expect([...messages.values()].sort()).toEqual([
+      `https://solscan.io/tx/${solanaHash} $22.50 @silver.psl`,
+      `https://solscan.io/tx/${solanaHash} $7.00 @another.creator`,
+    ].sort())
+    const ownerMessage = [...messages].find(([, content]) => content.endsWith('@silver.psl'))![0]
+    await confirmed('base', baseHash, [{ creatorProfileId: owner.id, amountCents: 500 }])
+    expect(await publishCreatorPayouts(discord)).toEqual({ posted: 0, updated: 1, errors: 0 })
+    expect(messages.get(ownerMessage)).toBe(`https://basescan.org/tx/${baseHash} $27.50 @silver.psl\nhttps://solscan.io/tx/${solanaHash}`)
+    const [proved] = await db.insert(schema.creatorPayments).values([
+      { creatorProfileId: owner.id, amountCents: 750, paymentOption: 'paypal', status: 'paid', paidAt },
+      { creatorProfileId: owner.id, amountCents: 900, paymentOption: 'paypal', status: 'paid', paidAt },
+      { creatorProfileId: paypalOnly.id, amountCents: 2250, paymentOption: 'paypal', status: 'paid', paidAt, providerReference: 'private-paypal-reference' },
+      { creatorProfileId: paypalOnly.id, amountCents: 500, paymentOption: 'paypal', status: 'pending', providerReference: 'unsettled-reference' },
+    ]).returning()
+    await db.insert(schema.creatorPaymentReceipts).values({ paymentId: proved.id, image: 'private-receipt-image' })
+    expect(await publishCreatorPayouts(discord)).toEqual({ posted: 1, updated: 1, errors: 0 })
+    expect(messages.get(ownerMessage)).toBe(`https://basescan.org/tx/${baseHash} $35.00 @silver.psl\nIncludes $7.50 via PayPal\nhttps://solscan.io/tx/${solanaHash}`)
+    expect([...messages.values()]).toContain('PayPal $22.50 @paypal.creator')
+    expect([...messages.values()].join('\n')).not.toMatch(/private-(paypal-reference|receipt-image)/)
+    expect(await publishCreatorPayouts(discord)).toEqual({ posted: 0, updated: 0, errors: 0 })
+    expect([posts, edits]).toEqual([3, 2])
+  } finally {
+    for (const key of ['DISCORD_PAYOUTS_CHANNEL', 'DISCORD_PAYOUTS_START_AT', 'DISCORD_PAYPAL_PAYOUTS_START_AT', 'DISCORD_BOT_TOKEN']) {
+      if (previousEnv[key] === undefined) delete process.env[key]
+      else process.env[key] = previousEnv[key]
+    }
+  }
+})
