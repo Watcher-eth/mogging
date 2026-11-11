@@ -9,6 +9,13 @@ export type AudienceMetrics = {
   totalViews: number | null
   totalViewsExact?: boolean
   age: { range: string; percent: number }[]
+  totalPlayTimeSeconds?: number | null
+  watchedFullVideoPercent?: number | null
+  newFollowers?: number | null
+  postSummary?: { postedAtLabel?: string | null; likes?: number | null; comments?: number | null; shares?: number | null; saves?: number | null } | null
+  totalViewersChange?: { count: number; comparisonLabel: string } | null
+  viewerTypes?: { newViewersPercent?: number | null; returningViewersPercent?: number | null; nonFollowersPercent?: number | null; followersPercent?: number | null } | null
+  gender?: { label: 'Male' | 'Female' | 'Other'; percent: number }[]
 }
 export type AudienceMetric = keyof AudienceMetrics
 export type AudienceCheck = {

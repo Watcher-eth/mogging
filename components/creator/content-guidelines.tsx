@@ -2,6 +2,7 @@ import { CampaignAnchorLink } from './campaign-publishing-requirements'
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { CELEBRITY_EDIT_POLICY } from '@/lib/creator/content-policy'
 import { CREATOR_CTA_GUIDANCE } from '@/lib/creator/post-guidance'
+import { TIKTOK_ANALYTICS_RECORDING_RULES } from '@/lib/creator/analytics-recording-rules'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Check, ShieldCheck, TriangleAlert, Video, Type, Captions } from '@/components/ui/mogging-glyphs'
@@ -64,7 +65,15 @@ export function ContentGuidelines() {
           <p>A useful signal is viewers discussing their own looks: asking about potential, ratings / PSL, or specific facial features, sometimes sharing their own photos. PSL here is appearance-rating terminology; the app creators should promote is Mogging.</p>
           <p>Song requests, plot discussions, school jokes, tagging friends, and repetitive “claim” comments suggest a different audience. Use this feedback to improve the next edit. Comments are a diagnostic signal, not a required quota or a guarantee of approval; the post still has to meet every rule. Never fabricate the desired comments.</p>
         </RuleDetail>
-        <RuleDetail title="Account reviews, fraud, and payout holds"><p>{accountReviewPolicy}</p><p>Keep evidence genuine and readable. For each video or slideshow submission, film the post’s analytics with a second device in one continuous take. Show the screen, username, post, views, traffic sources, and audience locations. Screenshots, native screen recordings, cuts, and edits are not accepted. Provide additional evidence when requested. Campaign content eligibility, audience geography, view milestones, and payout setup are separate checks; passing one does not waive the others.</p><AnalyticsVerificationHelp /></RuleDetail>
+        <RuleDetail title="Account reviews, fraud, and payout holds">
+          <p>{accountReviewPolicy}</p>
+          <p>When your campaign requires analytics, film the post’s analytics with a second device in one continuous take. Show the screen, username, post, views, traffic sources, and audience locations. Screenshots, native screen recordings, cuts, and edits are not accepted.</p>
+          <ul className="list-disc space-y-2 pl-5">
+            {TIKTOK_ANALYTICS_RECORDING_RULES.map(rule => <li key={rule}>{rule}</li>)}
+          </ul>
+          <p>Provide additional evidence when requested. Campaign content eligibility, audience geography, view milestones, and payout setup are separate checks.</p>
+          <AnalyticsVerificationHelp />
+        </RuleDetail>
       </div>
       <TikTokAnchorGuidelines />
     </section>

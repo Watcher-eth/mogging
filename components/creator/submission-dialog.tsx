@@ -14,6 +14,7 @@ import { publishingTikTokHandle, tiktokAnchorEligible } from '@/lib/creator/tikt
 import { detectPostingAccount } from '@/lib/creator/post-account'
 import { creatorContentRestriction } from '@/lib/creator/content-policy'
 import { creatorCampaignRules, CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
+import { campaignAnalyticsRecordingRules, TIKTOK_ANALYTICS_RECORDING_RULES } from '@/lib/creator/analytics-recording-rules'
 import { PublishedPostPlayer } from './published-post-player'
 import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import { AnalyticsRecordingPreview } from './analytics-recording-preview'
@@ -154,6 +155,7 @@ export function SubmissionDialog({
   }, [initialSprintId])
   const detected = detectPostingAccount(postUrl, data?.socialAccounts || [], selectedAccountId)
   const { platform, account: publishingAccount } = detected
+  const isTikTok = platform === 'tiktok' || (!platform && existingSubmission?.platform?.toLowerCase() === 'tiktok')
   const accountId = publishingAccount?.id || ''
   const anchorEligibility = tiktokAnchorEligible(publishingAccount)
   const anchorAvailable = !existingSubmission && platform === 'tiktok' && anchorEligibility === true
@@ -161,6 +163,7 @@ export function SubmissionDialog({
     format && sprint
       ? [
           ...campaignPublishingChecklistRules([...creatorCampaignRules(format.requirements), ...creatorCampaignRules(sprint.terms.rules)]),
+          ...(!earlySubmission && isTikTok ? TIKTOK_ANALYTICS_RECORDING_RULES : []),
           ...format.notAllowed.map((item) => `My post avoids: ${creatorContentRestriction(item)}`),
         ]
       : []
@@ -391,7 +394,7 @@ export function SubmissionDialog({
                             ))}
                           </div>
                           <ul className="mt-4 list-inside list-disc space-y-2 text-sm text-zinc-500">
-                            {creatorCampaignRules(sprint.terms.rules).map((rule) => (
+                            {[...campaignAnalyticsRecordingRules(sprint.terms), ...creatorCampaignRules(sprint.terms.rules)].map((rule) => (
                               <li key={rule}>{rule}</li>
                             ))}
                           </ul>
@@ -435,7 +438,14 @@ export function SubmissionDialog({
                     <>
                       <aside role="note" className="creator-info-bubble">
                         <Info aria-hidden="true" className="size-8 shrink-0" fill="white" stroke="#202123" strokeWidth={1.7} />
-                        <p><strong>Film your analytics with a second device.</strong> Show your handle, post, views, traffic sources and all audience locations in one unedited take. No screenshots or screen recordings.</p>
+                        <div className="min-w-0">
+                          <p><strong>Film your analytics with a second device.</strong> Show your handle, post, views, traffic sources and all audience locations in one unedited take. No screenshots or screen recordings.</p>
+                          {isTikTok ? (
+                            <ul className="mt-2 list-disc space-y-2 pl-4">
+                              {TIKTOK_ANALYTICS_RECORDING_RULES.map(rule => <li key={rule}>{rule}</li>)}
+                            </ul>
+                          ) : null}
+                        </div>
                       </aside>
                       <div className="grid items-start gap-4 sm:grid-cols-2">
                         <Field label={<span className="flex items-center justify-between gap-2"><span className="inline-flex items-center gap-2"><Eye aria-hidden="true" className="size-4 shrink-0" />Views shown in recording</span><span title="Use the total views visible in your analytics recording"><Info aria-hidden="true" className="size-3.5 shrink-0 text-zinc-400" /></span></span>}>
@@ -491,6 +501,7 @@ export function SubmissionDialog({
                             )
                           setRecording(file)
                           setPhysicalConfirmed(false)
+                          setConfirmed([])
                         }}
                       />
                       {recording ? <AnalyticsRecordingPreview file={recording} onChoose={() => fileRef.current?.click()} /> : <button type="button" onClick={() => fileRef.current?.click()} className="flex min-h-28 items-center justify-center gap-3 rounded-2xl border border-dashed border-zinc-300 bg-white p-4 text-sm">

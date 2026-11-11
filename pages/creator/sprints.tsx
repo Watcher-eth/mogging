@@ -9,6 +9,7 @@ import { launchCampaign } from '@/lib/creator/campaign-launch'
 import NumberFlow from '@number-flow/react'
 import { CreatorEssentials } from '@/components/creator/creator-essentials'
 import { creatorCampaignRules, creatorFormatElement } from '@/lib/creator/post-guidance'
+import { campaignAnalyticsRecordingRules } from '@/lib/creator/analytics-recording-rules'
 import { CampaignRegionHelp } from '@/components/creator/campaign-region-help'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CampaignHelp } from '@/components/creator/campaign-help'
@@ -418,7 +419,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
                     {hasAudienceBands ? <CampaignRegionHelp /> : null}
                   </li>
                   {[
-                    'A continuous analytics recording filmed with a second device is required.',
+                    ...campaignAnalyticsRecordingRules(sprint.terms),
                     ...creatorCampaignRules(sprint.terms.rules),
                   ].map((rule) => (
                     <li

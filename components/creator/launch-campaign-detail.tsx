@@ -29,6 +29,7 @@ import {
   campaignRegionRates,
 } from "@/lib/creator/sprint-defaults";
 import { creatorCampaignRules } from "@/lib/creator/post-guidance";
+import { campaignAnalyticsRecordingRules } from '@/lib/creator/analytics-recording-rules'
 import {
   sprintMoney,
   sprintPhase,
@@ -180,7 +181,7 @@ export function LaunchCampaignDetail({
                 ) : null}
               </li>
               {[
-                sprint.terms.submitOnPublish ? "At each view milestone, upload a fresh continuous analytics recording filmed with a second device. Analytics are not required for the initial submission." : "A continuous analytics recording filmed with a second device is required.",
+                ...campaignAnalyticsRecordingRules(sprint.terms),
                 ...creatorCampaignRules(sprint.terms.rules),
               ].map((rule) => (
                 <li key={rule}>{rule}</li>
