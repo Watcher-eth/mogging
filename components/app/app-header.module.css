@@ -1,0 +1,23 @@
+.heroScrim,
+.scrollTint,
+.scrollBlur {
+  position: absolute;
+  inset: 0 0 -24px;
+  pointer-events: none;
+}
+
+.heroScrim {
+  background: linear-gradient(to bottom, rgb(0 0 0 / .4), transparent 77%);
+  opacity: calc(1 - var(--header-scroll, 0));
+}
+
+.scrollTint {
+  background: linear-gradient(to bottom, rgb(255 255 255 / .72), rgb(255 255 255 / .57) 33%, rgb(255 255 255 / .29) 60%, rgb(255 255 255 / .08) 82%, transparent);
+  opacity: var(--header-scroll, 0);
+}
+
+.scrollBlur > span {
+  position: absolute;
+  inset: 0;
+  opacity: var(--header-scroll, 0);
+}

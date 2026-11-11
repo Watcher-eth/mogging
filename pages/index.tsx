@@ -9,8 +9,6 @@ import dynamic from "next/dynamic";
 import { useLandingTracking } from "@/components/landing/use-landing-tracking";
 import type { GetServerSideProps, NextApiRequest, NextApiResponse } from "next";
 import { useRef, type ReactNode } from "react";
-import Link from "next/link";
-import { ArrowRight } from "@/components/ui/mogging-glyphs";
 import {
   EvaluationPreview,
   ProtocolPreview,
@@ -201,7 +199,6 @@ function NewHomepage({ assignment, preview, phoneEntry, ios }: Props) {
                   <p className="text-xs font-semibold uppercase tracking-[.16em] text-zinc-500">{t("landing.webEyebrow")}</p>
                   <h2 id="web-title" className="mt-4 text-balance text-3xl font-semibold tracking-[-.04em] sm:text-5xl">{t("landing.webTitle")}</h2>
                   <p className="mx-auto mt-4 max-w-2xl text-pretty text-base leading-7 text-zinc-500">{t("landing.webDescription")}</p>
-                  <Link href="/analysis" prefetch={false} onClick={() => trackDestination("web_analysis", "web_section")} className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-zinc-600 hover:text-black">{t("landing.withoutApp")} <ArrowRight className="size-4" aria-hidden="true" /></Link>
                 </div>
               } />
             </div>
