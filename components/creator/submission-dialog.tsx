@@ -94,12 +94,13 @@ export function SubmissionDialog({
   onSubmitted: () => Promise<void>
   previewOnly?: boolean
 }) {
+  const analyticsRequest = existingSubmission?.analyticsVideoRequest
   const { data: campaigns, error: sprintError, mutate: refreshCampaigns } = useSWR<{
     sprints: CreatorSprint[]
-  }>(open ? '/api/creator/sprints' : null, apiGet)
+  }>(open && !analyticsRequest ? '/api/creator/sprints' : null, apiGet)
   const { pathname } = useRouter()
   const { data, error: dashboardError, mutate: refreshDashboard } = useSWR<CreatorDashboard>(
-    open ? pathname.includes('__') ? '/api/creator' : '/api/creator?view=submit' : null,
+    open && !analyticsRequest ? pathname.includes('__') ? '/api/creator' : '/api/creator?view=submit' : null,
     apiGet,
   )
   const [step, setStep] = useState(existingSubmission ? 3 : 1)
@@ -170,7 +171,7 @@ export function SubmissionDialog({
   const accountRequired =
     platform !== 'youtube' && (platform === 'tiktok' || Boolean(data?.featureFlags.creatorAccountRequiredForSubmission))
   function checkMinimumViews() {
-    if (earlySubmission) return true
+    if (earlySubmission || analyticsRequest) return true
     const count = Number(views)
     if (
       views.trim() &&
@@ -223,13 +224,11 @@ export function SubmissionDialog({
 
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (!checkMinimumViews()) return
+    if (!checkMinimumViews() || busy) return
     if (sprint && !existingSubmission && (campaignBudgetState(sprint).locked || sprintPayoutCents(sprint.terms, Number(views), Number(audience)) > campaignBudgetState(sprint).availableCents)) return toast.error('Not enough campaign budget remains for this request. Refresh the campaign to see availability.')
     if (
-      (!earlySubmission && (!recording || !physicalConfirmed)) ||
-      !sprint ||
-      !format ||
-      confirmed.length !== checklist.length
+      !earlySubmission && (!recording || !physicalConfirmed || !views || !audience)
+      || (!analyticsRequest && (!sprint || !format || confirmed.length !== checklist.length))
     )
       return
     if (previewOnly) {
@@ -268,6 +267,7 @@ export function SubmissionDialog({
         socialAccountId: accountId || null,
         postUrl,
         ...(earlySubmission ? { earlySubmission: true } : evidence),
+        ...(analyticsRequest ? { analyticsVideoRequestId: analyticsRequest.id } : {}),
       })
       playSuccess()
       toast.success(existingSubmission ? 'Updated analytics submitted for review' : 'Video submitted for review')
@@ -300,12 +300,12 @@ export function SubmissionDialog({
       <DialogContent className="creator-dialog creator-submission-dialog flex gap-0 max-h-[92dvh] w-[calc(100%-2rem)] max-w-3xl flex-col overflow-hidden p-0">
         <DialogHeader className="creator-dialog-header shrink-0 border-b border-zinc-100 px-5 py-5 text-left sm:px-7">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-            {existingSubmission ? 'Update analytics' : 'Submit a post'}
+            {analyticsRequest ? 'Requested update' : existingSubmission ? 'Update analytics' : 'Submit a post'}
           </p>
-          <DialogTitle ref={headingRef} tabIndex={-1} className="creator-dialog-title pr-7 text-xl outline-none">{titles[step - 1]}</DialogTitle>
-          <DialogDescription>{existingSubmission ? CREATOR_REREVIEW_GUIDANCE : earlySubmission ? 'Submit immediately after upload. Add fresh analytics at each view milestone.' : step === 1 ? 'Choose an active campaign below. Follow the selected campaign’s publishing and analytics requirements.' : descriptions[step - 1]}</DialogDescription>
+          <DialogTitle ref={headingRef} tabIndex={-1} className="creator-dialog-title pr-7 text-xl outline-none">{analyticsRequest ? 'Upload new analytics video' : titles[step - 1]}</DialogTitle>
+          <DialogDescription>{analyticsRequest ? 'Show the requested details for the same post and send the recording back for review.' : existingSubmission ? CREATOR_REREVIEW_GUIDANCE : earlySubmission ? 'Submit immediately after upload. Add fresh analytics at each view milestone.' : step === 1 ? 'Choose an active campaign below. Follow the selected campaign’s publishing and analytics requirements.' : descriptions[step - 1]}</DialogDescription>
         </DialogHeader>
-        {!data || !campaigns ? (
+        {!analyticsRequest && (!data || !campaigns) ? (
           <div className="min-h-48 p-8 text-center">
             {sprintError || dashboardError ? (
               <p role="alert">
@@ -317,12 +317,15 @@ export function SubmissionDialog({
           </div>
         ) : (
           <form
-            onSubmit={step === 4 ? submit : next}
+            onSubmit={analyticsRequest || step === 4 ? submit : next}
             className="flex min-h-0 flex-1 flex-col"
           >
             <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 sm:px-7">
               <AnimatedDialogPanel contentKey={step} motionStyle="swish" direction={stepDirection} contentClassName="grid gap-4">
-                  <CampaignAnchorLink />
+                  {analyticsRequest ? <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                    <p className="font-semibold">What the review team requested</p>
+                    <p className="mt-1 whitespace-pre-wrap break-words">{analyticsRequest.description}</p>
+                  </div> : <CampaignAnchorLink />}
                   {earlySubmission ? <ImmediateSubmissionNotice /> : null}
                   {sprint && step !== 1 ? <CampaignSubmissionBudget sprint={sprint} /> : null}
                   {step === 1 ? (
@@ -459,9 +462,9 @@ export function SubmissionDialog({
                             onChange={(e) => setViews(e.target.value)}
                             required
                           />
-                          <p className="mt-1 text-xs text-zinc-500">
+                          {!analyticsRequest ? <p className="mt-1 text-xs text-zinc-500">
                             {sprint?.terms.retainer ? `Retainer: $${(sprint.terms.retainer.amountCents / 100).toFixed(2)} per approved video with at least ${sprint.terms.minimumTier1Percent}% Tier 1 audience. No minimum views.` : <>Submit as soon as you reach {minimumViews.toLocaleString('en-US')} views. Request rereview at each new milestone.</>}
-                          </p>
+                          </p> : null}
                         </Field>
                         <div className="creator-field-label">
                           <div className="flex items-center justify-between gap-2">
@@ -614,6 +617,7 @@ export function SubmissionDialog({
               <Button
                 disabled={
                   busy ||
+                  (Boolean(analyticsRequest) && (!recording || !physicalConfirmed)) ||
                   (step === 1 && (!sprint || !format || budgetRequestBlocked)) ||
                   (step === 4 && (confirmed.length !== checklist.length || budgetRequestBlocked))
                 }
@@ -623,19 +627,19 @@ export function SubmissionDialog({
                     <Loader2 className="size-4 animate-spin" />
                     Uploading {progress}%
                   </>
-                ) : step === 4 ? (
+                ) : analyticsRequest || step === 4 ? (
                   existingSubmission ? 'Submit for review' : 'Submit post'
                 ) : (
                   'Continue'
                 )}
               </Button>
               </div>
-              <ol aria-label={`Submission progress: step ${visibleStep} of ${stepLabels.length}`} className="flex h-3 items-center justify-center gap-1.5">
+              {!analyticsRequest ? <ol aria-label={`Submission progress: step ${visibleStep} of ${stepLabels.length}`} className="flex h-3 items-center justify-center gap-1.5">
                 {stepLabels.map((label, index) => <li key={label} aria-current={index + 1 === visibleStep ? 'step' : undefined} className="flex items-center">
                   <span aria-hidden="true" className={cn('block h-1.5 rounded-full transition-[width,background-color] duration-200 ease-out motion-reduce:transition-none', index + 1 === visibleStep ? 'w-5 bg-black' : index + 1 < visibleStep ? 'w-1.5 bg-black/40' : 'w-1.5 bg-zinc-200')} />
                   <span className="sr-only">{label}{index + 1 < visibleStep ? ', complete' : index + 1 === visibleStep ? ', current step' : ''}</span>
                 </li>)}
-              </ol>
+              </ol> : null}
             </div>
           </form>
         )}

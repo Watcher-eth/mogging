@@ -537,28 +537,35 @@ export async function requestSubmissionReview(userId: string, submissionId: stri
   if (!profile || profile.authStatus === 'suspended') throw new CreatorServiceError(403, 'Creator access required')
   const existing = await getSubmissionForCreator(userId, submissionId)
   if (!existing) throw new CreatorServiceError(404, 'Submission not found')
-  if (input.viewCountThreshold < minimumSubmissionViews(existing.sprintTerms)) throw new CreatorServiceError(400, `This campaign requires at least ${minimumSubmissionViews(existing.sprintTerms).toLocaleString('en-US')} views`)
+  if (!input.analyticsVideoRequestId && input.viewCountThreshold < minimumSubmissionViews(existing.sprintTerms)) throw new CreatorServiceError(400, `This campaign requires at least ${minimumSubmissionViews(existing.sprintTerms).toLocaleString('en-US')} views`)
   await verifySubmissionAnalytics(userId, input)
   return db.transaction(async tx => {
     const [submission] = await tx.select().from(schema.creatorSubmissions).where(and(eq(schema.creatorSubmissions.id, submissionId), eq(schema.creatorSubmissions.creatorProfileId, profile.id))).for('update')
-    if (submission?.isDraft) throw new CreatorServiceError(409, 'Submit this registered post with its campaign and analytics first')
-    if (!submission?.sprintId || !submission.sprintTerms) throw new CreatorServiceError(409, 'Only campaign submissions can request rereview')
-    const awaitingReview = submission.reviewRequestedAt || (['pending', 'in_review'].includes(submission.status) && submission.analyticsScreenshotUrl)
-    if (awaitingReview && !isFacialSubmissionWaitingForReview(submission)) {
-      throw new CreatorServiceError(409, 'This submission is already awaiting review')
+    if (!submission) throw new CreatorServiceError(404, 'Submission not found')
+    if (submission.isDraft) throw new CreatorServiceError(409, 'Submit this registered post with its campaign and analytics first')
+    const analyticsRequest = submission.analyticsVideoRequest
+    if (analyticsRequest?.id !== input.analyticsVideoRequestId) throw new CreatorServiceError(409, 'The analytics video request changed. Refresh the submission before uploading.')
+    if (!analyticsRequest) {
+      if (!submission.sprintId || !submission.sprintTerms) throw new CreatorServiceError(409, 'Only campaign submissions can request rereview')
+      const awaitingReview = submission.reviewRequestedAt || (['pending', 'in_review'].includes(submission.status) && submission.analyticsScreenshotUrl)
+      if (awaitingReview && !isFacialSubmissionWaitingForReview(submission)) throw new CreatorServiceError(409, 'This submission is already awaiting review')
     }
     if (submission.analyticsStorageKey === input.analyticsStorageKey) throw new CreatorServiceError(400, 'Upload a fresh analytics recording')
     const payments = await tx.query.creatorPayments.findMany({ where: eq(schema.creatorPayments.submissionId, submission.id) })
     if (payments.some(payment => ['pending', 'processing'].includes(payment.status))) throw new CreatorServiceError(409, 'Wait until the scheduled payment is completed before requesting rereview')
     const now = new Date()
-    const assignment = await expiredRereviewAssignment(tx, submission, now)
-    const minimumViews = minimumSubmissionViews(assignment?.sprintTerms ?? submission.sprintTerms)
-    if (input.viewCountThreshold < minimumViews) throw new CreatorServiceError(400, `This campaign requires at least ${minimumViews.toLocaleString('en-US')} views`)
+    const assignment = !analyticsRequest && submission.sprintId && submission.sprintTerms
+      ? await expiredRereviewAssignment(tx, { ...submission, sprintId: submission.sprintId, sprintTerms: submission.sprintTerms }, now)
+      : undefined
+    const terms = assignment?.sprintTerms ?? submission.sprintTerms
     const budgetCampaignId = assignment?.sprintId ?? submission.sprintId
-    const increment = requestedIncrementCents(sprintPayoutCents(assignment?.sprintTerms ?? submission.sprintTerms, input.viewCountThreshold, input.usAudiencePercent), submission.approvedAmountCents ?? 0)
-    await requireSubmissionBudget(tx, budgetCampaignId, increment, { rereview: true, excludeSubmissionId: submission.id, committedAdjustmentCents: assignment ? submission.approvedAmountCents ?? 0 : 0 })
-    await tx.insert(schema.creatorSubmissionMessages).values({ submissionId, authorUserId: userId, authorRole: 'creator', body: `Submitted fresh analytics for review: ${input.viewCountThreshold.toLocaleString('en-US')} views · ${input.usAudiencePercent}% Tier 1 audience.${submission.analyticsScreenshotUrl ? ` Previous evidence: ${submission.analyticsScreenshotUrl} (${submission.viewCountThreshold ?? 'unrecorded'} views).` : ''}` })
-    const [record] = await tx.update(schema.creatorSubmissions).set({ ...assignment, analyticsScreenshotUrl: creatorAssetPublicUrl(input.analyticsStorageKey), analyticsStorageKey: input.analyticsStorageKey, audienceCheck: queuedAudienceCheck(input.analyticsStorageKey), analyticsContentType: input.analyticsContentType, analyticsSizeBytes: input.analyticsSizeBytes, viewCountThreshold: input.viewCountThreshold, usAudiencePercent: input.usAudiencePercent, status: 'in_review', reviewRequestedAt: now, updatedAt: now }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
+    if (!analyticsRequest && input.viewCountThreshold < minimumSubmissionViews(terms)) throw new CreatorServiceError(400, `This campaign requires at least ${minimumSubmissionViews(terms).toLocaleString('en-US')} views`)
+    if (budgetCampaignId && terms) {
+      const increment = requestedIncrementCents(sprintPayoutCents(terms, input.viewCountThreshold, input.usAudiencePercent), submission.approvedAmountCents ?? 0)
+      await requireSubmissionBudget(tx, budgetCampaignId, increment, { rereview: true, excludeSubmissionId: submission.id, committedAdjustmentCents: assignment ? submission.approvedAmountCents ?? 0 : 0 })
+    }
+    await tx.insert(schema.creatorSubmissionMessages).values({ submissionId, authorUserId: userId, authorRole: 'creator', body: `${analyticsRequest ? 'Submitted the requested analytics video' : 'Submitted fresh analytics for review'}: ${input.viewCountThreshold.toLocaleString('en-US')} views · ${input.usAudiencePercent}% Tier 1 audience.${submission.analyticsScreenshotUrl ? ` Previous evidence: ${submission.analyticsScreenshotUrl} (${submission.viewCountThreshold ?? 'unrecorded'} views).` : ''}` })
+    const [record] = await tx.update(schema.creatorSubmissions).set({ ...assignment, analyticsVideoRequest: null, analyticsScreenshotUrl: creatorAssetPublicUrl(input.analyticsStorageKey), analyticsStorageKey: input.analyticsStorageKey, audienceCheck: queuedAudienceCheck(input.analyticsStorageKey), analyticsContentType: input.analyticsContentType, analyticsSizeBytes: input.analyticsSizeBytes, viewCountThreshold: input.viewCountThreshold, usAudiencePercent: input.usAudiencePercent, status: 'in_review', reviewRequestedAt: now, updatedAt: now }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
     await recordSubmissionUpdate(tx, submissionId, submission.studioGenerationId && !submission.analyticsScreenshotUrl ? 'in_review' : 'rereview_requested', null, now)
     return record
   }).catch(rethrowCreatorPostConflict)

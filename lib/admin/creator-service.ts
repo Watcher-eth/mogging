@@ -1,3 +1,4 @@
+import { ANALYTICS_VIDEO_REQUEST_MAX_LENGTH } from '@/lib/creator/analytics-video-request'
 import { audienceReviewError, verifiedRecordingViews, type AudienceCheck } from '@/lib/creator/audience-check'
 import { GENERATED_FACIAL_CAMPAIGN_ID } from '@/lib/creator/facial-campaign-update'
 import { lockCampaignBudget } from '@/lib/creator/campaign-budget-service'
@@ -33,6 +34,12 @@ import {
 } from '@/lib/creator/payouts'
 
 export const creatorAdminReviewSchema = z.discriminatedUnion('resource', [
+  z.object({
+    resource: z.literal('analytics_video_request'),
+    id: z.string().min(1),
+    evidenceKey: z.string().min(1).max(500).nullable(),
+    description: z.string().trim().min(1).max(ANALYTICS_VIDEO_REQUEST_MAX_LENGTH),
+  }),
   z.object({ resource: z.literal('exclusivity'), id: z.string().min(1), confirmed: z.boolean() }),
   z.object({
     resource: z.literal('creator'),
@@ -109,6 +116,7 @@ function getAdminSubmissions(scope?: SQL, reviewId?: string) {
     approvedAmountCents: schema.creatorSubmissions.approvedAmountCents,
     campaignPayoutCorrected: schema.creatorSubmissions.campaignPayoutCorrected,
     reviewRequestedAt: schema.creatorSubmissions.reviewRequestedAt,
+    analyticsVideoRequest: schema.creatorSubmissions.analyticsVideoRequest,
     formatId: schema.creatorSubmissions.formatId,
     requirementsConfirmedAt: schema.creatorSubmissions.requirementsConfirmedAt,
     title: schema.creatorSubmissions.title,
@@ -309,6 +317,7 @@ const submitOnPublish = sql<boolean>`coalesce(${submission.sprintTerms}->'submit
 const queueSubmissionFields = {
   id: submission.id,
   studioGenerationId: submission.studioGenerationId,
+  awaitingAnalyticsVideo: sql<boolean>`${submission.analyticsVideoRequest} is not null`,
   hasAnalyticsRecording: sql<boolean>`nullif(${submission.analyticsScreenshotUrl}, '') is not null`,
   submitOnPublish,
   viewCountThreshold: submission.viewCountThreshold,
@@ -361,7 +370,7 @@ export async function getCreatorReviewQueue(now = new Date()) {
   const [counts, submissions, payouts, payments, creators] = await Promise.all([
     db.execute<AdminQueueData['counts']>(sql`select
       (select count(*)::int from creator_submissions where not is_draft) as "videoCount",
-      (select count(*)::int from creator_submissions where not is_draft and status = 'pending') as "pendingCount",
+      (select count(*)::int from creator_submissions where not is_draft and status = 'pending' and analytics_video_request is null) as "pendingCount",
       (select count(*)::int from creator_submissions where not is_draft and ${recent(sql`created_at`)}) as "newVideos",
       (select count(*)::int from creator_social_accounts) as "accountCount",
       (select count(*)::int from creator_social_accounts where ${recent(sql`created_at`)}) as "newAccounts",
@@ -369,7 +378,7 @@ export async function getCreatorReviewQueue(now = new Date()) {
       coalesce(sum(amount_cents), 0)::float8 as "outstandingCents",
       coalesce(sum(amount_cents) filter (where ${recent(sql`created_at`)}), 0)::float8 as "newOutstandingCents"
       from creator_payments where status in ('pending', 'processing')`),
-    getQueueSubmissionRows(sql`(${queuedSubmission}) or ${requestedSubmission}`).orderBy(desc(submission.createdAt), desc(submission.id)),
+    getQueueSubmissionRows(sql`(${queuedSubmission}) or ${submission.analyticsVideoRequest} is not null or ${requestedSubmission}`).orderBy(desc(submission.createdAt), desc(submission.id)),
     db.query.creatorPayoutRequests.findMany({ where: eq(request.status, 'pending'), orderBy: [desc(request.requestedAt)] }),
     db.select({
       submissionId: payment.submissionId, payoutRequestId: payment.payoutRequestId, amountCents: payment.amountCents,
@@ -476,7 +485,35 @@ export async function saveCreatorProgramSettings(input: z.infer<typeof creatorPr
   return settings
 }
 
+function requireCurrentReviewEvidence(
+  submission: Pick<typeof schema.creatorSubmissions.$inferSelect, 'analyticsVideoRequest' | 'analyticsStorageKey'>,
+  evidenceKey: string | null | undefined,
+) {
+  if (submission.analyticsVideoRequest) throw new ApiError(409, 'Wait for the creator to submit a new analytics video before saving the review')
+  if (evidenceKey !== undefined && submission.analyticsStorageKey !== evidenceKey) throw new ApiError(409, 'The analytics recording changed. Reopen this review to see the latest recording.')
+}
+
 export async function reviewCreatorResource(input: CreatorAdminReviewInput, reviewerId?: string) {
+  if (input.resource === 'analytics_video_request') {
+    return db.transaction(async tx => {
+      const [submission] = await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, input.id)).for('update')
+      if (!submission || submission.isDraft) throw new ApiError(404, 'Creator submission not found')
+      if (submission.analyticsVideoRequest) throw new ApiError(409, 'A new analytics video has already been requested')
+      if (!submission.analyticsScreenshotUrl || !submission.analyticsContentType?.startsWith('video/')) throw new ApiError(409, 'This submission does not have an analytics video to replace')
+      requireCurrentReviewEvidence(submission, input.evidenceKey)
+      const payments = await tx.query.creatorPayments.findMany({ where: eq(schema.creatorPayments.submissionId, submission.id), columns: { status: true } })
+      if (payments.some(payment => ['pending', 'processing'].includes(payment.status))) throw new ApiError(409, 'Wait for the scheduled payment before requesting a new analytics video')
+      const analyticsVideoRequest = { id: crypto.randomUUID(), description: input.description }
+      const [record] = await tx.update(schema.creatorSubmissions).set({ analyticsVideoRequest, updatedAt: new Date() })
+        .where(eq(schema.creatorSubmissions.id, input.id)).returning()
+      await tx.insert(schema.creatorSubmissionMessages).values({
+        submissionId: input.id, authorRole: 'team', authorUserId: reviewerId || null,
+        body: `New analytics video requested:\n${input.description}`,
+      })
+      return record
+    })
+  }
+
   const now = new Date()
 
   if (input.resource === 'exclusivity') {
@@ -525,6 +562,7 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
       const [submission] = await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, input.id)).for('update')
       if (submission?.isDraft) throw new ApiError(409, 'This post has not been submitted for review')
       if (!submission) throw new ApiError(404, 'Creator submission not found')
+      requireCurrentReviewEvidence(submission, input.audienceEvidenceKey)
 
       if (!isCreatorViewThreshold(input.adminViewCountThreshold) || (input.adminUsAudiencePercent !== null && !isCreatorTier1AudienceTier(input.adminUsAudiencePercent))) throw new ApiError(400, 'Choose supported historical payout values')
       const reviewChecklist = input.reviewChecklist.map((item) => ({
@@ -546,6 +584,7 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
       const [record] = await tx.update(schema.creatorSubmissions).set({
         approvedAmountCents: input.status === 'approved' ? approvedAmountCents : submission.approvedAmountCents,
         status: input.status,
+        reviewRequestedAt: ['approved', 'rejected', 'paid'].includes(input.status) ? null : submission.reviewRequestedAt,
         reviewNote: input.reviewNote || null,
         reviewChecklist,
         adminViewCountThreshold: input.adminViewCountThreshold,
@@ -677,6 +716,7 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
     const [submission] = await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, input.id)).for('update')
     if (submission?.isDraft) throw new ApiError(409, 'Submit this post for review before approving payment')
     if (!submission?.sprintId || !submission.sprintTerms) throw new ApiError(404, 'Sprint submission not found')
+    requireCurrentReviewEvidence(submission, input.audienceEvidenceKey)
     const payments = await tx.query.creatorPayments.findMany({ where: eq(schema.creatorPayments.submissionId, submission.id) })
     if (payments.some(payment => ['pending', 'processing'].includes(payment.status))) throw new ApiError(409, 'Wait for the scheduled payment before reviewing new earnings')
     if (submission.status === 'paid' && !submission.reviewRequestedAt) throw new ApiError(409, 'The creator must submit fresh analytics before rereview')

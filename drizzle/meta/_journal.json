@@ -589,6 +589,13 @@
       "when": 1794369600000,
       "tag": "0081_creator_crypto_payout_announcements",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1794440040000,
+      "tag": "0082_creator_analytics_video_requests",
+      "breakpoints": true
     }
   ]
 }

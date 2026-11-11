@@ -110,3 +110,30 @@ test('a fresh expired-campaign rereview applies the new assignment without repri
   expect(assignmentCalls).toBe(1)
   expect(payments).toEqual([{status:'paid',amountCents:1000}])
 })
+
+const analyticsRequest = { id: '00000000-0000-4000-8000-000000000007', description: 'Show the full audience locations.' }
+
+test('the requested video replaces the evidence and returns an active review to the queue', async () => {
+  submission = { ...submission, status: 'in_review', reviewRequestedAt: new Date(), analyticsVideoRequest: analyticsRequest }
+  const saved = await requestSubmissionReview('user', 'submission', {
+    ...input, viewCountThreshold: 15000, analyticsVideoRequestId: analyticsRequest.id,
+  })
+  expect(saved).toMatchObject({ id: 'submission', status: 'in_review', sprintId: 'campaign', analyticsVideoRequest: null,
+    analyticsStorageKey: input.analyticsStorageKey, approvedAmountCents: 1000, viewCountThreshold: 15000,
+    audienceCheck: { status: 'queued', storageKey: input.analyticsStorageKey },
+  })
+  expect(assignmentCalls).toBe(0)
+  expect(messages[0].body).toContain('Submitted the requested analytics video')
+  expect(messages[0].body).toContain('Previous evidence: https://media.example/old.mp4')
+  await expect(requestSubmissionReview('user', 'submission', { ...input, analyticsVideoRequestId: analyticsRequest.id })).rejects.toThrow('request changed')
+  expect(writes).toBe(1)
+})
+
+test('an unrelated rereview or failed upload does not close the request', async () => {
+  submission.analyticsVideoRequest = analyticsRequest
+  await expect(requestSubmissionReview('user', 'submission', input)).rejects.toThrow('request changed')
+  uploadExists = false
+  await expect(requestSubmissionReview('user', 'submission', { ...input, analyticsVideoRequestId: analyticsRequest.id })).rejects.toThrow('complete physical analytics recording')
+  expect(submission.analyticsVideoRequest).toEqual(analyticsRequest)
+  expect(writes).toBe(0)
+})

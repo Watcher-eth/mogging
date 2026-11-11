@@ -121,6 +121,7 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
   const paymentInProgress = payments.some(item => ['pending', 'processing'].includes(item.status))
   const canUpdateAnalytics = submission?.sprintId && !paymentInProgress && (waitingForFacialViews
     || (!submission.reviewRequestedAt && (['approved', 'paid', 'rejected'].includes(submission.status) || !submission.analyticsScreenshotUrl)))
+  const analyticsRequest = submission?.analyticsVideoRequest
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -133,12 +134,17 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
               <div className="flex items-center gap-2 pr-10"><StatusStamp status={submission.status} /><span className="text-xs text-zinc-400">{formatDate(submission.createdAt)}</span></div>
               <div className="flex items-center justify-between gap-3 pt-2">
                 <DialogTitle className="creator-dialog-title min-w-0 flex-1 break-words text-xl">{caption || `${submission.platform} submission`}</DialogTitle>
-                {canUpdateAnalytics ? <Button variant="outline" className="min-h-10 max-w-[60%] shrink-0 whitespace-normal rounded-full px-3 text-xs sm:text-sm" onClick={onUpdateAnalytics}><RotateCcw className="size-4 shrink-0" aria-hidden="true" />{waitingForFacialViews ? 'Add analytics' : submission.analyticsScreenshotUrl ? 'Request rereview' : submission.studioGenerationId ? 'Review' : 'Add analytics & update views'}</Button> : null}
+                {!analyticsRequest && canUpdateAnalytics ? <Button variant="outline" className="min-h-10 max-w-[60%] shrink-0 whitespace-normal rounded-full px-3 text-xs sm:text-sm" onClick={onUpdateAnalytics}><RotateCcw className="size-4 shrink-0" aria-hidden="true" />{waitingForFacialViews ? 'Add analytics' : submission.analyticsScreenshotUrl ? 'Request rereview' : submission.studioGenerationId ? 'Review' : 'Add analytics & update views'}</Button> : null}
               </div>
-              <DialogDescription>{waitingForFacialViews ? 'Your post is saved. Add a fresh analytics recording when it reaches 20K views to send it for review.' : submission.studioGenerationId && !submission.analyticsScreenshotUrl ? 'Your post is registered. Once it reaches the first campaign milestone, choose Review and add your analytics recording.' : CREATOR_REREVIEW_GUIDANCE}</DialogDescription>
+              <DialogDescription>{analyticsRequest ? 'The review team needs a new analytics video for this post.' : waitingForFacialViews ? 'Your post is saved. Add a fresh analytics recording when it reaches 20K views to send it for review.' : submission.studioGenerationId && !submission.analyticsScreenshotUrl ? 'Your post is registered. Once it reaches the first campaign milestone, choose Review and add your analytics recording.' : CREATOR_REREVIEW_GUIDANCE}</DialogDescription>
             </DialogHeader>
-            {paymentInProgress ? <p className="mt-3 text-xs text-zinc-500">You can request rereview once your scheduled payout has finished processing.</p> : null}
-            {submission.reviewRequestedAt && !waitingForFacialViews ? <p className="mt-3 text-xs text-zinc-500">Updated analytics are awaiting review. Prior payouts remain unchanged.</p> : null}
+            {analyticsRequest ? <section aria-label="Analytics video request" className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <h3 className="text-sm font-semibold text-amber-950">New analytics video requested</h3>
+              <p className="mt-1 whitespace-pre-wrap break-words text-sm text-amber-950">{analyticsRequest.description}</p>
+              <Button className="mt-3 rounded-full" disabled={paymentInProgress} onClick={onUpdateAnalytics}>Upload new analytics video</Button>
+            </section> : null}
+            {paymentInProgress ? <p className="mt-3 text-xs text-zinc-500">{analyticsRequest ? 'You can upload the new video once your scheduled payout has finished processing.' : 'You can request rereview once your scheduled payout has finished processing.'}</p> : null}
+            {!analyticsRequest && submission.reviewRequestedAt && !waitingForFacialViews ? <p className="mt-3 text-xs text-zinc-500">Updated analytics are awaiting review. Prior payouts remain unchanged.</p> : null}
             <SubmissionBonusBreakdown contentCents={creatorEarnedCents(submission)} bonuses={bonuses} />
             {submission.status === 'rejected' ? <CreatorReviewChecklist submission={submission} /> : null}
             <div className="mt-4 flex gap-1 rounded-full bg-zinc-100 p-1" aria-label="Submission view">{(['conversation', 'details'] as const).map(value => <button key={value} aria-pressed={tab === value} className={cn('min-h-10 flex-1 rounded-full text-sm font-medium capitalize', tab === value ? 'bg-white shadow-sm' : 'text-zinc-500')} onClick={() => setTab(value)}>{value === 'conversation' ? <>Messages{submission.unreadMessages ? <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-lg bg-[#007aff] px-1.5 py-0.5 text-[10px] text-white">{submission.unreadMessages}</span> : null}</> : 'Details'}</button>)}</div>

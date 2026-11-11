@@ -827,6 +827,7 @@ export const creatorSubmissions = pgTable(
     exclusivityConfirmed: boolean('exclusivity_confirmed').notNull().default(false),
     bonusPlacement: jsonb('bonus_placement').$type<{ bioLinkVerified: boolean; captionCodeVerified: boolean; checkedAt: string; linkId: string; publicUrl: string; revision: string }>(),
     reviewRequestedAt: timestamp('review_requested_at', { mode: 'date' }),
+    analyticsVideoRequest: jsonb('analytics_video_request').$type<import('../creator/analytics-video-request').AnalyticsVideoRequest>(),
     postedAt: timestamp('posted_at', { mode: 'date' }),
     formatId: text('format_id'),
     requirementsConfirmedAt: timestamp('requirements_confirmed_at', { mode: 'date' }),

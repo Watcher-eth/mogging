@@ -1,3 +1,4 @@
+import { ANALYTICS_VIDEO_REQUEST_MAX_LENGTH } from '@/lib/creator/analytics-video-request'
 import { payoutChains, payoutNetworks } from '@/lib/admin/crypto-payouts/shared'
 import { isFacialSubmissionWaitingForReview } from '@/lib/creator/facial-campaign-update'
 import { defaultSubmissionFilters, filterSubmissions, groupSubmissions, submissionCampaignKey, submissionCampaignLabel, submissionStatuses, submissionViews, type SubmissionFilters } from '@/lib/admin/submission-browser'
@@ -127,7 +128,7 @@ export default function CreatorAdminPage() {
       {queueSelection ? <ScopedSubmissionReview key={queueSelection} id={queueSelection} onClose={() => setQueueSelection(null)}
         onRefresh={async () => { await mutate() }}
         onSaved={async () => { setQueueSelection(null); setHistoryVersion(version => version + 1); await mutate() }} /> : null}
-      {selected ? <ReviewDialog key={`${selected.resource}-${selected.item.id}`} target={reviewTarget!} contentBalance={reviewBalance} creator={selected.resource !== 'creator' ? dashboard?.creators.find(creator => creator.id === selected.item.creatorProfileId) : undefined} payments={dashboard?.payments || []} metrics={dashboard?.attributionMetrics || []} open onOpenChange={(open) => { if (!open) setSelected(null) }} onRefresh={async () => { await mutate() }} onSaved={async () => { await mutate(); setSelected(null) }} /> : null}
+      {selected ? <ReviewDialog key={`${selected.resource}-${selected.item.id}-${reviewTarget?.resource === 'submission' ? reviewTarget.item.analyticsStorageKey ?? '' : ''}`} target={reviewTarget!} contentBalance={reviewBalance} creator={selected.resource !== 'creator' ? dashboard?.creators.find(creator => creator.id === selected.item.creatorProfileId) : undefined} payments={dashboard?.payments || []} metrics={dashboard?.attributionMetrics || []} open onOpenChange={(open) => { if (!open) setSelected(null) }} onRefresh={async () => { await mutate() }} onSaved={async () => { await mutate(); setSelected(null) }} /> : null}
     </div>
   )
 }
@@ -142,7 +143,7 @@ function ScopedSubmissionReview({ id, onClose, onRefresh, onSaved }: {
       {error ? <Button variant="outline" onClick={() => void mutate()}>Try again</Button> : <CenteredLoader />}
     </DialogContent>
   </Dialog>
-  return <ReviewDialog target={{ resource: 'submission', item: data.target }} creator={data.creator} payments={data.payments} metrics={data.metrics}
+  return <ReviewDialog key={data.target.analyticsStorageKey ?? data.target.id} target={{ resource: 'submission', item: data.target }} creator={data.creator} payments={data.payments} metrics={data.metrics}
     contentBalance={{ ...data.balance, unpaid: new Map(data.balance.unpaid) }} open onOpenChange={open => { if (!open) onClose() }}
     onRefresh={async () => { await Promise.all([mutate(), onRefresh()]) }} onSaved={onSaved} />
 }
@@ -195,7 +196,6 @@ function Overview({ data, onSelectSubmission, onRefresh, historyVersion = 0 }: {
   historyVersion?: number
 }) {
   const reviewQueues = useMemo(() => getSubmissionReviewQueues<AdminQueueSubmission>(data), [data])
-  const initialFacialSubmissions = useMemo(() => data.submissions.filter(isFacialSubmissionWaitingForReview), [data.submissions])
   const compact = 'counts' in data
   const { data: campaigns, mutate: refreshCampaigns } = useSWR<{ sprints: MoveCampaign[] }>(
     compact ? '/api/admin/creator/sprints?view=move' : '/api/admin/creator/sprints', apiGet,
@@ -228,6 +228,9 @@ function Overview({ data, onSelectSubmission, onRefresh, historyVersion = 0 }: {
       <QueueRow item={item} onClick={() => onSelectSubmission(item)} />
     </DraggableCampaignSubmission>
   )
+  const queueSubmissions: AdminQueueSubmission[] = data.submissions
+  const waitingForAnalytics = queueSubmissions.filter(item => item.awaitingAnalyticsVideo || item.analyticsVideoRequest)
+  const initialFacialSubmissions = queueSubmissions.filter(item => !item.awaitingAnalyticsVideo && !item.analyticsVideoRequest && isFacialSubmissionWaitingForReview(item))
   const attentionCount = reviewQueues.reduce((total, queue) => total + queue.items.length, 0)
   const counts = compact ? data.counts : legacyQueueCounts(data)
   const pendingCount = counts.pendingCount - initialFacialSubmissions.filter(item => item.status === 'pending').length
@@ -270,6 +273,10 @@ function Overview({ data, onSelectSubmission, onRefresh, historyVersion = 0 }: {
             </div> : <p className="px-5 pb-4 text-xs text-zinc-400">No initial submissions waiting.</p>}
           </details> : null}
         </div>)}</div> : <EmptyState title="You’re all caught up" description="New submissions ready for review will appear here." />}
+        {!reviewed && waitingForAnalytics.length ? <section aria-label="Waiting for creator analytics" className="creator-surface mt-6 overflow-hidden">
+          <h3 className="px-5 py-4 text-sm font-semibold">Waiting for creator analytics · {waitingForAnalytics.length}</h3>
+          <div className="admin-list px-3">{waitingForAnalytics.map(item => <QueueRow key={item.id} item={item} onClick={() => onSelectSubmission(item)} />)}</div>
+        </section> : null}
       </section>
     </CampaignSubmissionMoves>
   )
@@ -279,7 +286,7 @@ function legacyQueueCounts(data: AdminDashboard): AdminQueueData['counts'] {
   const outstanding = data.payments.filter(item => item.status === 'pending' || item.status === 'processing')
   return {
     videoCount: data.submissions.length,
-    pendingCount: data.submissions.filter(item => item.status === 'pending').length,
+    pendingCount: data.submissions.filter(item => item.status === 'pending' && !item.analyticsVideoRequest).length,
     newVideos: data.submissions.filter(item => isNewInLastDay(item.createdAt)).length,
     accountCount: data.accounts.length,
     newAccounts: data.accounts.filter(item => isNewInLastDay(item.createdAt)).length,
@@ -380,7 +387,7 @@ function SubmissionResultRow({ item, hasPayment, onClick }: { item: AdminSubmiss
       <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-zinc-500">
         <span className="max-w-full truncate rounded-md bg-zinc-100 px-2 py-1 text-zinc-600">{submissionCampaignLabel(item)}</span>
         {views != null ? <span className="tabular-nums">{views.toLocaleString()} {item.adminViewCountThreshold != null ? 'verified' : 'submitted'} views</span> : null}
-        {item.reviewRequestedAt ? <span className="text-sky-700">Rereview requested</span> : hasPayment ? <span>Payment created</span> : null}
+        {item.analyticsVideoRequest ? <span className="text-amber-700">Waiting for analytics video</span> : item.reviewRequestedAt ? <span className="text-sky-700">Rereview requested</span> : hasPayment ? <span>Payment created</span> : null}
         {needsAudience ? <span className="text-amber-700">Audience needs review</span> : null}
       </span>
     </span>
@@ -553,6 +560,9 @@ function QueueRow({ item, onClick }: { item: AdminQueueSubmission; onClick: () =
 }
 
 export function ReviewDialog({ target, creator, payments, metrics, contentBalance, open, onOpenChange, onRefresh, onSaved }: { target: ReviewTarget; contentBalance?: ReturnType<typeof creatorContentBalances>; creator?: AdminCreator; payments: AdminPayment[]; metrics: AdminAttributionMetrics[]; open: boolean; onOpenChange: (open: boolean) => void; onRefresh: () => Promise<void>; onSaved: () => Promise<void> }) {
+  const analyticsRequest = target.resource === 'submission' ? target.item.analyticsVideoRequest : null
+  const [requestDescription, setRequestDescription] = useState<string | null>(null)
+  const [sendingRequest, setSendingRequest] = useState(false)
   const warningCreator = target.resource === 'creator' ? target.item : creator
   const activeWarningCount = warningCreator?.warnings?.filter(warning => !warning.resolvedAt).length || 0
   const campaign = target.resource === 'submission' && target.item.sprintTerms ? launchCampaign(target.item.sprintTerms) : null
@@ -692,7 +702,29 @@ export function ReviewDialog({ target, creator, payments, metrics, contentBalanc
 
   const projectedBonuses = target.resource === 'submission' && status !== 'rejected' && !metricsError ? reviewAudienceBonuses({ ...target.item, status, approvedAmountCents: payoutTotalCents, adminViewCountThreshold: adminPayoutSelection.viewCountThreshold, adminUsAudiencePercent: adminPayoutSelection.usAudiencePercent }, payments) : []
 
+  async function requestAnalyticsVideo(event: React.FormEvent) {
+    event.preventDefault()
+    const description = requestDescription?.trim()
+    if (target.resource !== 'submission' || !description || analyticsRequest || saving || sendingRequest) return
+    setSendingRequest(true)
+    try {
+      await apiPatch('/api/admin/creator/review', {
+        resource: 'analytics_video_request',
+        id: target.item.id,
+        evidenceKey: target.item.analyticsStorageKey ?? null,
+        description,
+      })
+      toast.success('New analytics video requested')
+      await onSaved()
+    } catch (error) {
+      toast.error(error instanceof ApiClientError ? error.message : 'Could not request a new analytics video')
+    } finally {
+      setSendingRequest(false)
+    }
+  }
+
   async function save() {
+    if (analyticsRequest || sendingRequest) return
     if (reviewError) { setTab(submissionReviewError(status, reviewChecklist) ? 'review' : 'earnings'); return toast.error(reviewError) }
     if (target.resource === 'submission' && !adminViewCountThreshold) return toast.error('Choose the final view count')
     setSaving(true)
@@ -724,7 +756,7 @@ export function ReviewDialog({ target, creator, payments, metrics, contentBalanc
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={value => { if (!sendingRequest) onOpenChange(value) }}>
       <DialogContent className={cn("max-h-[90dvh] max-w-6xl gap-0 rounded-[32px] border-zinc-200 bg-white p-5 sm:p-7", target.resource === 'submission' ? "flex h-[90dvh] flex-col overflow-hidden" : "overflow-y-auto")}>
           <DialogHeader className="min-w-0 shrink-0 pr-8 text-left">
             <div className="flex flex-wrap items-center gap-2">{target.resource !== 'payment' && canReview ? <ApprovalBadge target={target} /> : null}{target.resource === 'submission' && target.item.reviewRequestedAt ? <span className="inline-flex items-center rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">Rereview</span> : null}{activeWarningCount ? <span className="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800">{activeWarningCount} internal {activeWarningCount === 1 ? 'warning' : 'warnings'}</span> : null}{canReview ? <StatusPill status={target.resource === 'creator' ? initialStatus === 'suspended' ? 'suspended' : 'active' : target.resource === 'account' ? 'connected' : initialStatus} /> : null}<span className="text-xs text-zinc-400">{formatDate(target.item.createdAt)}</span></div>
@@ -741,7 +773,25 @@ export function ReviewDialog({ target, creator, payments, metrics, contentBalanc
                 <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-5">
                   <div className="min-w-0">
                     <SubmissionVideo submission={target.item} />
-                    {target.item.analyticsScreenshotUrl ? <section className="mt-5 overflow-hidden rounded-2xl bg-zinc-50"><h3 className="p-4 text-sm font-semibold">Analytics evidence</h3><AdminSubmissionEvidence submission={target.item} /></section> : <p className="mt-5 text-sm text-zinc-500">No analytics evidence uploaded. Request it in Messages.</p>}
+                    {target.item.analyticsScreenshotUrl ? <section className="mt-5 overflow-hidden rounded-2xl bg-zinc-50"><h3 className="p-4 text-sm font-semibold">Analytics evidence</h3><AdminSubmissionEvidence submission={target.item} />
+                      {analyticsRequest ? <div className="border-t border-zinc-200 p-4">
+                        <p className="text-sm font-semibold text-amber-800">Waiting for a new analytics video</p>
+                        <p className="mt-1 whitespace-pre-wrap break-words text-sm text-zinc-600">{analyticsRequest.description}</p>
+                      </div> : target.item.analyticsContentType?.startsWith('video/') ? <div className="border-t border-zinc-200 p-4">
+                        {requestDescription === null ? <Button type="button" variant="outline" className="rounded-xl" disabled={saving || Boolean(existingPayment)} onClick={() => setRequestDescription('')}>Request new analytics video</Button> :
+                          <form onSubmit={requestAnalyticsVideo} className="grid gap-3">
+                            <label className="grid gap-2 text-sm font-semibold">What should the new video show?
+                              <textarea autoFocus value={requestDescription} onChange={event => setRequestDescription(event.target.value)} maxLength={ANALYTICS_VIDEO_REQUEST_MAX_LENGTH} required disabled={sendingRequest} placeholder="For example, show the full audience locations and watch-time graph." className="creator-field min-h-24 resize-y py-3 font-normal" />
+                            </label>
+                            <p className="text-xs text-zinc-500">The creator will see these instructions on this submission.</p>
+                            <div className="flex flex-wrap gap-2">
+                              <Button type="submit" disabled={sendingRequest || saving || !requestDescription.trim()}>{sendingRequest ? 'Sending…' : 'Send request'}</Button>
+                              <Button type="button" variant="ghost" disabled={sendingRequest} onClick={() => setRequestDescription(null)}>Cancel</Button>
+                            </div>
+                          </form>}
+                        {existingPayment ? <p className="mt-2 text-xs text-zinc-500">You can request a new video after the scheduled payment finishes.</p> : null}
+                      </div> : null}
+                    </section> : <p className="mt-5 text-sm text-zinc-500">No analytics evidence uploaded. Request it in Messages.</p>}
                     <ReviewDetails target={target} />
                     {target.item.caption ? <p className="mt-5 whitespace-pre-wrap text-sm leading-6 text-zinc-600">{target.item.caption}</p> : null}
                   </div>
@@ -780,7 +830,7 @@ export function ReviewDialog({ target, creator, payments, metrics, contentBalanc
               <Tabs.Content forceMount value="history" className="outline-none data-[state=inactive]:hidden"><SubmissionHistory submissionId={target.item.id} active={tab === 'history'} /></Tabs.Content>
               <Tabs.Content forceMount value="messages" className="outline-none data-[state=inactive]:hidden"><SubmissionConversation submissionId={target.item.id} viewerRole="team" active={tab === 'messages'} className="h-[min(50dvh,440px)] min-h-[280px]" /></Tabs.Content>
             </div>
-            <div data-review-footer className="mt-3 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-zinc-100 bg-white pt-3"><p role="status" className="col-span-2 min-w-0 text-xs text-zinc-500">{reviewError || (status === 'rejected' ? `${reviewChecklist.filter(item => !item.met).length} rejection reasons selected` : adminViewCountThreshold ? `${reviewChecklist.filter(item => item.met).length}/${reviewChecklist.length} requirements met` : 'Set verified views in Earnings before saving.')}</p><div className="grid gap-1"><span className="sr-only">Review status</span><Select value={status} onValueChange={changeReviewStatus}><SelectTrigger aria-label="Review status"><SelectValue /></SelectTrigger><SelectContent>{statusOptions('submission').map(option => <SelectItem key={option} value={option} disabled={Boolean(target.item.sprintId) && option === 'paid'}>{statusLabel(option)}</SelectItem>)}</SelectContent></Select></div><Button className="shrink-0 rounded-full" onClick={() => void save()} disabled={saving}>{saving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}{saving ? 'Saving…' : 'Save review'}</Button></div>
+            <div data-review-footer className="mt-3 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-zinc-100 bg-white pt-3"><p role="status" className="col-span-2 min-w-0 text-xs text-zinc-500">{analyticsRequest ? 'Review is paused until the creator uploads a new analytics video.' : reviewError || (status === 'rejected' ? `${reviewChecklist.filter(item => !item.met).length} rejection reasons selected` : adminViewCountThreshold ? `${reviewChecklist.filter(item => item.met).length}/${reviewChecklist.length} requirements met` : 'Set verified views in Earnings before saving.')}</p><div className="grid gap-1"><span className="sr-only">Review status</span><Select value={status} onValueChange={changeReviewStatus} disabled={Boolean(analyticsRequest) || sendingRequest}><SelectTrigger aria-label="Review status"><SelectValue /></SelectTrigger><SelectContent>{statusOptions('submission').map(option => <SelectItem key={option} value={option} disabled={Boolean(target.item.sprintId) && option === 'paid'}>{statusLabel(option)}</SelectItem>)}</SelectContent></Select></div><Button className="shrink-0 rounded-full" onClick={() => void save()} disabled={saving || sendingRequest || Boolean(analyticsRequest)}>{saving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}{saving ? 'Saving…' : 'Save review'}</Button></div>
           </Tabs.Root> : <>
           <ReviewDetails target={target} />
           {target.resource === 'creator' && warningCreator ? <CreatorWarningPanel creator={warningCreator} onRefresh={onRefresh} /> : null}

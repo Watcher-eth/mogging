@@ -102,6 +102,7 @@ export type AdminSubmission = {
   sprintName?: string | null
   sprintTerms?: import('@/lib/creator/sprints').SprintTerms | null
   reviewRequestedAt?: string | null
+  analyticsVideoRequest?: import('@/lib/creator/analytics-video-request').AnalyticsVideoRequest | null
   approvedAmountCents?: number | null
   campaignPayoutCorrected?: boolean
   id: string
@@ -193,10 +194,10 @@ export type AdminDashboard = {
 export type AdminQueueSubmission = Pick<AdminSubmission,
   'id' | 'creatorProfileId' | 'creatorName' | 'socialHandle' | 'sprintId' | 'sprintName' |
   'formatId' | 'title' | 'platform' | 'status' | 'approvedAmountCents' | 'adminViewCountThreshold' |
-  'adminUsAudiencePercent' | 'createdAt' | 'reviewRequestedAt' | 'studioGenerationId' | 'sprintTerms'
+  'adminUsAudiencePercent' | 'createdAt' | 'reviewRequestedAt' | 'studioGenerationId' | 'sprintTerms' | 'analyticsVideoRequest'
 > & { formatName?: string | null; retainerTerms?: import('@/lib/creator/retainer').CreatorRetainer | null;
   submitOnPublish?: boolean; viewCountThreshold?: number | null;
-  hasAnalyticsRecording?: boolean; analyticsScreenshotUrl?: string | null }
+  awaitingAnalyticsVideo?: boolean; hasAnalyticsRecording?: boolean; analyticsScreenshotUrl?: string | null }
 
 export type AdminBundleData = {
   submissions: Pick<AdminSubmission, 'id' | 'title' | 'platform' | 'socialHandle' | 'sprintId' | 'approvedAmountCents' | 'status' | 'adminViewCountThreshold' | 'adminUsAudiencePercent'>[]

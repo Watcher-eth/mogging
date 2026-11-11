@@ -10,6 +10,7 @@ import { TIKTOK_ANCHOR_REQUIREMENT } from '@/lib/creator/post-guidance'
 
 let submission: Record<string, any>
 let writes = 0
+let messages: object[] = []
 let otherPendingCents = 0
 let poolBudgetCents = 100000
 const priorPayments = [{ status: 'paid', amountCents: 1300 }]
@@ -20,7 +21,10 @@ const tx = {
     ? Promise.resolve([{ cents: submission.approvedAmountCents || 0 }])
     : { for: async () => table === schema.creatorSprints ? [{ id: 'campaign', budgetCents: 100000 }] : table === schema.creatorProfiles ? [{ id: 'creator', authStatus: 'pending', paymentOption: 'paypal', paypalEmail: 'creator@example.com' }] : [submission] } }) }),
   update: () => ({ set: (values: unknown) => ({ where: () => ({ returning: async () => { writes++; submission = { ...submission, ...values as object }; return [submission] } }) }) }),
-  insert: () => ({ values: (values: object) => ({ returning: async () => [{ id: 'payment', ...values }] }) }),
+  insert: (table: unknown) => ({ values: (values: object) => {
+    if (table === schema.creatorSubmissionMessages) messages.push(values)
+    return { returning: async () => [{ id: 'payment', ...values }] }
+  } }),
 }
 mock.module('@/lib/db', () => ({ schema, db: {
   query: { creatorSubmissions: { findFirst: async () => submission } },
@@ -34,7 +38,7 @@ const input = () => {
   if (parsed.resource !== 'submission') throw new Error('Expected submission input')
   return parsed
 }
-beforeEach(() => { priorPayments.splice(0, priorPayments.length, { status: 'paid', amountCents: 1300 }); submission = { id: 'submission', creatorProfileId: 'creator', analyticsStorageKey: 'current-evidence', formatId: 'custom-video-v1', status: 'pending', reviewNote: null }; writes = 0; otherPendingCents = 0; poolBudgetCents = 100000 })
+beforeEach(() => { priorPayments.splice(0, priorPayments.length, { status: 'paid', amountCents: 1300 }); submission = { id: 'submission', creatorProfileId: 'creator', analyticsStorageKey: 'current-evidence', formatId: 'custom-video-v1', status: 'pending', reviewNote: null }; writes = 0; messages = []; otherPendingCents = 0; poolBudgetCents = 100000 })
 
 test('rejection persists only selected failures and their creator-visible feedback', async () => {
   const saved = await reviewCreatorResource(input())
@@ -304,4 +308,31 @@ test('a grace-period campaign video earns its normal rate despite missing the ne
   const saved = await reviewCreatorResource({ ...approval(null, null), adminUsAudiencePercent: 40, reviewChecklist })
   expect(saved).toHaveProperty('approvedAmountCents', sprintPayoutCents(terms, 40000, 40))
   expect(saved).toHaveProperty('reviewChecklist', sprintReviewItems(terms, 'custom-video-v1', false, submission.createdAt).map(item => ({ id: item.id, met: ![CAMPAIGN_ANCHOR_REQUIREMENT, CAMPAIGN_BIO_LINK_REQUIREMENT].includes(item.label), note: null })))
+})
+
+test('requesting a replacement preserves the current evidence and pauses admin review', async () => {
+  submission = { ...submission, analyticsScreenshotUrl: 'https://example.com/evidence.mp4', analyticsContentType: 'video/mp4' }
+  const request = creatorAdminReviewSchema.parse({ resource: 'analytics_video_request', id: submission.id,
+    evidenceKey: 'current-evidence', description: '  Show the retention graph.  ',
+  })
+  const saved = await reviewCreatorResource(request, 'reviewer')
+  expect(saved).toMatchObject({
+    status: 'pending', analyticsScreenshotUrl: 'https://example.com/evidence.mp4',
+    analyticsVideoRequest: { id: expect.any(String), description: 'Show the retention graph.' },
+  })
+  expect(messages).toEqual([{ submissionId: submission.id, authorRole: 'team', authorUserId: 'reviewer',
+    body: 'New analytics video requested:\nShow the retention graph.',
+  }])
+  await expect(reviewCreatorResource(request)).rejects.toThrow('already been requested')
+  await expect(reviewCreatorResource(input())).rejects.toThrow('Wait for the creator')
+  expect(writes).toBe(1)
+})
+
+test('an outdated admin review cannot request a replacement for a newer recording', async () => {
+  submission = { ...submission, analyticsScreenshotUrl: 'https://example.com/evidence.mp4', analyticsContentType: 'video/mp4' }
+  await expect(reviewCreatorResource({ resource: 'analytics_video_request', id: submission.id,
+    evidenceKey: 'old-evidence', description: 'Show the retention graph.',
+  })).rejects.toThrow('recording changed')
+  expect(writes).toBe(0)
+  expect(messages).toEqual([])
 })

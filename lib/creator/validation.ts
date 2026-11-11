@@ -114,7 +114,7 @@ export const creatorSubmissionAnalyticsSchema = standardCreatorSubmissionSchema.
   analyticsVideoUrl: true, analyticsPhysicalRecordingConfirmed: true,
   analyticsStorageKey: true, analyticsContentType: true, analyticsSizeBytes: true,
   viewCountThreshold: true, usAudiencePercent: true,
-})
+}).extend({ analyticsVideoRequestId: z.string().uuid().optional() })
 export type CreatorSubmissionAnalyticsInput = z.infer<typeof creatorSubmissionAnalyticsSchema>
 
 export const creatorSocialAccountSchema = z.object({

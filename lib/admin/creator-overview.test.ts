@@ -68,6 +68,15 @@ describe('admin overview approvals', () => {
     ])
   })
 
+  test('submissions waiting for a replacement leave the actionable queue until the creator responds', () => {
+    const submissions = [
+      { id: 'waiting-compact', status: 'in_review', awaitingAnalyticsVideo: true, createdAt: '2026-11-10' },
+      { id: 'waiting-full', status: 'pending', analyticsVideoRequest: { id: 'request', description: 'Show retention.' }, createdAt: '2026-11-10' },
+      { id: 'replacement-ready', status: 'in_review', awaitingAnalyticsVideo: false, reviewRequestedAt: '2026-11-11', createdAt: '2026-11-10' },
+    ] as AdminSubmission[]
+    expect(getApprovalQueue({ submissions }).map(target => target.item.id)).toEqual(['replacement-ready'])
+  })
+
   test('separates campaign formats into first-come-first-served queues', () => {
     const data = {
       submissions: [

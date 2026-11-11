@@ -21,6 +21,7 @@ export type CreatorSubmission = {
   sprintId?: string | null
   sprintTerms?: import('@/lib/creator/sprints').SprintTerms | null
   reviewRequestedAt?: string | null
+  analyticsVideoRequest?: import('@/lib/creator/analytics-video-request').AnalyticsVideoRequest | null
   approvedAmountCents?: number | null
   campaignPayoutCorrected?: boolean
   postedAt?: string | null

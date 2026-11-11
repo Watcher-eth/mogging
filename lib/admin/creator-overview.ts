@@ -40,6 +40,8 @@ export function getApprovalQueue<T extends AdminQueueSubmission>(data: { submiss
   return data.submissions
     .filter(item => (item.status === 'pending' || item.status === 'in_review')
       && !isFacialSubmissionWaitingForReview(item)
+      && !item.awaitingAnalyticsVideo
+      && !item.analyticsVideoRequest
       && (!item.studioGenerationId || (item.hasAnalyticsRecording ?? Boolean(item.analyticsScreenshotUrl))))
     .map(item => ({ resource: 'submission' as const, item }))
     .sort((a, b) => {

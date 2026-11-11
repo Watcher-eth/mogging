@@ -43,6 +43,7 @@ export function SubmissionCard({ submission, payment, accountHandle, onClick, bo
           {username ? <><span aria-hidden="true" className="px-0.5 text-zinc-300">·</span><span className="min-w-0 truncate text-xs font-normal text-zinc-500">@{username}</span></> : null}
         </span>
         <span className="mt-2 flex flex-wrap items-center gap-2">
+          {submission.analyticsVideoRequest ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-900">New analytics video requested</span> : null}
           {missingPaymentData ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-900">Missing Payment Data</span> : null}
           {amount ? <span className="text-sm font-semibold">{amount}</span> : null}
           {bonusCents > 0 ? <span className="inline-flex items-center gap-1 rounded-md border border-amber-200/70 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800"><Sparkles aria-hidden="true" className="size-3" />+{formatMoney(bonusCents, 'USD')} bonus</span> : null}
