@@ -50,3 +50,26 @@ test('missing snapshots are unavailable rather than fabricated zero costs', () =
   expect(html).toContain('could not be established')
   expect(html).not.toContain('$0.00')
 })
+
+test('daily revenue report separates partial currency totals, measured reach, and estimated country coverage', () => {
+  const data = snapshot()
+  data.creatorPerformance!.dailyDrivers = {
+    daily: [{ day: '2026-10-20', revenue: 19, ios: 19, web: 0, iosRenewals: 0, iosSales: 2, refunds: 0, missingUsd: 1,
+      submissions: 1, cohortViews: 1000, estimatedViews: 1000, estimatedPosts: 1, measuredViews: null, measuredPosts: 0, firstOpens: 10,
+      dominantIosBuild: '1.41(80)', dominantIosBuildShare: 1, clicks: 5, paywallAccounts: 5, paidAfterPaywall: 1 }],
+    mix: [{ day: '2026-10-20', basis: 'estimated', campaign: 'General', country: null, views: 1000 },
+      { day: '2026-10-20', basis: 'estimated', campaign: 'General', country: 'US', views: 200 }],
+    tiers: [{ day: '2026-10-20', basis: 'estimated', campaign: 'General', tier: 'Tier A', views: 1000, approvedPercent: 40 }],
+    recordings: [{ day: '2026-10-20', campaign: 'General', title: 'Review example', tier: 'Tier A', viewers: 800, views: 1000, exact: false, verified: false }],
+  }
+  const html = renderToStaticMarkup(<CreatorPerformanceDashboard data={data} />)
+  expect(html).toContain('$19.00 known')
+  expect(html).toContain('1 / 1 days')
+  expect(html).toContain('0 / 1 days')
+  expect(html).toContain('United States')
+  expect(html).toContain('Other / not identified')
+  expect(html).toContain('1.41(80) · 100.0%')
+  expect(html).toContain('Tier A')
+  expect(html).toContain('≈1.25×')
+  expect(html).toContain('OCR read · unverified')
+})

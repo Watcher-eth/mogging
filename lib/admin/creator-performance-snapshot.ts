@@ -1,9 +1,11 @@
+import { buildDailyDriverReport, creatorDailyDriversQuery, type DailyDriverInput, type DailyDriverReport } from './creator-daily-drivers'
 import { distributionMeasurementQuery, type DistributionMeasurement } from './distribution-measurement'
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { buildCreatorPerformance, type CreatorPerformanceReport, type PerformanceInput } from './creator-performance'
 
 export type CreatorPerformanceSnapshot = {
+  dailyDrivers?: DailyDriverReport | null
   distribution?: DistributionMeasurement
   reports: Record<'all' | 'tiktok' | 'instagram', CreatorPerformanceReport>
   latestSubmission: string | null; latestSubmissionUpdate: string | null; latestPaymentUpdate: string | null
@@ -47,7 +49,15 @@ export async function getCreatorPerformanceSnapshot(days: number, now: Date): Pr
     const [result] = await tx.execute(creatorPerformanceInputQuery(now))
     const input = result.input as PerformanceInput & Omit<CreatorPerformanceSnapshot, 'reports'>
     const [measurement] = await tx.execute(distributionMeasurementQuery(days, now))
+    const dailyDrivers = await tx.transaction(async reportTx => {
+      const [row] = await reportTx.execute(creatorDailyDriversQuery(now))
+      return buildDailyDriverReport(row.report as DailyDriverInput)
+    }).catch(error => {
+      console.error('Creator daily drivers report unavailable', error instanceof Error ? error.name : 'Unknown error')
+      return null
+    })
     return {
+      dailyDrivers,
       distribution: measurement.data as DistributionMeasurement,
       reports: {
         all: buildCreatorPerformance(input, { days, platform: 'all', now }),

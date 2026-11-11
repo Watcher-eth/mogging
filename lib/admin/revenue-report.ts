@@ -13,6 +13,11 @@ const billingSource = sql`case when provider='stripe' then 'Stripe'
 
 // One reporting projection feeds headlines, products and charts. Provider USD
 // prices are used verbatim; missing conversions remain unknown, never zero.
+export function revenueUsdAmount(alias: ReturnType<typeof sql>) {
+  return sql`case when upper(${alias}.currency)='USD' then ${alias}.amount
+    when jsonb_typeof(${alias}.properties->'usd_amount')='number' then (${alias}.properties->>'usd_amount')::numeric end`
+}
+
 export function revenueReportingCTEs(start: string) {
   const fields = sql`h.id,h.provider,h.provider_event_id,h.provider_type,h.event_name,h.environment,h.account_id,h.external_user_id,
     h.subscription_id,h.transaction_id,h.product_id,h.properties,h.occurred_at,h.received_at`
@@ -20,8 +25,7 @@ export function revenueReportingCTEs(start: string) {
     select ${fields},h.currency,h.amount,h.amount as original_amount from billing_history h
     union all
     select ${fields},'USD_TOTAL' as currency,
-      case when upper(h.currency)='USD' then h.amount
-        when jsonb_typeof(h.properties->'usd_amount')='number' then (h.properties->>'usd_amount')::numeric end as amount,
+      ${revenueUsdAmount(sql`h`)} as amount,
       h.amount as original_amount from billing_history h
   ), revenue_reporting_period as materialized (
     select * from revenue_reporting_history where occurred_at>=${start}::timestamp

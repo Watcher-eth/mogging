@@ -1,7 +1,10 @@
 import { and, eq, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
+import { verifiedRecordingViewCount } from './verified-view-recording'
 import { hasVideoScope, queryTikTokVideos, refreshTikTokVideoToken, TikTokVideoError } from './tiktok-video-api'
+
+const trackableSubmission = sql`not s.is_draft and s.post_key ~ '^tiktok:[0-9]+$'`
 
 // Collection is independent of payout approvals. Never rewrite reviewed earnings or view thresholds.
 export async function syncCreatorVideoMetrics(timeBudgetMs = 40_000) {
@@ -20,21 +23,22 @@ export async function syncCreatorVideoMetrics(timeBudgetMs = 40_000) {
           and o.views=greatest(coalesce(s.admin_view_count_threshold,0),coalesce(s.view_count_threshold,0)))
       order by s.post_key,s.updated_at desc on conflict do nothing`)
     await tx.execute(sql`insert into creator_video_observations(post_key,source,observed_at,submission_id,measured_at,views)
-      select distinct on(s.post_key,a.assessed_at) s.post_key,'verified_recording',a.assessed_at,s.id,a.assessed_at,(a.data#>>'{metrics,totalViews}')::bigint
+      select distinct on(s.post_key,a.assessed_at) s.post_key,'verified_recording',a.assessed_at,s.id,a.assessed_at,exact.views
       from creator_submission_analytics a join creator_submissions s on s.id=a.submission_id
-      where not s.is_draft and s.post_key is not null and a.data#>>'{metricsVerified,totalViews}'='true'
-        and a.data#>>'{metricsVerified,totalViewsExact}'='true' and a.data#>>'{metrics,totalViewsExact}'='true'
-        and a.data->>'storageKey'=a.storage_key
-        and (a.data#>>'{metrics,totalViews}') ~ '^[0-9]{1,10}$'
-        and case when (a.data#>>'{metrics,totalViews}') ~ '^[0-9]{1,10}$' then (a.data#>>'{metrics,totalViews}')::numeric<=2000000000 else false end
+      cross join lateral (select ${verifiedRecordingViewCount(sql`a.data`, sql`a.storage_key`)} as views) exact
+      where not s.is_draft and s.post_key is not null and exact.views is not null
       order by s.post_key,a.assessed_at on conflict do nothing`)
     const accounts = await tx.execute(sql`select a.id,a.provider_account_id,p.user_id,a.connection_method,coalesce(state.cursor,0) as cursor
       from creator_social_accounts a join creator_profiles p on p.id=a.creator_profile_id
       left join creator_video_sync_state state on state.account_id=a.id
       where a.platform='tiktok' and p.auth_status<>'suspended'
-        and exists(select 1 from creator_submissions s where s.social_account_id=a.id and not s.is_draft)
-        and (state.next_attempt_at is null or state.next_attempt_at<=now() at time zone 'UTC')
-      order by state.next_attempt_at asc nulls first,a.id limit 10`)
+        and exists(select 1 from creator_submissions s where s.social_account_id=a.id and ${trackableSubmission})
+        and (state.next_attempt_at is null or state.next_attempt_at<=now() at time zone 'UTC'
+          or a.oauth_verified_at>state.checked_at)
+      order by (a.connection_method='oauth' and exists(select 1 from accounts token
+        where token.provider='tiktok-creator' and token.provider_account_id=a.provider_account_id
+          and token.user_id=p.user_id and coalesce(token.scope,'') ~ '(^|[ ,])video[.]list([ ,]|$)')) desc,
+        state.next_attempt_at asc nulls first,a.id limit 10`)
     let observations = 0, checked = 0
     for (const account of accounts) {
       if (Date.now() > deadline - 23_000) break
@@ -57,10 +61,10 @@ export async function syncCreatorVideoMetrics(timeBudgetMs = 40_000) {
               .where(and(eq(schema.accounts.provider, 'tiktok-creator'), eq(schema.accounts.providerAccountId, tokens.providerAccountId)))
             access = refreshed.access_token
           }
-          // Rotate through every canonical post, including private/missing videos.
+          // Rotate through in-window posts, including private/missing videos.
           // A missing response must not starve the rest of an account's catalog.
           const batch = await tx.execute(sql`select distinct on(s.post_key) s.id,s.post_key from creator_submissions s
-            where s.social_account_id=${String(account.id)} and not s.is_draft and s.post_key ~ '^tiktok:[0-9]+$'
+            where s.social_account_id=${String(account.id)} and ${trackableSubmission}
             order by s.post_key,s.created_at offset ${cursor} limit 20`)
           const videos = await queryTikTokVideos(access, batch.map(post => String(post.post_key).slice(7)))
           const observed = new Date(); observed.setUTCMinutes(0,0,0)

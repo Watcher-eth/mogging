@@ -5,6 +5,7 @@ import { viewCpm, type CreatorPerformanceReport } from '@/lib/admin/creator-perf
 import { formatReportingTime } from '@/lib/admin/reporting-time'
 import { AnalyticsChart, chartColors, type ChartMetric } from './analytics-chart'
 import { AnalyticsSelect } from './analytics-select'
+import CreatorDailyDrivers from './creator-daily-drivers'
 import { Bars, DataDetails, Notice, Panel, Stat, Table, count } from './analytics-ui'
 
 const usd = (value: number | null) => value == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value)
@@ -45,6 +46,7 @@ export default function CreatorPerformanceDashboard({ data, attributionHref = '/
       <Stat title="Cash paid for posts" value={usd(report.cashPaidCents / 100)} note="Completed USD payments dated in this period · includes older posts" />
     </div>
     {total.posts === 0 ? <Notice>No included posts were submitted in this period. Payment-date activity and all-time payout balances are reported separately.</Notice> : null}
+    {snapshot.dailyDrivers ? <CreatorDailyDrivers report={snapshot.dailyDrivers} /> : <Notice>The daily revenue and reach breakdown is unavailable in this snapshot.</Notice>}
     <Panel title="Content reach by submission date" description="Current reported views grouped by the day each post was first submitted."
       note="Source: creator submission records, using the larger of the latest creator-reported and admin-reviewed view counts. This is cumulative reach of submission cohorts, not views gained on each calendar day and not unique people. The earliest recorded submission event defines the cohort date; older records without that event use the post record’s creation date. Rereviews update the original cohort. Pending and rejected posts remain in reported reach, but do not supply approved cost-view denominators. Missing view snapshots and views beyond the last update are not estimated. Dates are Pacific calendar labels; empty days mean no included submissions, not zero platform activity.">
       <AnalyticsChart title="Content reach by submission date" rows={report.daily} metrics={reach} valueFormatter={compactCount} days={report.days} granularity="daily" timeZone="UTC" />

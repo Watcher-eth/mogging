@@ -25,7 +25,11 @@ export async function queryTikTokVideos(token: string, ids: string[], fetcher: F
   if (response.status === 401 || ['access_token_invalid','scope_not_authorized'].includes(data.error?.code || '')) throw new TikTokVideoError('reconnect_required')
   if (!response.ok || data.error?.code !== 'ok' || !Array.isArray(data.data?.videos)) throw new TikTokVideoError('provider_unavailable')
   // Missing/private videos and omitted counts remain absent, never fabricated zeros.
-  return data.data.videos.map(item => video.parse(item)).filter(item => unique.includes(item.id))
+  const requested = new Set(unique)
+  return data.data.videos.flatMap(item => {
+    const result = video.safeParse(item)
+    return result.success && requested.delete(result.data.id) ? [result.data] : []
+  })
 }
 
 export async function refreshTikTokVideoToken(clientKey: string, clientSecret: string, refreshToken: string) {

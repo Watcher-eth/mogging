@@ -129,3 +129,18 @@ test('weekly creator leaders compare submission cohorts independently of the pag
   expect(report.creators.find(row => row.id === 'inactive')).toMatchObject({ weekViews: 0, previousWeekViews: 20000, weekPosts: 0, previousWeekPosts: 1 })
   expect(report.creators).toHaveLength(2)
 })
+
+// Sparse historical observations must never appear as a measured zero or as a correlation.
+test('daily driver analysis keeps unobserved reach and unnamed audience separate', async () => {
+  const { dailyViewMix, rankCorrelation } = await import('./creator-daily-driver-analysis')
+  const mix = dailyViewMix([
+    { day: '2026-11-04', basis: 'cohort', campaign: 'General', country: null, views: 1000 },
+    { day: '2026-11-04', basis: 'cohort', campaign: 'General', country: 'US', views: 200 },
+    { day: '2026-11-04', basis: 'cohort', campaign: 'General', country: 'BR', views: 100 },
+  ])
+  expect(mix).toMatchObject({ total: 1000, named: 300, unknown: 700, tierOneShare: 2 / 3 })
+  const pairs = Array.from({ length: 10 }, (_, i): [number, number] => [Math.floor(i / 2), -Math.floor(i / 2)])
+  expect(rankCorrelation(pairs.slice(1))).toEqual({ rho: null, days: 9 })
+  expect(rankCorrelation(pairs)).toEqual({ rho: -1, days: 10 })
+  expect(rankCorrelation(pairs.map(([x]) => [x, 0])).rho).toBeNull()
+})

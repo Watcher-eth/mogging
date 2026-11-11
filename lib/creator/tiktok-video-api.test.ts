@@ -14,6 +14,8 @@ test('only returned canonical videos become observations; unavailable videos are
     request = options
     return Response.json({ error: { code: 'ok' }, data: { videos: [
       { id: '123', create_time: 1700000000, view_count: 0 },
+      { id: '456', create_time: 1700000000 },
+      { id: '123', create_time: 1700000000, view_count: 4 },
       { id: '999', create_time: 1700000000, view_count: 900 },
     ] } })
   })

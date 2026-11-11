@@ -10,7 +10,7 @@ await client.unsafe(`
 drop schema public cascade; create schema public;
 create table users(id text primary key,analytics_internal boolean default false);
 create table creator_profiles(id text primary key,user_id text,display_name text,auth_status text default 'active');
-create table creator_social_accounts(id text primary key,platform text,creator_profile_id text,connection_method text,provider_account_id text);
+create table creator_social_accounts(id text primary key,platform text,creator_profile_id text,connection_method text,provider_account_id text,oauth_verified_at timestamp);
 create table accounts(user_id text,type text,provider text,provider_account_id text,refresh_token text,access_token text,expires_at integer,token_type text,scope text,id_token text,session_state text,primary key(provider,provider_account_id));
 create table creator_submissions(id text primary key,post_key text,platform text,creator_profile_id text,social_account_id text,is_draft boolean default false,admin_view_count_threshold integer,view_count_threshold integer,created_at timestamp default now(),updated_at timestamp default now(),posted_at timestamp);
 create table creator_submission_analytics(submission_id text,storage_key text,assessed_at timestamp,data jsonb);
@@ -25,13 +25,17 @@ await client.unsafe(await Bun.file('drizzle/0072_creator_video_observations.sql'
 await client.unsafe(`
 insert into users values('creator',false),('buyer',false);
 insert into creator_profiles(id,user_id,display_name) values('profile','creator','Fixture Creator');
-insert into creator_social_accounts values('social','tiktok','profile','oauth','openid'),('manual','tiktok','profile','manual',null),('basic','tiktok','profile','oauth','basic-openid');
+insert into creator_social_accounts(id,platform,creator_profile_id,connection_method,provider_account_id)
+ values('social','tiktok','profile','oauth','openid'),('manual','tiktok','profile','manual',null),('basic','tiktok','profile','oauth','basic-openid');
 insert into accounts(user_id,type,provider,provider_account_id,access_token,expires_at,scope) values
  ('creator','oauth','tiktok-creator','openid','test',2147483647,'user.info.basic video.list'),
  ('creator','oauth','tiktok-creator','basic-openid','test',2147483647,'user.info.basic');
 insert into creator_submissions(id,post_key,platform,creator_profile_id,social_account_id,view_count_threshold)
  select 'post-'||i,'tiktok:'||i,'tiktok','profile','social',1000 from generate_series(100,124) i;
 insert into creator_submissions(id,post_key,platform,creator_profile_id,social_account_id,view_count_threshold) values('manual-post','tiktok:199','tiktok','profile','manual',500),('basic-post','tiktok:200','tiktok','profile','basic',800);
+update creator_submissions set created_at=now()-interval '20 days' where id='post-124';
+insert into creator_submissions(id,post_key,platform,creator_profile_id,social_account_id,is_draft) values
+ ('draft-post','tiktok:91','tiktok','profile','social',true);
 insert into creator_submission_analytics values('manual-post','valid',now(),'{"storageKey":"valid","metricsVerified":{"totalViews":true,"totalViewsExact":true},"metrics":{"totalViews":777,"totalViewsExact":true}}'),
  ('basic-post','valid',now(),'{"storageKey":"wrong","metricsVerified":{"totalViews":true,"totalViewsExact":true},"metrics":{"totalViews":"broken","totalViewsExact":true}}');
 `)
@@ -49,20 +53,25 @@ const [states] = await client`select json_object_agg(account_id,status) as data 
 assert(states.data.manual === 'connection_required' && states.data.basic === 'video_scope_required', 'Blocked accounts classified')
 await client`update creator_video_sync_state set next_attempt_at=now()-interval '1 minute' where account_id='social'`
 await syncCreatorVideoMetrics()
-assert(requested.length === 2 && requested[1].length === 5 && requested[1].includes('124'), 'Missing video must not starve later posts')
+assert(requested.length === 2 && requested[1].length === 5 && requested[1].includes('124'), 'Missing video must not starve older eligible posts')
+assert(requested.flat().every(id => id !== '91'), 'Drafts are not queried')
 await client`update creator_video_sync_state set next_attempt_at=now()-interval '1 minute' where account_id='social'`
 await syncCreatorVideoMetrics()
 const [observations] = await client`select count(*)::int as total from creator_video_observations where source='tiktok_api'`
 assert(observations.total === 24, 'Retry must not duplicate hourly observations')
 const [recordings] = await client`select count(*)::int as total from creator_video_observations where source='verified_recording'`
 assert(recordings.total === 1, 'Unverified/mismatched recordings must not be imported')
+await client`update accounts set scope='user.info.basic video.list' where provider_account_id='basic-openid'`
+await client`update creator_social_accounts set oauth_verified_at=now() where id='basic'`
+const afterReconnect = await syncCreatorVideoMetrics()
+assert(afterReconnect.observations === 1 && requested.at(-1)?.join() === '200', 'Reconnect should bypass the old missing-scope retry delay')
 await client.unsafe(`
 insert into creator_video_observations(post_key,source,observed_at,submission_id,measured_at,views) values('tiktok:101','tiktok_api',now()-interval '15 days','post-101',now()-interval '15 days',1200);
 insert into creator_tracking_links values('link','social');
 insert into creator_attribution_clicks values('click','link',false,now()-interval '1 day',null),('bot','link',true,now(),null);
 insert into subscription_events values('payment','stripe','production',now()-interval '1 day','invoice_paid','buyer',9.99);
 insert into creator_attribution_events values('allocated','payment',999,'buyer','USD','{"billingEventId":"payment"}','link');
-insert into scan_reservations values('buyer','complete',now());
+insert into scan_reservations values('buyer','complete',now()-interval '1 minute');
 `)
 const q = new PgDialect().sqlToQuery(distributionMeasurementQuery(14, new Date()))
 const [report] = await client.unsafe(q.sql, q.params as any[])
@@ -71,7 +80,7 @@ assert(Number(creator.measured_views_gained) === 800 && creator.posts_with_perio
 assert(creator.link_clicks === 1 && creator.post_linked_clicks === 0, 'Bio links and bots must not fabricate per-post conversion')
 assert(creator.attributed_paying_accounts === 1 && creator.purchasers_with_completed_evaluation === 1, 'Provider payment to server activation join')
 assert(Number(report.data.billing[0].gross_cents) === 999, 'Verified money remains in provider currency')
-console.log(JSON.stringify({ passed: true, checks: ['scope gating','rotating all posts','missing-video handling','idempotent retry','verified recording provenance','same-source growth','bio vs post attribution','payment-to-evaluation activation'], fixture: { accounts: first.accounts, apiObservations: observations.total } }))
+console.log(JSON.stringify({ passed: true, checks: ['scope gating','draft exclusion','reconnect retry','rotating eligible posts','missing-video handling','idempotent retry','verified recording provenance','same-source growth','bio vs post attribution','payment-to-evaluation activation'], fixture: { accounts: first.accounts, apiObservations: observations.total } }))
 globalThis.fetch = originalFetch
 await client.end()
 process.exit(0)
