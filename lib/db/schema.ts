@@ -1165,6 +1165,14 @@ export const creatorCryptoPayoutHashes = pgTable('creator_crypto_payout_hashes',
   batchId: text('batch_id').notNull().references(() => creatorCryptoPayoutBatches.id),
 }, table => [primaryKey({ columns: [table.chain, table.hash] })])
 
+export const creatorCryptoPayoutAnnouncements = pgTable('creator_crypto_payout_announcements', {
+  channelId: text('channel_id').notNull(),
+  creatorProfileId: text('creator_profile_id').notNull().references(() => creatorProfiles.id, { onDelete: 'cascade' }),
+  payoutDay: date('payout_day', { mode: 'string' }).notNull(),
+  messageId: text('message_id').notNull(),
+  amountCents: bigint('amount_cents', { mode: 'number' }).notNull(),
+}, table => [primaryKey({ columns: [table.channelId, table.creatorProfileId, table.payoutDay] })])
+
 export const creatorPayments = pgTable(
   'creator_payments',
   {
