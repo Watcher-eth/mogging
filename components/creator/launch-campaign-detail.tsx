@@ -42,11 +42,13 @@ import styles from "./launch-campaign-detail.module.css";
 export function LaunchCampaignDetail({
   sprint,
   campaign,
+  contentAllocatedCents,
   bonusProgress,
   conversionsHref,
 }: {
   sprint: CreatorSprint;
   campaign: LaunchCampaign;
+  contentAllocatedCents?: number;
   bonusProgress?: CampaignBonusProgress;
   conversionsHref?: string;
 }) {
@@ -55,8 +57,8 @@ export function LaunchCampaignDetail({
   const band = audienceBands.find((item) => item.tier === audienceTier)!;
   const format = sprint.terms.formats[0];
   const minimum = sprint.terms.milestones[0].views;
-  const canSubmit =
-    sprintPhase(sprint) === "active" && !campaignBudgetState(sprint).locked;
+  const budget = campaignBudgetState(sprint);
+  const canSubmit = sprintPhase(sprint) === "active" && !budget.locked;
   const faqs = [
     [
       "When can I submit?",
@@ -104,7 +106,7 @@ export function LaunchCampaignDetail({
         <div className={styles.headerAction}>
           <div className={styles.headerBudget}>
             <span>Total budget allocated</span>
-            <strong>{sprintMoney(campaignBudgetState(sprint).allocatedCents + (sprint.bonusUsedCents ?? 0))}<span> / {sprintMoney(sprint.budgetCents + (sprint.terms.bonusBudgetCents ?? 0))}</span></strong>
+            <strong>{sprintMoney((contentAllocatedCents ?? budget.allocatedCents) + (sprint.bonusUsedCents ?? 0))}<span> / {sprintMoney(sprint.budgetCents + (sprint.terms.bonusBudgetCents ?? 0))}</span></strong>
           </div>
           {canSubmit ? (
             <Link
@@ -237,7 +239,7 @@ export function LaunchCampaignDetail({
           ))}
         </div>
       </section>
-      <CampaignBudget sprint={sprint} />
+      <CampaignBudget sprint={sprint} contentAllocatedCents={contentAllocatedCents} />
       {sprint.terms.submitOnPublish ? <ExampleCarousel key={campaign.key} campaign={{ ...campaign, name: sprint.name, description: sprint.description, examples: FACIAL_CAMPAIGN_EXAMPLES }} /> : null}
       <footer className={styles.footer}>
         <span>

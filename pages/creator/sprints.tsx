@@ -44,7 +44,6 @@ import {
   sprintPayoutCents,
   sprintMoney,
   sprintViews,
-  type CreatorSprint,
   type ListedCreatorSprint,
   type SprintProof,
 } from '@/lib/creator/sprints'
@@ -118,7 +117,7 @@ function SprintsContent() {
     const versions = campaignVersionGroups(data?.sprints || []).find(group => group.some(item => item.id === selected.id)) || [selected]
     return <>
       <div className="mb-6"><CampaignVersionToggle campaigns={versions} selectedId={selected.id} onChange={id => void router.push({ pathname: '/creator/sprints', query: { id } }, undefined, { shallow: true })} /></div>
-      {campaign ? <LaunchCampaignDetail key={selected.id} sprint={selected} campaign={campaign} /> : <SprintDetail sprint={selected} />}
+      {campaign ? <LaunchCampaignDetail key={selected.id} sprint={selected} campaign={campaign} contentAllocatedCents={selected.cardTotals?.contentAllocatedCents} /> : <SprintDetail sprint={selected} />}
     </>
   }
   return (
@@ -204,7 +203,7 @@ function SprintsContent() {
     </>
   )
 }
-function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
+function SprintDetail({ sprint }: { sprint: ListedCreatorSprint }) {
   const [tab, setTab] = useState('overview')
   const [audienceTier, setAudienceTier] = useState<string>('A')
   const hasAudienceBands = campaignHasAudienceBands(sprint.terms)
@@ -251,7 +250,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
       >
         <StudioTabContent value="overview">
           <div className="creator-surface p-5 sm:p-7">
-            <SprintBudget sprint={sprint} />
+            <SprintBudget sprint={sprint} contentAllocatedCents={sprint.cardTotals?.contentAllocatedCents} />
             <div className="mt-7 rounded-2xl border border-[#e8ebee] p-5">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold">Milestone payouts</h2>
