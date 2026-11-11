@@ -11,12 +11,12 @@ const Liveline = dynamic(() => import('liveline').then(module => module.Liveline
 export type ChartMetric = { key: string; label: string; color: string }
 export const chartColors = { blue: '#00A8EF', violet: '#9b83e5', green: '#40a88a', orange: '#db9474', ink: '#52565c' }
 
-export function AnalyticsChart({ rows, metrics, days, currency, title, fitToData = false, timeZone = ADMIN_REPORTING_TIME_ZONE, granularity, presentation = 'standard', valueFormatter }: { rows: MetricRow[]; metrics: ChartMetric[]; days: number; currency?: string; title: string; fitToData?: boolean; timeZone?: string; granularity?: "hourly" | "daily"; presentation?: "standard" | "inline"; valueFormatter?: (value: number) => string }) {
+export function AnalyticsChart({ rows, metrics, days, currency, title, fitToData = false, timeZone = ADMIN_REPORTING_TIME_ZONE, granularity, presentation = 'standard', valueFormatter, dateFormat, rangeStart }: { rows: MetricRow[]; metrics: ChartMetric[]; days: number; currency?: string; title: string; fitToData?: boolean; timeZone?: string; granularity?: "hourly" | "daily"; presentation?: "standard" | "inline"; valueFormatter?: (value: number) => string; dateFormat?: 'day-month'; rangeStart?: string }) {
   const series = useMemo(() => metrics.map(metric => {
     const data = dailyPoints(rows, metric.key)
     return { id: metric.key, label: metric.label, color: metric.color, data, value: data.at(-1)?.value ?? 0 }
   }), [rows, metrics])
-  const firstTime = Math.min(...series.map(item => item.data[0]?.time ?? Infinity))
+  const firstTime = rangeStart ? Date.parse(rangeStart) / 1000 : Math.min(...series.map(item => item.data[0]?.time ?? Infinity))
   const windowSeconds = useMemo(() => {
     if (!fitToData || !Number.isFinite(firstTime)) return days * 86400
     // Liveline reserves 1.5% of its window beyond now when badges are hidden.
@@ -24,7 +24,8 @@ export function AnalyticsChart({ rows, metrics, days, currency, title, fitToData
     return Math.max(1, (Date.now() / 1000 - firstTime) / 0.985 + 60)
   }, [fitToData, firstTime, days])
   const interval = granularity ?? (days === 1 ? "hourly" : "daily")
-  const formatTime = (time: number) => new Date(time * 1000).toLocaleString("en-US", { month: "short", day: "numeric", ...(interval === "hourly" ? { hour: "2-digit" as const, minute: "2-digit" as const, hour12: false, timeZoneName: "short" as const } : {}), timeZone })
+  const dayMonth = dateFormat === 'day-month' ? new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', timeZone }) : null
+  const formatTime = (time: number) => dayMonth ? dayMonth.format(time * 1000) : new Date(time * 1000).toLocaleString("en-US", { month: "short", day: "numeric", ...(interval === "hourly" ? { hour: "2-digit" as const, minute: "2-digit" as const, hour12: false, timeZoneName: "short" as const } : {}), timeZone })
   const hasData = series.some(item => item.data.length > 0)
   if (!hasData) return <p className="admin-chart-empty">No {interval} observations for this window.</p>
   if (!series.some(item => item.data.length > 1)) return <div className={presentation === 'inline' ? undefined : "py-5"}><Bars presentation={presentation} color={presentation === 'inline' ? series[0]?.color : undefined} rows={series.map(item => ({ label: item.label, value: item.data[0]?.value ?? null, detail: item.data[0] ? formatTime(item.data[0].time) : undefined }))} format={valueFormatter ?? (value => currency ? money(value, currency) : count(value))} />{presentation === 'standard' ? <p className="mt-4 text-xs text-[#858a91]">One recorded bucket. A trend needs at least two {interval} observations.</p> : null}</div>

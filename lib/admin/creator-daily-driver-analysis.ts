@@ -63,13 +63,14 @@ export function rankCorrelation(pairs: Array<[number, number]>) {
   return { rho: xx && yy ? xy / Math.sqrt(xx * yy) : null, days }
 }
 
-export function creatorRevenueAssociations({ daily, mix, tiers }: DailyDriverReport) {
-  const estimatedRows = new Map<string, DriverMix[]>(), totals = new Map<string, number>()
+export function creatorRevenueAssociations({ daily, mix, tiers }: DailyDriverReport, outcome: 'revenue' | 'paidSubscriptions' = 'revenue') {
+  const estimatedRows = new Map<string, DriverMix[]>(), totals = new Map<string, number>(), namedTotals = new Map<string, number>()
   for (const row of mix) if (row.basis === 'estimated') {
     const entries = estimatedRows.get(row.day) ?? []
     entries.push(row)
     estimatedRows.set(row.day, entries)
-    if (!row.country) totals.set(row.campaign, (totals.get(row.campaign) ?? 0) + row.views)
+    if (row.country) namedTotals.set(row.country, (namedTotals.get(row.country) ?? 0) + row.views)
+    else totals.set(row.campaign, (totals.get(row.campaign) ?? 0) + row.views)
   }
   const estimates = new Map([...estimatedRows].map(([day, rows]) => [day, dailyViewMix(rows)]))
   const approved = new Map<string, { views: number; weighted: number }>()
@@ -80,7 +81,7 @@ export function creatorRevenueAssociations({ daily, mix, tiers }: DailyDriverRep
     approved.set(row.day, total)
   }
   const metrics: Array<[string, (day: DriverDay) => number | null]> = [
-    ['New submissions', day => day.submissions], ['Reported views on new submissions', day => day.submissions ? day.cohortViews : null],
+    ['New submissions', day => day.submissions],
     ['Estimated daily views', day => day.estimatedViews], ['Measured views gained', day => day.measuredViews], ['Creator link clicks', day => day.clicks],
     ['iOS first opens', day => day.firstOpens], ['Signed-in iOS paywall accounts', day => day.paywallAccounts],
     ['Matched iOS paywall purchase rate', paywallRate], ['Tier 1 share of named estimated audience', day => estimates.get(day.day)?.tierOneShare ?? null],
@@ -88,16 +89,25 @@ export function creatorRevenueAssociations({ daily, mix, tiers }: DailyDriverRep
       const data = approved.get(day.day)
       return data ? ratio(data.weighted, data.views) : null
     }],
+    ...[...namedTotals].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([code]): [string, (day: DriverDay) => number | null] => [
+      `${countryName(code)} share of named audience`, day => {
+        const estimate = estimates.get(day.day)
+        return estimate ? ratio(estimate.countries.get(code) ?? 0, estimate.named) : null
+      },
+    ]),
     ...[...totals].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([campaign]): [string, (day: DriverDay) => number | null] => [
       `${campaign} share of estimated daily views`, day => ratio(estimates.get(day.day)?.campaigns.get(campaign) ?? 0, day.estimatedViews ?? 0),
     ]),
   ]
   return metrics.map(([label, value]) => {
     const values = daily.map(value)
+    const outcomeValue = (day: DriverDay | undefined) => day && !(outcome === 'revenue' && day.missingUsd) ? day[outcome] : null
     const compare = (lag: number, changes = false) => rankCorrelation(daily.flatMap((day, i): Array<[number, number]> => {
-      const before = daily[i - 1], x = values[i - lag], previous = values[i - lag - 1]
-      if (x == null || day.missingUsd || (changes && (!before || before.missingUsd || previous == null))) return []
-      return [[changes ? x - previous! : x, changes ? day.revenue - before.revenue : day.revenue]]
+      const y = outcomeValue(day), x = values[i - lag]
+      if (x == null || y == null) return []
+      if (!changes) return [[x, y]]
+      const before = outcomeValue(daily[i - 1]), previous = values[i - lag - 1]
+      return before == null || previous == null ? [] : [[x - previous, y - before]]
     }))
     return { label, sameDay: compare(0), nextDay: compare(1), twoDays: compare(2), changes: compare(0, true) }
   })

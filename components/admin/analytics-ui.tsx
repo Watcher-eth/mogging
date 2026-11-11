@@ -41,8 +41,8 @@ export function Table({ rows, columns }: { rows: MetricRow[]; columns: string[] 
   if (!rows.length) return <p className="admin-empty">No observations in this window.</p>
   return <div className="admin-table-scroll" tabIndex={0} role="region" aria-label="Report data"><table className="admin-table"><thead><tr>{columns.map(column => <th key={column} scope="col">{labels[column] || label(column)}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={index}>{columns.map(column => <td key={column}>{row[column] == null ? '—' : column.endsWith('_ms') ? `${count(Number(row[column]) / 1000)} s` : typeof row[column] === 'number' ? count(row[column]) : String(row[column])}</td>)}</tr>)}</tbody></table></div>
 }
-export function DataDetails({ children }: { children: ReactNode }) {
-  return <Disclosure className="admin-data-details"><DisclosureSummary>View underlying data</DisclosureSummary><AccordionContent><div className="mt-4">{children}</div></AccordionContent></Disclosure>
+export function DataDetails({ children, title = 'View underlying data' }: { children: ReactNode; title?: string }) {
+  return <Disclosure className="admin-data-details"><DisclosureSummary>{title}</DisclosureSummary><AccordionContent><div className="mt-4">{children}</div></AccordionContent></Disclosure>
 }
 export function ComparisonBars({ rows, series, format = count, maximum }: { rows: Array<{ label: string; values: Array<number | null>; detail?: string }>; series: Array<{ label: string; color: string }>; format?: (value: number) => string; maximum?: number }) {
   return <CategoryChart rows={rows} series={series} format={format} maximum={maximum} />

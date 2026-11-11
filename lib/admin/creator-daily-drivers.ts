@@ -6,9 +6,9 @@ import { verifiedRecordingViewCount } from '@/lib/creator/verified-view-recordin
 import type { SprintTerms } from '@/lib/creator/sprints'
 
 export type DriverDay = {
-  day: string; revenue: number; ios: number; web: number; iosRenewals: number; iosSales: number; refunds: number; missingUsd: number;
+  day: string; revenue: number; ios: number; web: number; iosRenewals: number; iosSales: number; paidSubscriptions: number; missingUsd: number;
   submissions: number; cohortViews: number; measuredViews: number | null; measuredPosts: number; estimatedViews: number | null; estimatedPosts: number;
-  firstOpens: number; dominantIosBuild: string | null; dominantIosBuildShare: number | null; clicks: number; paywallAccounts: number; paidAfterPaywall: number;
+  firstOpens: number; clicks: number; paywallAccounts: number; paidAfterPaywall: number;
 }
 export type DriverMix = { day: string; basis: 'measured' | 'cohort' | 'estimated'; campaign: string; country: string | null; views: number }
 export type DriverTier = { day: string; basis: DriverMix['basis']; campaign: string; tier: string; views: number; approvedPercent: number | null }
@@ -194,21 +194,32 @@ export function creatorDailyDriversQuery(now: Date) {
       order by verified desc,r.assessed_at desc,r.storage_key limit 1
     ) pair on true
   ), billing as materialized (
-    select ${day(sql`b.occurred_at`)} as day,b.occurred_at,b.account_id,b.event_name,
+    select ${day(sql`b.occurred_at`)} as day,b.occurred_at,b.account_id,b.event_name,b.provider,b.subscription_id,b.id,
       b.provider='revenuecat' and coalesce(b.properties->>'store'='APP_STORE',false) as ios,
       b.provider='stripe' as web,b.amount as original,${revenueUsdAmount(sql`b`)} as usd
     from subscription_events b cross join bounds
     where b.environment='production' and b.amount<>0 and b.occurred_at>=starts and b.occurred_at<ends
       and not exists(select 1 from users u where u.id=coalesce(b.account_id,b.external_user_id) and u.analytics_internal)
+  ), subscription_starts as (
+    select distinct on (b.provider,b.subscription_id) b.day
+    from billing b where b.original>0 and b.subscription_id is not null
+      and b.event_name in ('subscription_started','trial_converted','invoice_paid','subscription_renewed')
+      and not exists (select 1 from subscription_events previous
+        where previous.provider=b.provider and previous.subscription_id=b.subscription_id
+          and previous.environment='production' and previous.amount>0 and previous.occurred_at<b.occurred_at
+          and previous.event_name in ('subscription_started','trial_converted','invoice_paid','subscription_renewed'))
+    order by b.provider,b.subscription_id,b.occurred_at,b.id
+  ), subscription_counts as (
+    select day,count(*)::int as paid from subscription_starts group by day
   ), money as (
     select day,coalesce(sum(usd),0) as revenue,coalesce(sum(usd) filter(where ios),0) as ios,
       coalesce(sum(usd) filter(where web),0) as web,
       coalesce(sum(usd) filter(where ios and event_name='subscription_renewed' and original>0),0) as renewals,
       count(*) filter(where ios and original>0 and event_name in ('subscription_started','trial_converted','one_time_purchase'))::int as sales,
-      coalesce(-sum(usd) filter(where original<0),0) as refunds,count(*) filter(where usd is null)::int as missing
+      count(*) filter(where usd is null)::int as missing
     from billing group by day
   ), app_events as materialized (
-    select ${day(sql`a.occurred_at`)} as day,a.event_name,a.account_id,a.mobile_install_id,a.anonymous_id,a.occurred_at,a.app_version
+    select ${day(sql`a.occurred_at`)} as day,a.event_name,a.account_id,a.mobile_install_id,a.anonymous_id,a.occurred_at
     from analytics_events a cross join bounds
     where a.environment='production' and a.platform='ios' and a.event_name in ('app_first_open','paywall_viewed')
       and a.occurred_at>=starts and a.occurred_at<ends
@@ -216,11 +227,6 @@ export function creatorDailyDriversQuery(now: Date) {
   ), opens as (
     select day,count(distinct coalesce(mobile_install_id,anonymous_id,account_id))::int as n
     from app_events where event_name='app_first_open' group by day
-  ), builds as (
-    select distinct on(day) day,app_version,n::float8 / sum(n) over (partition by day) as share
-    from (select day,coalesce(nullif(app_version,''),'Unknown') as app_version,count(*) as n
-      from app_events where event_name='app_first_open' group by 1,2) counts
-    order by day,n desc,app_version
   ), paywall as (
     select day,account_id,min(occurred_at) as opened_at from app_events where event_name='paywall_viewed'
       and account_id is not null group by day,account_id
@@ -236,13 +242,13 @@ export function creatorDailyDriversQuery(now: Date) {
     where not c.is_bot and c.created_at>=starts and c.created_at<ends and a.creator_profile_id not in (${excluded}) group by 1
   ), daily as (
     select d.day,coalesce(m.revenue,0) as revenue,coalesce(m.ios,0) as ios,coalesce(m.web,0) as web,
-      coalesce(m.renewals,0) as "iosRenewals",coalesce(m.sales,0) as "iosSales",coalesce(m.refunds,0) as refunds,
+      coalesce(m.renewals,0) as "iosRenewals",coalesce(m.sales,0) as "iosSales",coalesce(n.paid,0) as "paidSubscriptions",
       coalesce(m.missing,0) as "missingUsd",coalesce(c.submissions,0) as submissions,coalesce(c.views,0) as "cohortViews",
       e.views as "estimatedViews",coalesce(e.posts,0) as "estimatedPosts",
-      t.views as "measuredViews",coalesce(t.posts,0) as "measuredPosts",coalesce(o.n,0) as "firstOpens",v.app_version as "dominantIosBuild",v.share as "dominantIosBuildShare",coalesce(k.n,0) as clicks,
+      t.views as "measuredViews",coalesce(t.posts,0) as "measuredPosts",coalesce(o.n,0) as "firstOpens",coalesce(k.n,0) as clicks,
       coalesce(f.accounts,0) as "paywallAccounts",coalesce(f.paid,0) as "paidAfterPaywall"
     from days d left join money m using(day) left join cohorts c using(day) left join tracked t using(day) left join estimated e using(day)
-    left join opens o using(day) left join builds v using(day) left join conversions f using(day) left join clicks k using(day)
+    left join opens o using(day) left join subscription_counts n using(day) left join conversions f using(day) left join clicks k using(day)
   ) select json_build_object('daily',(select json_agg(d order by day) from daily d),
     'mix',coalesce((select json_agg(b order by day,basis,campaign,country nulls first) from breakdown b),'[]'::json),
     'tiers',coalesce((select json_agg(t order by day,basis,campaign) from tier_rows t),'[]'::json),
