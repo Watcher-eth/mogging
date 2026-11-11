@@ -1,10 +1,10 @@
 import type { CreatorSprint } from './sprints'
 
 // Only combine pairs already returned by the server's audience filter.
-export function campaignVersionGroups(campaigns: CreatorSprint[]): CreatorSprint[][] {
+export function campaignVersionGroups<Sprint extends CreatorSprint>(campaigns: Sprint[]): Sprint[][] {
   const byId = new Map(campaigns.map(campaign => [campaign.id, campaign]))
   const paired = new Set<string>()
-  const groups: CreatorSprint[][] = []
+  const groups: Sprint[][] = []
   for (const campaign of campaigns) {
     if (paired.has(campaign.id)) continue
     const source = campaign.terms.mgcSourceCampaignId ? byId.get(campaign.terms.mgcSourceCampaignId) : campaign

@@ -575,6 +575,13 @@
       "when": 1794349800000,
       "tag": "0079_creator_scores",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1794355200000,
+      "tag": "0080_creator_campaign_display_adjustments",
+      "breakpoints": true
     }
   ]
 }

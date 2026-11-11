@@ -45,6 +45,7 @@ import {
   sprintMoney,
   sprintViews,
   type CreatorSprint,
+  type ListedCreatorSprint,
   type SprintProof,
 } from '@/lib/creator/sprints'
 type Props = { campaign: CampaignPreview | null; timeLabel: string | null }
@@ -90,7 +91,7 @@ export default function SprintsPage({ campaign, timeLabel }: Props) {
 function SprintsContent() {
   const router = useRouter()
   const { data, error, isLoading, mutate } = useSWR<{
-    sprints: CreatorSprint[]
+    sprints: ListedCreatorSprint[]
   }>('/api/creator/sprints', apiGet)
   const phase = typeof router.query.phase === 'string' && ['active', 'scheduled', 'past'].includes(router.query.phase) ? router.query.phase : 'active'
   const [versionId, setVersionId] = useState('')
@@ -171,12 +172,12 @@ function SprintsContent() {
                       {sprint.description}
                     </p>
                     <div className="my-5 border-y border-zinc-100 py-4">
-                      <SprintBudget sprint={sprint} />
+                      <SprintBudget sprint={sprint} contentAllocatedCents={sprint.cardTotals?.contentAllocatedCents} />
                     </div>
                     <div className="flex items-center justify-between text-xs text-zinc-500">
                       <span>
                         {sprint.counts.pending + sprint.counts.in_review}{' '}
-                        pending · {sprint.counts.approved + sprint.counts.paid}{' '}
+                        pending · {sprint.cardTotals?.approvedSubmissions ?? sprint.counts.approved + sprint.counts.paid}{' '}
                         approved · {sprint.counts.rejected} rejected
                       </span>
                       <ArrowRight className="size-4 text-[#00A8EF] transition-transform group-hover:translate-x-1" />

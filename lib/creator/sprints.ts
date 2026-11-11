@@ -160,6 +160,13 @@ export type CreatorSprint = {
     paid: number
   }
 }
+export type ListedCreatorSprint = CreatorSprint & {
+  cardTotals: {
+    contentAllocatedCents: number
+    approvedSubmissions: number
+  }
+  displayAdjusted?: boolean
+}
 export type SprintProof = {
   id: string
   handle: string | null

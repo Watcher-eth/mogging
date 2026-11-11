@@ -791,6 +791,12 @@ export const creatorSprints = pgTable('creator_sprints', {
   updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
 })
 
+export const creatorCampaignDisplayAdjustments = pgTable('creator_campaign_display_adjustments', {
+  sprintId: text('sprint_id').primaryKey().references(() => creatorSprints.id, { onDelete: 'cascade' }),
+  usedBudgetCents: integer('used_budget_cents').notNull(),
+  approvedSubmissions: integer('approved_submissions').notNull(),
+})
+
 export const creatorStudioGenerations = pgTable('creator_studio_generations', {
   id: text('id').primaryKey(),
   creatorProfileId: text('creator_profile_id').notNull().references(() => creatorProfiles.id, { onDelete: 'cascade' }),

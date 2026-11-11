@@ -25,18 +25,23 @@ export function SprintStatus({ sprint }: { sprint: CreatorSprint }) {
     </span>
   )
 }
-export function SprintBudget({ sprint }: { sprint: CreatorSprint }) {
+export function SprintBudget({ sprint, contentAllocatedCents, labelSuffix = '' }: {
+  sprint: CreatorSprint
+  contentAllocatedCents?: number
+  labelSuffix?: string
+}) {
   const isLaunch = Boolean(launchCampaign(sprint.terms))
   const budgetCents = sprint.budgetCents + (isLaunch ? sprint.terms.bonusBudgetCents ?? 0 : 0)
-  const usedCents = campaignBudgetState(sprint).allocatedCents + (isLaunch ? sprint.bonusUsedCents ?? 0 : 0)
-  const percent = Math.min(
+  const usedCents = (contentAllocatedCents ?? campaignBudgetState(sprint).allocatedCents) + (isLaunch ? sprint.bonusUsedCents ?? 0 : 0)
+  const label = `${isLaunch ? 'Total budget allocated' : 'Budget allocated'}${labelSuffix}`
+  const percent = budgetCents > 0 ? Math.min(
     100,
     Math.round((usedCents / budgetCents) * 100),
-  )
+  ) : 0
   return (
     <div>
       <div className="flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-        <p>{isLaunch ? 'Total budget allocated' : 'Budget allocated'}</p>
+        <p>{label}</p>
         <p className="text-right">{campaignTimeLabel(sprint)}</p>
       </div>
       <div className="mt-1 flex items-end justify-between gap-3">
@@ -50,7 +55,7 @@ export function SprintBudget({ sprint }: { sprint: CreatorSprint }) {
       </div>
       <div
         role="progressbar"
-        aria-label="Budget allocated"
+        aria-label={label}
         aria-valuenow={percent}
         aria-valuemin={0}
         aria-valuemax={100}
