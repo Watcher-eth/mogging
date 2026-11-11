@@ -3,6 +3,24 @@ import { CAMPAIGN_ANCHOR_REQUIREMENT, TIKTOK_CAMPAIGN_ANCHOR_URL, withCampaignPu
 
 export const LEGACY_FACIAL_CAMPAIGN_ID = 'bd0d7a74-3c39-44dd-98ec-21bf6667a714'
 export const GENERATED_FACIAL_CAMPAIGN_ID = 'd4c7c3af-9ba7-43ba-bf14-c66c7d9d4d11'
+export const FACIAL_REVIEW_MINIMUM_VIEWS = 20_000
+
+export function isFacialSubmissionWaitingForReview(submission: {
+  sprintId?: string | null
+  sprintTerms?: Pick<SprintTerms, 'submitOnPublish'> | null
+  submitOnPublish?: boolean
+  status: string
+  viewCountThreshold?: number | null
+  hasAnalyticsRecording?: boolean
+  analyticsScreenshotUrl?: string | null
+}) {
+  return submission.sprintId === GENERATED_FACIAL_CAMPAIGN_ID
+    && (submission.submitOnPublish ?? submission.sprintTerms?.submitOnPublish) === true
+    && (submission.status === 'pending' || submission.status === 'in_review')
+    && (!(submission.hasAnalyticsRecording ?? Boolean(submission.analyticsScreenshotUrl))
+      || (submission.viewCountThreshold ?? 0) < FACIAL_REVIEW_MINIMUM_VIEWS)
+}
+
 export function campaignSubmissionPlatforms(campaign: { id: string; terms: Pick<SprintTerms, 'platforms'> }): SprintTerms['platforms'] {
   const platforms = campaign.terms.platforms.filter(platform => platform !== 'youtube')
   return campaign.id === GENERATED_FACIAL_CAMPAIGN_ID ? [...platforms, 'youtube'] : platforms

@@ -1,4 +1,5 @@
 import { audienceReviewError, verifiedRecordingViews, type AudienceCheck } from '@/lib/creator/audience-check'
+import { GENERATED_FACIAL_CAMPAIGN_ID } from '@/lib/creator/facial-campaign-update'
 import { lockCampaignBudget } from '@/lib/creator/campaign-budget-service'
 import { assertCreatorReferralPaymentsEligible, refreshCreatorReferralBonuses } from '@/lib/creator/creator-referrals'
 import { campaignCommittedCents, campaignPendingCents } from '@/lib/creator/campaign-accounting'
@@ -303,11 +304,14 @@ export async function getCreatorAdminDashboard({ includeCoverage = true, creator
 const submission = schema.creatorSubmissions
 const payment = schema.creatorPayments
 const request = schema.creatorPayoutRequests
+const submitOnPublish = sql<boolean>`coalesce(${submission.sprintTerms}->'submitOnPublish' = 'true'::jsonb, false)`
 
 const queueSubmissionFields = {
   id: submission.id,
   studioGenerationId: submission.studioGenerationId,
   hasAnalyticsRecording: sql<boolean>`nullif(${submission.analyticsScreenshotUrl}, '') is not null`,
+  submitOnPublish,
+  viewCountThreshold: submission.viewCountThreshold,
   creatorProfileId: submission.creatorProfileId,
   creatorName: schema.creatorProfiles.displayName,
   socialHandle: schema.creatorSocialAccounts.handle,
@@ -347,7 +351,8 @@ const requestedSubmission = sql`exists (select 1 from creator_payments p join cr
   on p.payout_request_id = pr.id and pr.status = 'pending'
   where p.submission_id = ${submission.id} and p.status <> 'cancelled')`
 const queuedSubmission = sql`${submission.status} in ('pending', 'in_review')
-  and (${submission.studioGenerationId} is null or nullif(${submission.analyticsScreenshotUrl}, '') is not null)`
+  and (${submission.studioGenerationId} is null or nullif(${submission.analyticsScreenshotUrl}, '') is not null
+    or (${submission.sprintId} = ${GENERATED_FACIAL_CAMPAIGN_ID} and ${submitOnPublish}))`
 
 export async function getCreatorReviewQueue(now = new Date()) {
   const dayAgo = new Date(now.getTime() - 86_400_000).toISOString()

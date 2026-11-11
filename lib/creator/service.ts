@@ -1,4 +1,4 @@
-import { campaignSubmissionPlatforms, withAnchorRequirement } from './facial-campaign-update'
+import { campaignSubmissionPlatforms, isFacialSubmissionWaitingForReview, withAnchorRequirement } from './facial-campaign-update'
 import { unstable_cache } from 'next/cache'
 import { queuedAudienceCheck } from './audience-check'
 import { creatorRetainerTerms } from './retainer'
@@ -543,7 +543,10 @@ export async function requestSubmissionReview(userId: string, submissionId: stri
     const [submission] = await tx.select().from(schema.creatorSubmissions).where(and(eq(schema.creatorSubmissions.id, submissionId), eq(schema.creatorSubmissions.creatorProfileId, profile.id))).for('update')
     if (submission?.isDraft) throw new CreatorServiceError(409, 'Submit this registered post with its campaign and analytics first')
     if (!submission?.sprintId || !submission.sprintTerms) throw new CreatorServiceError(409, 'Only campaign submissions can request rereview')
-    if (submission.reviewRequestedAt || (['pending', 'in_review'].includes(submission.status) && submission.analyticsScreenshotUrl)) throw new CreatorServiceError(409, 'This submission is already awaiting review')
+    const awaitingReview = submission.reviewRequestedAt || (['pending', 'in_review'].includes(submission.status) && submission.analyticsScreenshotUrl)
+    if (awaitingReview && !isFacialSubmissionWaitingForReview(submission)) {
+      throw new CreatorServiceError(409, 'This submission is already awaiting review')
+    }
     if (submission.analyticsStorageKey === input.analyticsStorageKey) throw new CreatorServiceError(400, 'Upload a fresh analytics recording')
     const payments = await tx.query.creatorPayments.findMany({ where: eq(schema.creatorPayments.submissionId, submission.id) })
     if (payments.some(payment => ['pending', 'processing'].includes(payment.status))) throw new CreatorServiceError(409, 'Wait until the scheduled payment is completed before requesting rereview')

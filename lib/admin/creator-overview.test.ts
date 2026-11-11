@@ -1,8 +1,32 @@
 import { describe, expect, test } from 'bun:test'
-import type { AdminAccount, AdminCreator, AdminDashboard, AdminPayment, AdminSubmission } from '@/components/admin/creator-types'
+import type { AdminAccount, AdminCreator, AdminDashboard, AdminPayment, AdminQueueSubmission, AdminSubmission } from '@/components/admin/creator-types'
+import { GENERATED_FACIAL_CAMPAIGN_ID, isFacialSubmissionWaitingForReview } from '@/lib/creator/facial-campaign-update'
 import { approvedUnpaidSubmissions, creatorOutstandingPaymentGroups, creatorPaymentQueue, approvalKind, getApprovalQueue, getSubmissionReviewQueues, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl } from './creator-overview'
 
 describe('admin overview approvals', () => {
+  test('separates initial facial campaign submissions from reviews with at least 20K recorded views', () => {
+    const facial = {
+      sprintId: GENERATED_FACIAL_CAMPAIGN_ID, submitOnPublish: true, status: 'pending',
+      studioGenerationId: 'studio', createdAt: '2026-11-09T12:00:00Z',
+      creatorProfileId: 'creator', creatorName: 'Sample creator', socialHandle: null,
+      title: 'Facial analysis', platform: 'tiktok', formatId: null,
+      adminViewCountThreshold: null, adminUsAudiencePercent: null,
+    } satisfies Omit<AdminQueueSubmission, 'id'>
+    const submissions = [
+      { ...facial, id: 'initial', viewCountThreshold: 0, hasAnalyticsRecording: false },
+      { ...facial, id: 'no-recording', viewCountThreshold: 20_000, hasAnalyticsRecording: false },
+      { ...facial, id: 'below', viewCountThreshold: 19_999, hasAnalyticsRecording: true, status: 'in_review' as const },
+      { ...facial, id: 'ready', viewCountThreshold: 20_000, hasAnalyticsRecording: true, status: 'in_review' as const },
+      { ...facial, id: 'older-terms', submitOnPublish: false, viewCountThreshold: 5_000, hasAnalyticsRecording: true },
+      { ...facial, id: 'other-campaign', sprintId: 'other', viewCountThreshold: 5_000, hasAnalyticsRecording: true },
+      { ...facial, id: 'already-paid', status: 'paid' as const, viewCountThreshold: 5_000, hasAnalyticsRecording: true },
+    ]
+    expect(submissions.filter(isFacialSubmissionWaitingForReview).map(item => item.id)).toEqual(['initial', 'no-recording', 'below'])
+    const queues = getSubmissionReviewQueues({ submissions })
+    expect(queues.find(queue => queue.id === 'detailed-analysis')?.items.map(target => target.item.id)).toEqual(['ready', 'older-terms'])
+    expect(queues.find(queue => queue.id === 'other')?.items.map(target => target.item.id)).toEqual(['other-campaign'])
+  })
+
   test('queues every submission without retired account or payout approval steps', () => {
     const data = {
       submissions: Array.from({ length: 10 }, (_, id) => ({ id: String(id), status: id === 9 ? 'in_review' : 'pending', createdAt: '2026-09-29' } as AdminSubmission)),

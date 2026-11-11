@@ -5,6 +5,7 @@ import { SubmissionBonusBreakdown, CampaignBonusAwards } from '@/components/crea
 import { submissionBonusPayments, campaignBonusPayments, bonusPaymentTotal, type BonusPayment } from '@/lib/creator/bonus-payments'
 import { SubmissionReviewFeedback } from '@/components/creator/submission-review-feedback'
 import { CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
+import { isFacialSubmissionWaitingForReview } from '@/lib/creator/facial-campaign-update'
 import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import { SubmissionDialog as AnalyticsSubmissionDialog } from '@/components/creator/submission-dialog'
 import { SubmissionConversation } from '@/components/creator/submission-conversation'
@@ -116,6 +117,10 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
   const { data: post } = useSWR<CreatorPostPreview>(open && submission?.postUrl ? `/api/creator/submissions/${submission.id}/preview` : null, apiGet, { dedupingInterval: 300_000, revalidateOnFocus: false })
   const caption = post?.caption || submission?.caption
   const evidenceSize = submission?.analyticsSizeBytes || submission?.videoSizeBytes
+  const waitingForFacialViews = submission && isFacialSubmissionWaitingForReview(submission)
+  const paymentInProgress = payments.some(item => ['pending', 'processing'].includes(item.status))
+  const canUpdateAnalytics = submission?.sprintId && !paymentInProgress && (waitingForFacialViews
+    || (!submission.reviewRequestedAt && (['approved', 'paid', 'rejected'].includes(submission.status) || !submission.analyticsScreenshotUrl)))
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -128,12 +133,12 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
               <div className="flex items-center gap-2 pr-10"><StatusStamp status={submission.status} /><span className="text-xs text-zinc-400">{formatDate(submission.createdAt)}</span></div>
               <div className="flex items-center justify-between gap-3 pt-2">
                 <DialogTitle className="creator-dialog-title min-w-0 flex-1 break-words text-xl">{caption || `${submission.platform} submission`}</DialogTitle>
-                {submission.sprintId && !submission.reviewRequestedAt && !payments.some(item => ['pending', 'processing'].includes(item.status)) && (['approved', 'paid', 'rejected'].includes(submission.status) || !submission.analyticsScreenshotUrl) ? <Button variant="outline" className="min-h-10 max-w-[60%] shrink-0 whitespace-normal rounded-full px-3 text-xs sm:text-sm" onClick={onUpdateAnalytics}><RotateCcw className="size-4 shrink-0" aria-hidden="true" />{submission.analyticsScreenshotUrl ? 'Request rereview' : submission.studioGenerationId ? 'Review' : 'Add analytics & update views'}</Button> : null}
+                {canUpdateAnalytics ? <Button variant="outline" className="min-h-10 max-w-[60%] shrink-0 whitespace-normal rounded-full px-3 text-xs sm:text-sm" onClick={onUpdateAnalytics}><RotateCcw className="size-4 shrink-0" aria-hidden="true" />{waitingForFacialViews ? 'Add analytics' : submission.analyticsScreenshotUrl ? 'Request rereview' : submission.studioGenerationId ? 'Review' : 'Add analytics & update views'}</Button> : null}
               </div>
-              <DialogDescription>{submission.studioGenerationId && !submission.analyticsScreenshotUrl ? 'Your post is registered. Once it reaches the first campaign milestone, choose Review and add your analytics recording.' : CREATOR_REREVIEW_GUIDANCE}</DialogDescription>
+              <DialogDescription>{waitingForFacialViews ? 'Your post is saved. Add a fresh analytics recording when it reaches 20K views to send it for review.' : submission.studioGenerationId && !submission.analyticsScreenshotUrl ? 'Your post is registered. Once it reaches the first campaign milestone, choose Review and add your analytics recording.' : CREATOR_REREVIEW_GUIDANCE}</DialogDescription>
             </DialogHeader>
-            {payments.some(item => ['pending', 'processing'].includes(item.status)) ? <p className="mt-3 text-xs text-zinc-500">You can request rereview once your scheduled payout has finished processing.</p> : null}
-            {submission.reviewRequestedAt ? <p className="mt-3 text-xs text-zinc-500">Updated analytics are awaiting review. Prior payouts remain unchanged.</p> : null}
+            {paymentInProgress ? <p className="mt-3 text-xs text-zinc-500">You can request rereview once your scheduled payout has finished processing.</p> : null}
+            {submission.reviewRequestedAt && !waitingForFacialViews ? <p className="mt-3 text-xs text-zinc-500">Updated analytics are awaiting review. Prior payouts remain unchanged.</p> : null}
             <SubmissionBonusBreakdown contentCents={creatorEarnedCents(submission)} bonuses={bonuses} />
             {submission.status === 'rejected' ? <CreatorReviewChecklist submission={submission} /> : null}
             <div className="mt-4 flex gap-1 rounded-full bg-zinc-100 p-1" aria-label="Submission view">{(['conversation', 'details'] as const).map(value => <button key={value} aria-pressed={tab === value} className={cn('min-h-10 flex-1 rounded-full text-sm font-medium capitalize', tab === value ? 'bg-white shadow-sm' : 'text-zinc-500')} onClick={() => setTab(value)}>{value === 'conversation' ? <>Messages{submission.unreadMessages ? <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-lg bg-[#007aff] px-1.5 py-0.5 text-[10px] text-white">{submission.unreadMessages}</span> : null}</> : 'Details'}</button>)}</div>

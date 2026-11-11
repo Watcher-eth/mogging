@@ -1,4 +1,5 @@
 import { payoutChains, payoutNetworks } from '@/lib/admin/crypto-payouts/shared'
+import { isFacialSubmissionWaitingForReview } from '@/lib/creator/facial-campaign-update'
 import { defaultSubmissionFilters, filterSubmissions, groupSubmissions, submissionCampaignKey, submissionCampaignLabel, submissionStatuses, submissionViews, type SubmissionFilters } from '@/lib/admin/submission-browser'
 import { submissionReviewQueueLabels } from '@/lib/admin/creator-overview'
 import { CreatorFixedRateNotice } from './creator-fixed-rate-notice'
@@ -194,6 +195,7 @@ function Overview({ data, onSelectSubmission, onRefresh, historyVersion = 0 }: {
   historyVersion?: number
 }) {
   const reviewQueues = useMemo(() => getSubmissionReviewQueues<AdminQueueSubmission>(data), [data])
+  const initialFacialSubmissions = useMemo(() => data.submissions.filter(isFacialSubmissionWaitingForReview), [data.submissions])
   const compact = 'counts' in data
   const { data: campaigns, mutate: refreshCampaigns } = useSWR<{ sprints: MoveCampaign[] }>(
     compact ? '/api/admin/creator/sprints?view=move' : '/api/admin/creator/sprints', apiGet,
@@ -228,12 +230,13 @@ function Overview({ data, onSelectSubmission, onRefresh, historyVersion = 0 }: {
   )
   const attentionCount = reviewQueues.reduce((total, queue) => total + queue.items.length, 0)
   const counts = compact ? data.counts : legacyQueueCounts(data)
+  const pendingCount = counts.pendingCount - initialFacialSubmissions.filter(item => item.status === 'pending').length
 
   return (
     <CampaignSubmissionMoves campaigns={campaigns?.sprints ?? []} onMoved={() => Promise.all([onRefresh(), refreshCampaigns(), ...(reviewed && compact ? [refreshHistory()] : [])])}>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Metric label="Videos" newValue={counts.newVideos} value={counts.videoCount} detail={`${counts.pendingCount} awaiting review`} asset="video-submissions" />
+        <Metric label="Videos" newValue={counts.newVideos} value={counts.videoCount} detail={`${pendingCount} awaiting review`} asset="video-submissions" />
         <Metric label="Accounts" newValue={counts.newAccounts} value={counts.accountCount} detail="Connected publishing profiles" icon={BadgeCheck} />
         <Metric label="Outstanding" newValue={formatMoney(counts.newOutstandingCents, 'USD')} value={formatMoney(counts.outstandingCents, 'USD')} detail={`${counts.paymentCount} payments`} icon={CircleDollarSign} />
       </div>
@@ -252,10 +255,21 @@ function Overview({ data, onSelectSubmission, onRefresh, historyVersion = 0 }: {
             <div className="admin-list">{(compact ? reviewedPosts : reviewedPosts.slice(0, reviewedLimit)).map(row)}</div>
             {hasMore ? <Button className="m-3" size="sm" variant="outline" disabled={history.isValidating} onClick={() => { if (compact) void history.setSize(history.size + 1); else setReviewedLimit(limit => limit + 30) }}>Show more</Button> : null}
           </div> : <EmptyState title="No matching submissions" description="Approved and paid submissions will appear here." />
-        ) : attentionCount ? <div className="grid gap-6">{reviewQueues.map(queue => <CampaignReviewQueue key={queue.id} queueId={queue.id} label={queue.label}>
-          <div className="flex items-center justify-between gap-3 px-5 py-4"><div><h3 id={`review-queue-${queue.id}`} className="text-sm font-semibold">{queue.label}</h3><p className="mt-1 text-xs text-zinc-400">Oldest submission first</p></div><span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold tabular-nums text-zinc-600">{queue.items.length}</span></div>
-          {queue.items.length ? <div className="admin-list px-3">{queue.items.map(target => row(target.item))}</div> : <p className="border-t border-zinc-100 px-5 py-5 text-sm text-zinc-400">No submissions waiting.</p>}
-        </CampaignReviewQueue>)}</div> : <EmptyState title="You’re all caught up" description="New submissions ready for review will appear here." />}
+        ) : attentionCount || initialFacialSubmissions.length ? <div className="grid gap-6">{reviewQueues.map(queue => <div key={queue.id} className="grid gap-2">
+          <CampaignReviewQueue queueId={queue.id} label={queue.label}>
+            <div className="flex items-center justify-between gap-3 px-5 py-4"><div><h3 id={`review-queue-${queue.id}`} className="text-sm font-semibold">{queue.label}</h3><p className="mt-1 text-xs text-zinc-400">Oldest submission first</p></div><span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold tabular-nums text-zinc-600">{queue.items.length}</span></div>
+            {queue.items.length ? <div className="admin-list px-3">{queue.items.map(target => row(target.item))}</div> : <p className="border-t border-zinc-100 px-5 py-5 text-sm text-zinc-400">No submissions waiting.</p>}
+          </CampaignReviewQueue>
+          {queue.id === 'detailed-analysis' ? <details className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+            <summary className="cursor-pointer px-5 py-4 text-sm font-semibold">
+              Initial video submissions <span className="ml-1 rounded-full bg-zinc-100 px-2.5 py-1 text-xs tabular-nums text-zinc-600">{initialFacialSubmissions.length}</span>
+            </summary>
+            <p className="border-t border-zinc-100 px-5 py-3 text-xs text-zinc-500">These videos enter the review queue when the creator submits analytics showing at least 20K views.</p>
+            {initialFacialSubmissions.length ? <div className="admin-list px-3">
+              {initialFacialSubmissions.map(item => <QueueRow key={item.id} item={item} onClick={() => onSelectSubmission(item)} />)}
+            </div> : <p className="px-5 pb-4 text-xs text-zinc-400">No initial submissions waiting.</p>}
+          </details> : null}
+        </div>)}</div> : <EmptyState title="You’re all caught up" description="New submissions ready for review will appear here." />}
       </section>
     </CampaignSubmissionMoves>
   )

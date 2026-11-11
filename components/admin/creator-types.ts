@@ -195,6 +195,7 @@ export type AdminQueueSubmission = Pick<AdminSubmission,
   'formatId' | 'title' | 'platform' | 'status' | 'approvedAmountCents' | 'adminViewCountThreshold' |
   'adminUsAudiencePercent' | 'createdAt' | 'reviewRequestedAt' | 'studioGenerationId' | 'sprintTerms'
 > & { formatName?: string | null; retainerTerms?: import('@/lib/creator/retainer').CreatorRetainer | null;
+  submitOnPublish?: boolean; viewCountThreshold?: number | null;
   hasAnalyticsRecording?: boolean; analyticsScreenshotUrl?: string | null }
 
 export type AdminBundleData = {

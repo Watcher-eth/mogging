@@ -1,6 +1,7 @@
 import { creatorBundlePlan, creatorContentBalances, creatorUnpaidCents, hasCreatorPayoutMethod } from '@/lib/creator/money'
 import type { AdminCreator, AdminDashboard, AdminPayment, AdminQueueSubmission, AdminSubmission, ReviewTarget } from '@/components/admin/creator-types'
 import { payoutChain } from './crypto-payouts/shared'
+import { GENERATED_FACIAL_CAMPAIGN_ID, isFacialSubmissionWaitingForReview } from '@/lib/creator/facial-campaign-update'
 
 export type ApprovalTarget = Exclude<ReviewTarget, { resource: 'payment' }>
 export type ApprovalKind = 'submission' | 'account' | 'payout'
@@ -38,6 +39,7 @@ export function approvalSubmittedAt(target: ApprovalTarget | QueueTarget) {
 export function getApprovalQueue<T extends AdminQueueSubmission>(data: { submissions: T[] }): QueueTarget<T>[] {
   return data.submissions
     .filter(item => (item.status === 'pending' || item.status === 'in_review')
+      && !isFacialSubmissionWaitingForReview(item)
       && (!item.studioGenerationId || (item.hasAnalyticsRecording ?? Boolean(item.analyticsScreenshotUrl))))
     .map(item => ({ resource: 'submission' as const, item }))
     .sort((a, b) => {
@@ -47,12 +49,13 @@ export function getApprovalQueue<T extends AdminQueueSubmission>(data: { submiss
     })
 }
 
-export function submissionReviewQueueId(submission: Pick<AdminQueueSubmission, 'sprintTerms' | 'formatId' | 'sprintName' | 'title' | 'formatName'>): SubmissionReviewQueueId {
+export function submissionReviewQueueId(submission: Pick<AdminQueueSubmission, 'sprintId' | 'sprintTerms' | 'formatId' | 'sprintName' | 'title' | 'formatName'>): SubmissionReviewQueueId {
+  if (submission.sprintId === GENERATED_FACIAL_CAMPAIGN_ID) return 'detailed-analysis'
   const format = submission.sprintTerms?.formats.find(item => item.id === submission.formatId)
   const identity = [submission.formatId, submission.formatName ?? format?.name, submission.sprintName, submission.title].filter(Boolean).join(' ').toLowerCase()
   if (identity.includes('general-looksmaxxing') || identity.includes('general looksmaxxing')) return 'general-looksmaxxing'
   if (identity.includes('feature-comparison') || identity.includes('face feature comparison')) return 'feature-comparison'
-  if (identity.includes('detailed-analysis') || identity.includes('detailed analysis')) return 'detailed-analysis'
+  if (identity.includes('detailed-analysis') || identity.includes('detailed analysis') || identity.includes('detailed facial analysis')) return 'detailed-analysis'
   return 'other'
 }
 

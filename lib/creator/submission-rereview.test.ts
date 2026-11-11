@@ -1,6 +1,6 @@
 import { defaultCreatorSprintTerms } from './sprint-defaults'
 import { LAUNCH_CAMPAIGNS, launchCampaignTerms } from './campaign-launch'
-import { replacementFacialTerms } from './facial-campaign-update'
+import { GENERATED_FACIAL_CAMPAIGN_ID, replacementFacialTerms } from './facial-campaign-update'
 import { beforeEach, expect, mock, test } from 'bun:test'
 import * as schema from '@/lib/db/schema'
 let submission: any
@@ -52,6 +52,18 @@ test('an immediately submitted facial video can add its first milestone evidence
   const updated = await requestSubmissionReview('user', 'submission', { ...input, viewCountThreshold: 5000, usAudiencePercent: 32 })
   expect(updated).toMatchObject({ status: 'in_review', viewCountThreshold: 5000, usAudiencePercent: 32 })
   expect(updated.analyticsScreenshotUrl).toBe(`https://media.example/${input.analyticsStorageKey}`)
+})
+test('held facial analytics can be replaced at 20K and then block duplicate review requests', async () => {
+  submission = {
+    ...submission, sprintId: GENERATED_FACIAL_CAMPAIGN_ID,
+    sprintTerms: replacementFacialTerms(launchCampaignTerms(LAUNCH_CAMPAIGNS[0])),
+    status: 'in_review', reviewRequestedAt: new Date(), viewCountThreshold: 5_000, approvedAmountCents: null,
+  }
+  payments = []
+  await expect(requestSubmissionReview('user', 'submission', { ...input, viewCountThreshold: 20_000 }))
+    .resolves.toMatchObject({ status: 'in_review', viewCountThreshold: 20_000 })
+  await expect(requestSubmissionReview('user', 'submission', input)).rejects.toThrow('already awaiting review')
+  expect(writes).toBe(1)
 })
 test('another creator cannot reopen the submission', async () => {
   submission.creatorProfileId='other'
