@@ -12,6 +12,7 @@ import dynamic from 'next/dynamic'
 import { canReceiveCreatorPayout, creatorContentBalances, creatorPaymentLabel, creatorPayoutDestination, remainingCreatorPaymentCents } from '@/lib/creator/money'
 import { SubmissionPayoutSummary } from '@/components/admin/submission-payout-summary'
 import { CreatorWarningPanel } from '@/components/admin/creator-warning-panel'
+import { CreatorReviewScore } from '@/components/admin/creator-score-detail'
 import { BundledPayoutQueue, PayoutVideoBreakdown } from '@/components/admin/bundled-payout-queue'
 import * as Tabs from '@radix-ui/react-tabs'
 import { SubmissionConversation } from '@/components/creator/submission-conversation'
@@ -81,7 +82,8 @@ import type {
   ReviewTarget,
 } from '@/components/admin/creator-types'
 
-type Tab = 'settings' | 'overview' | 'metrics' | 'performance' | 'attribution' | 'sprints' | 'submissions' | 'cta-library' | 'accounts' | 'payments' | 'creators' | 'invites'
+const CreatorScoreDashboard = dynamic(() => import('./creator-score-dashboard').then(module => module.CreatorScoreDashboard))
+type Tab = 'scores' | 'settings' | 'overview' | 'metrics' | 'performance' | 'attribution' | 'sprints' | 'submissions' | 'cta-library' | 'accounts' | 'payments' | 'creators' | 'invites'
 
 export default function CreatorAdminPage() {
   const { data: access, error: accessError, isLoading: accessLoading, mutate: mutateAccess } = useSWR<{ unlocked: boolean; email: string }>('/api/admin/creator/session', apiGet)
@@ -145,6 +147,7 @@ function ScopedSubmissionReview({ id, onClose, onRefresh, onSaved }: {
 }
 
 function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {
+  if (tab === 'scores') return <CreatorScoreDashboard />
   if (tab === 'sprints') return <CreatorSprintsPanel submissions={data.submissions} payments={data.payments} onSelectSubmission={(item) => onSelect({ resource: 'submission', item })} />
   if (tab === 'settings') return <CreatorProgramSettings data={data} onRefresh={onRefresh} />
   if (tab === 'attribution') return <CreatorAttributionDashboard data={data} onSelectCreator={(item) => onSelect({ resource: 'creator', item })} onSelectAccount={(item) => onSelect({ resource: 'account', item })} />
@@ -716,6 +719,7 @@ export function ReviewDialog({ target, creator, payments, metrics, contentBalanc
             <DialogDescription className="[overflow-wrap:anywhere]">{reviewSubtitle(target)}</DialogDescription>
           </DialogHeader>
           {target.resource === 'submission' || target.resource === 'creator' ? <CreatorFixedRateNotice agreement={target.resource === 'creator' ? target.item.retainerTerms : creator?.retainerTerms} submission={target.resource === 'submission' ? target.item : undefined} /> : null}
+          {warningCreator ? <CreatorReviewScore creatorId={warningCreator.id} /> : null}
           {target.resource === 'submission' ? <Tabs.Root value={tab} onValueChange={setTab} className="mt-4 flex min-h-0 flex-1 flex-col">
             <Tabs.List aria-label="Submission review" className="flex shrink-0 gap-1 overflow-x-auto rounded-full bg-zinc-100 p-1">{['video', 'review', 'earnings', 'warnings', 'attribution', 'messages', 'history'].map(value => <Tabs.Trigger key={value} value={value} className="min-h-11 min-w-[84px] flex-1 rounded-full px-2 text-[11px] font-medium capitalize text-zinc-500 data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm sm:text-sm">{capitalize(value)}{value === 'warnings' && activeWarningCount ? <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">{activeWarningCount}</span> : null}{value === 'messages' && target.item.unreadMessages ? <span className="ml-1 rounded-full bg-[#007aff] px-1.5 py-0.5 text-[10px] text-white">{target.item.unreadMessages}</span> : null}</Tabs.Trigger>)}</Tabs.List>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -757,7 +761,7 @@ export function ReviewDialog({ target, creator, payments, metrics, contentBalanc
                 {status === 'rejected' ? <p className="mt-5 rounded-xl bg-zinc-50 p-3 text-xs leading-5 text-zinc-600">No payment can be scheduled from a rejected review. Prior payment history remains visible below.</p> : approveWithoutPayment ? <p className="mt-5 rounded-xl bg-zinc-50 p-3 text-xs leading-5 text-zinc-600">No new payment will be scheduled. Saving closes this rereview while keeping the creator’s prior approved earnings and future rereview access.</p> : existingPayment ? <div className="mt-5 border-t border-zinc-100 pt-5"><p className="text-sm font-semibold">{existingPayment.payoutRequestId ? 'Included in requested bundle' : 'Payment scheduled'}</p><p className="mt-1 text-sm text-zinc-500">{formatMoney(existingPayment.amountCents, existingPayment.currency)} · {statusLabel(existingPayment.status)}</p>{existingPayment.payoutRequestId ? <Link href="/admin/payments" className="mt-2 inline-block text-xs text-[#007aff]">Review and record the complete bundle in Payments →</Link> : null}</div> : creator?.bundledPayouts ? <p className="mt-5 text-xs text-zinc-500">Save the review as usual. The creator can request these earnings from Money when ready.</p> : <CreatePayment submission={target.item} payments={submissionPayments} totalCents={payoutTotalCents} availableCents={availableContentCents} unsavedAdjustment={Boolean(adjustmentError) || (amount?.trim() ? payoutTotalCents !== target.item.approvedAmountCents : target.item.approvedAmountCents != null && target.item.approvedAmountCents !== calculatedTotalCents)} selection={adminPayoutSelection} onCreated={onSaved} />}
                 <SubmissionPayoutSummary totalCents={Number.isFinite(payoutTotalCents) ? payoutTotalCents : null} payments={submissionPayments} bonuses={submissionBonusPayments(target.item, payments)} projectedBonuses={projectedBonuses} additionalToPayOverrideCents={status === 'rejected' ? 0 : payoutTotalCents === previouslyApprovedCents ? availableContentCents : undefined} />
               </Tabs.Content>
-              <Tabs.Content value="warnings" className="outline-none">{creator ? <CreatorWarningPanel creator={creator} onRefresh={onRefresh} /> : <p className="mt-5 text-sm text-zinc-500">Creator details unavailable.</p>}</Tabs.Content>
+              <Tabs.Content value="warnings" className="outline-none">{creator ? <CreatorWarningPanel creator={creator} submissionId={target.item.id} onRefresh={onRefresh} /> : <p className="mt-5 text-sm text-zinc-500">Creator details unavailable.</p>}</Tabs.Content>
               <Tabs.Content forceMount value="attribution" className="outline-none data-[state=inactive]:hidden"><AttributionEvidence submission={target.item} metrics={metrics.find(item => item.submissionId === target.item.id)} /></Tabs.Content>
               <Tabs.Content forceMount value="history" className="outline-none data-[state=inactive]:hidden"><SubmissionHistory submissionId={target.item.id} active={tab === 'history'} /></Tabs.Content>
               <Tabs.Content forceMount value="messages" className="outline-none data-[state=inactive]:hidden"><SubmissionConversation submissionId={target.item.id} viewerRole="team" active={tab === 'messages'} className="h-[min(50dvh,440px)] min-h-[280px]" /></Tabs.Content>

@@ -35,6 +35,9 @@ export type AdminCreatorWarning = {
   id: string
   creatorProfileId: string
   note: string
+  category?: string
+  penaltyPoints?: number
+  submissionId?: string | null
   createdByEmail: string
   createdAt: string
   resolvedAt: string | null

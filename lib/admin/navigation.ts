@@ -3,6 +3,7 @@ import type { MoggingWebIconName } from '@/lib/design/mogging-web-glyphs'
 export const adminNavigation = [
   { label: 'Creator program', items: [
     { href: '/admin/creators', title: 'Review queue', description: 'The next approvals that need your attention.', section: 'overview', icon: 'review-queue' },
+    { href: '/admin/creator-scores', title: 'Creator Score', description: 'Private creator rankings, point breakdowns, warnings, and score history.', section: 'scores', icon: 'overview' },
     { href: '/admin/directory', title: 'Creators', description: 'Registrations, setup progress, and creator profiles.', section: 'creators', icon: 'people' },
     { href: '/admin/accounts', title: 'Social accounts', description: 'Verify account ownership and audience recordings.', section: 'accounts', icon: 'social-accounts' },
     { href: '/admin/submissions', title: 'Video submissions', description: 'Review uploads, published posts, and creator feedback.', section: 'submissions', icon: 'submitted-video' },
