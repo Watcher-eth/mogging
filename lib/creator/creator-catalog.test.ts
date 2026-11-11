@@ -429,7 +429,7 @@ test('authored cue annotations remain valid when the narrator section splits int
 
 
 test('content styles partition editing recipes and Qoves supports all recorded portrait scripts',()=>{
-  expect(creatorContentStyles.map(style=>style.name)).toEqual(['Mogging Editorial','Qoves','Cephra','Fern'])
+  expect(creatorContentStyles.map(style=>style.name)).toEqual(['Qoves','Mogging Editorial','Cephra','Fern'])
   expect(creatorContentStyles.flatMap(style=>[...style.recipes]).toSorted()).toEqual(creatorVideoStyles.map(style=>style.id).toSorted())
   expect(creatorContentStyle('report-led').id).toBe('mogging-editorial')
   expect(creatorContentStyle('feature-study').id).toBe('qoves')

@@ -143,8 +143,8 @@ function drawScorePair(ctx: CanvasRenderingContext2D, slide: ContentSlide, width
     paint(ctx, { id: `scores/${item.id}`, label: item.label, frame: { x: index ? width - 8 - columnWidth : 8, y: 0, width: columnWidth, height: 100 }, draw: ctx => {
       const right = index === 1, edge = right ? columnWidth : 0
       label(ctx, item.label, edge, 4, right, right ? '#a8a8af' : muted)
-      numericText(ctx, item.value, 1, edge, 24, 44, 600, item.color, progress, right)
-      text(ctx, `/ ${item.maximum}`, edge, 76, 13, 500, muted, right)
+      numericText(ctx, item.value, 1, edge, 24, 44, 400, item.color, progress, right)
+      text(ctx, `/ ${item.maximum}`, edge, 76, 13, 400, muted, right)
     } })
   }
 }

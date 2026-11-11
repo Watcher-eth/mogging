@@ -24,14 +24,14 @@ export const creatorVideoStyles = [
 ] as const satisfies ReadonlyArray<{ id: VideoRecipe; label: string; detail: string }>
 
 export const creatorContentStyles = [
-  {id:'mogging-editorial',name:'Mogging Editorial',description:'Face-led analysis. Clean portraits, native reports and precise visual detail.',recipes:['portrait-audit','report-led','measurement-explainer','hybrid-story'],defaultRecipe:'portrait-audit'},
   {id:'qoves',name:'Qoves',description:'One question. A visual experiment. A reveal worth staying for.',recipes:['editorial-story','feature-study'],defaultRecipe:'editorial-story'},
+  {id:'mogging-editorial',name:'Mogging Editorial',description:'Face-led analysis. Clean portraits, native reports and precise visual detail.',recipes:['portrait-audit','report-led','measurement-explainer','hybrid-story'],defaultRecipe:'portrait-audit'},
   {id:'cephra',name:'Cephra',description:'Facial anatomy, perspective and proportions. Sculptural explanations in motion.',recipes:['sculpture-study'],defaultRecipe:'sculpture-study'},
   {id:'fern',name:'Fern',description:'Documentary cuts. Projected evidence, contour diagrams, and archive reels.',recipes:['documentary-studio'],defaultRecipe:'documentary-studio'},
 ] as const satisfies ReadonlyArray<{id:string;name:string;description:string;recipes:readonly VideoRecipe[];defaultRecipe:VideoRecipe}>
 export type CreatorContentStyleId = typeof creatorContentStyles[number]['id']
 export function creatorContentStyle(recipe:VideoRecipe) {
-  return creatorContentStyles.find(style=>(style.recipes as readonly VideoRecipe[]).includes(recipe)) ?? creatorContentStyles[0]
+  return creatorContentStyles.find(style=>(style.recipes as readonly VideoRecipe[]).includes(recipe)) ?? creatorContentStyles.find(style=>style.id==='mogging-editorial')!
 }
 export function contentStyleSupportsScript(contentStyle:CreatorContentStyleId,story:{kind?:string}) {
   if(story.kind==='sculpture-explainer')return contentStyle==='cephra'
