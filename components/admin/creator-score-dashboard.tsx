@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import useSWR from 'swr'
-import { ArrowUpRight, Loader2, RefreshCw, Search } from 'lucide-react'
+import { ArrowUpRight, Loader2, RefreshCw, Search } from '@/components/ui/mogging-glyphs'
 import { apiGet } from '@/lib/api/client'
 import type { CreatorScoreReport } from '@/lib/admin/creator-score-policy'
 import { CREATOR_SCORES_KEY, CreatorScoreDialog } from './creator-score-detail'

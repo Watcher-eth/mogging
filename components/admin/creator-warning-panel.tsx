@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useSWRConfig } from 'swr'
-import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Loader2 } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import type { AdminCreator } from './creator-types'
 import { apiPatch, apiRequest, ApiClientError } from '@/lib/api/client'

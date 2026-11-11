@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
-import { ArrowUpRight, Loader2 } from 'lucide-react'
+import { ArrowUpRight, Loader2 } from '@/components/ui/mogging-glyphs'
 import { apiGet } from '@/lib/api/client'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { CreatorScore, CreatorScoreRanking, CreatorScoreReport, ScoreHistoryEntry } from '@/lib/admin/creator-score-policy'
