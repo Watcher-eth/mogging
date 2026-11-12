@@ -52,6 +52,18 @@ export function purchaseFlowCTEs(start: string, end: string, days: number) {
       and b.occurred_at < ${end}::timestamp
       and b.received_at < ${end}::timestamp and ${customerAccount(sql`coalesce(b.account_id,b.external_user_id)`)}
     group by a.actor,a.platform,a.attempt_id
+  ), purchase_flow_android_stripe as materialized (
+    select account_id, properties->>'attempt_id' as attempt_id, properties->>'product' as product,
+      bool_or(event_name='checkout_completed') as paid,
+      bool_or(event_name='purchase_activated') as activated,
+      max(received_at) filter(where event_name='checkout_completed') as latest_billing_receipt
+    from analytics_events where platform='server' and environment='production'
+      and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp and received_at<${end}::timestamp
+      and properties->>'surface'='android_direct_paywall' and properties->>'provider'='stripe'
+      and ((event_name='checkout_completed' and source='stripe_verified') or
+        (event_name='purchase_activated' and source='stripe_access_verified'))
+      and account_id is not null and nullif(properties->>'attempt_id','') is not null
+    group by 1,2,3
   ), purchase_flow_flags as (
     select a.actor,a.platform,a.attempt_id,a.started,
       (array_agg(a.properties order by occurred_at,received_at) filter(where event_name='purchase_started'))[1] as context,
@@ -61,13 +73,17 @@ export function purchaseFlowCTEs(start: string, end: string, days: number) {
       max(occurred_at) as last_observation,
       bool_or(event_name='purchase_recovered' or event_name='purchase_reconciled') as recovery_checked,
       bool_or(event_name='checkout_started') as requested,
-      bool_or(event_name='purchase_completed' or (event_name='purchase_reconciled' and properties->>'result' in ('provider_purchase_observed','activated'))) or coalesce(m.verified,false) as purchased,
-      bool_or(event_name='purchase_activated' or (event_name='purchase_reconciled' and properties->>'result'='activated')) as activated,
-      coalesce(m.verified,false) as verified,coalesce(m.existing_purchase,false) as existing_purchase,m.latest_billing_receipt,
+      bool_or(event_name='purchase_completed' or (event_name='purchase_reconciled' and a.properties->>'result' in ('provider_purchase_observed','activated'))) or coalesce(m.verified,false) or coalesce(bool_or(stripe.paid),false) as purchased,
+      bool_or(event_name='purchase_activated' or (event_name='purchase_reconciled' and a.properties->>'result'='activated')) or coalesce(bool_or(stripe.activated),false) as activated,
+      coalesce(m.verified,false) or coalesce(bool_or(stripe.paid),false) as verified,coalesce(m.existing_purchase,false) as existing_purchase,
+      greatest(m.latest_billing_receipt,max(stripe.latest_billing_receipt)) as latest_billing_receipt,
       (array_agg(event_name order by occurred_at desc,received_at desc) filter(where event_name in ('purchase_cancelled','purchase_failed','purchase_pending','purchase_activation_failed','purchase_account_required')))[1] as terminal,
       (array_agg(properties order by occurred_at desc,received_at desc) filter(where event_name in ('purchase_cancelled','purchase_failed','purchase_pending','purchase_activation_failed','purchase_account_required')))[1] as terminal_context,
       (array_agg(properties->>'feedback_reason' order by occurred_at desc,received_at desc) filter(where event_name='purchase_cancel_feedback'))[1] as feedback
     from purchase_flow_attempt_events a left join purchase_flow_matches m using(actor,platform,attempt_id)
+      left join purchase_flow_android_stripe stripe on a.platform='android' and a.event_name='purchase_started'
+        and a.properties->>'provider'='stripe' and stripe.account_id=a.account_id and stripe.attempt_id=a.attempt_id
+        and stripe.product=a.properties->>'product'
     group by a.actor,a.platform,a.attempt_id,a.started,m.verified,m.existing_purchase,m.latest_billing_receipt
   ), purchase_flow_attempts as materialized (
     select *,case
@@ -135,7 +151,9 @@ export function purchaseFlowCTEs(start: string, end: string, days: number) {
     select feedback as reason,count(*) as responses from purchase_flow_attempts where feedback is not null group by feedback order by count(*) desc,feedback
   ), purchase_flow_support as (
     select event_name,count(*) as events,count(distinct actor) as devices from purchase_flow_events
-    where event_name in ('restore_started','restore_failed','purchase_restored','activation_code_redeemed') group by event_name order by event_name
+    where event_name in ('restore_started','restore_failed','purchase_restored','activation_code_redeemed')
+      or (platform='android' and event_name='purchase_activation_failed' and properties->>'reason_code'='stripe_confirmation')
+    group by event_name order by event_name
   ), purchase_flow_catalog as (
     select coalesce(app_version,'unknown') as release,
       case properties->>'product_count' when '3' then 'complete' when '0' then 'empty'
@@ -153,7 +171,7 @@ export function purchaseFlowCTEs(start: string, end: string, days: number) {
       count(distinct actor) filter(where event_name='paywall_viewed') as paywall_devices,
       count(*) filter(where coalesce(properties->>'runtime_environment','unknown')='unknown') as runtime_unconfirmed_events,
       max(occurred_at) as latest_event,max(received_at) as latest_receipt,
-      (select max(latest_billing_receipt) from purchase_flow_matches) as latest_billing_receipt
+      (select max(latest_billing_receipt) from purchase_flow_flags) as latest_billing_receipt
     from purchase_flow_events
   ), purchase_flow_stripe_activity as (
     select event_name,coalesce(nullif(properties->>'decline_code',''),nullif(properties->>'failure_code',''),'not_recorded') as reason,

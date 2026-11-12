@@ -33,6 +33,7 @@ export function AcquisitionDashboard({ data, days }: { data: AnalyticsDashboard;
     <div className="admin-stats-grid">
       <Stat title="Website visitors" value={mobileOnly ? '—' : count(summary?.website_visitors)} note={mobileOnly ? 'Choose Web or All platforms to see website traffic' : 'Distinct public-site browsers; creator, admin and sign-in pages excluded'} />
       <Stat title="Store clickers" value={count(summary?.store_clickers)} note="Distinct devices with a recorded store redirect; not downloads" />
+      {!mobileOnly && <Stat title="Android APK clicks" value={count(summary?.android_download_clickers)} note={`${count(summary?.android_dialog_openers)} browsers opened the install dialog. APK clicks measure download requests.`} />}
       <Stat title="First app opens" value={count(summary?.first_opens)} note="Observed installations; not attributed to website clicks" />
       <Stat title="Source coverage" value={summary ? percent(sourced, devices) : '—'} note={summary ? `${count(sourced)} of ${count(devices)} observed devices have a recorded source` : 'Source totals are unavailable in this snapshot'} />
     </div>

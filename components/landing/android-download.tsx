@@ -26,7 +26,9 @@ export function useAndroidDownload() {
 }
 
 export function AndroidDownload({ href, className }: { href: string; className?: string }) {
-  return <Dialog>
+  return <Dialog onOpenChange={open => {
+    if (open) trackWebEvent('landing_cta_clicked', { destination: 'android_install_dialog', placement: 'android_download_dialog' })
+  }}>
     <DialogTrigger className={className}>Download for Android</DialogTrigger>
     <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-sm grid-cols-[minmax(0,1fr)] gap-4 overflow-y-auto rounded-3xl p-5 sm:p-6">
       <div className="space-y-3">

@@ -54,6 +54,17 @@ test.skipIf(!address)('mobile errors, missing callbacks, and Stripe payment sign
   const restoredFlow=(restored.data as AnalyticsDashboard).purchaseFlow!
   expect(restoredFlow.summary[0]).toMatchObject({attempts:9,purchased:3,verified:3,activated:2,restored_access:1,unresolved:4})
   expect(restoredFlow.outcomes.find(row=>row.outcome==='existing_access')?.attempts).toBe(1)
+  const androidProduct='mobile_subscription_weekly'
+  for(const [index,attempt] of ['paid-and-active','paid-no-return','wrong-account'].entries()){
+   for(const [step,eventName] of ['purchase_started','checkout_started'].entries()){
+    await tx.insert(schema.analyticsEvents).values({eventId:crypto.randomUUID(),eventName,accountId:accounts[index].id,mobileInstallId:`${prefix}-android-${index}`,platform:'android',environment:'production',appVersion:'1.50(85)',occurredAt:new Date(+at+step*1000),properties:{attempt_id:attempt,product:androidProduct,provider:'stripe'}})
+   }
+   for(const [step,eventName] of ['checkout_completed',...(index===1?[]:['purchase_activated'])].entries()){
+    await tx.insert(schema.analyticsEvents).values({eventId:crypto.randomUUID(),eventName,accountId:accounts[index===2?3:index].id,platform:'server',environment:'production',source:eventName==='checkout_completed'?'stripe_verified':'stripe_access_verified',occurredAt:new Date(+at+2000+step*1000),properties:{attempt_id:attempt,product:androidProduct,provider:'stripe',surface:'android_direct_paywall'}})
+   }
+  }
+  const [android]=await tx.execute(analyticsQuery({days:'30',platform:'android',section:'Purchases'},new Date('2070-01-31T00:00:00Z')))
+  expect((android.data as AnalyticsDashboard).purchaseFlow!.summary[0]).toMatchObject({attempts:3,verified:2,purchased:2,activated:1,access_unconfirmed:1,unresolved:1})
   throw rollback
  })}catch(error){if(error!==rollback)throw error}
 })

@@ -480,6 +480,8 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date, useFacts = 
         bool_or(platform = 'web' and event_name = 'page_viewed' and properties->>'path' like '/%'
           and properties->>'path' !~ '^/(creator|admin|auth|app)(/|$|[?#])') as website_visitor,
         bool_or(event_name = 'app_store_redirected') as store_clicker,
+        bool_or(platform='web' and event_name='landing_cta_clicked' and properties->>'destination'='android_install_dialog') as android_dialog_opener,
+        bool_or(platform='web' and event_name='landing_cta_clicked' and properties->>'destination'='android_apk') as android_download_clicker,
         bool_or(event_name = 'app_first_open') as first_open,
         bool_or(event_name = 'purchase_completed') as purchaser
       from e where actor is not null group by actor
@@ -487,6 +489,8 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date, useFacts = 
       select count(*) as devices,
         count(*) filter(where e.website_visitor) as website_visitors,
         count(*) filter(where e.store_clicker) as store_clickers,
+        count(*) filter(where e.android_dialog_opener) as android_dialog_openers,
+        count(*) filter(where e.android_download_clicker) as android_download_clickers,
         count(*) filter(where e.first_open) as first_opens,
         count(*) filter(where a.source <> 'direct / unattributed') as sourced_devices
       from acquisition_activity e join acquisition_actors a on a.actor = e.actor
