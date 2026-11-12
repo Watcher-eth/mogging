@@ -24,6 +24,7 @@ type AttributionOwner = {
 export type CreatorAttributionContext = AttributionOwner & {
   token: string
   creatorSlug?: string
+  iosAppStoreUrl?: string
   clickId: string
   trackingLinkId: string
   firstClickId: string
@@ -162,7 +163,7 @@ export async function createCreatorAttributionClick(input: ({ slug: string; post
   const link = input.postUrl ? await findCreatorTrackingLinkForPost(input.postUrl) : await findCreatorTrackingLink(input.slug || '')
   if (!link) return null
   // Apply current campaign configuration to existing links without rewriting their destination.
-  link.iosAppStoreUrl = buildIosAppStoreUrl(`c-${link.id.replace(/-/g, "").slice(0, 24)}`, link.iosAppStoreUrl)
+  link.iosAppStoreUrl = creatorIosCampaignUrl(link.id, link.iosAppStoreUrl)
   const isBot = isLinkPreviewOrBot(input.userAgent || '')
   const resumed = !isBot && input.resumeToken ? await resolveCreatorAttribution({ token: input.resumeToken }) : null
   let click = resumed?.trackingLinkId === link.id ? await db.query.creatorAttributionClicks.findFirst({ where: eq(schema.creatorAttributionClicks.id, resumed.clickId) }) : undefined
@@ -209,6 +210,7 @@ export async function resolveCreatorAttribution(input: {
   req?: Pick<NextApiRequest, 'headers'>
   token?: string | null
   owner?: AttributionOwner
+  includeIosAppStoreUrl?: boolean
 }): Promise<CreatorAttributionContext | null> {
   const token = input.token || (input.req ? readCreatorAttributionToken(input.req) : null)
   const clickId = token ? verifyClickToken(token) : null
@@ -231,6 +233,7 @@ export async function resolveCreatorAttribution(input: {
   return {
     token,
     creatorSlug: click.trackingLink.slug,
+    ...(input.includeIosAppStoreUrl ? { iosAppStoreUrl: creatorIosCampaignUrl(click.trackingLinkId, click.trackingLink.iosAppStoreUrl) } : {}),
     clickId: click.id,
     trackingLinkId: click.trackingLinkId,
     firstClickId: firstClick?.id || click.id,
@@ -604,6 +607,10 @@ function getAttributionKey(owner: AttributionOwner, fallbackActorId: string | nu
   if (owner.mobileInstallId) return `install:${owner.mobileInstallId}`
   if (owner.anonymousActorId || fallbackActorId) return `actor:${owner.anonymousActorId || fallbackActorId}`
   return `click:${clickId}`
+}
+
+function creatorIosCampaignUrl(linkId: string, base?: string) {
+  return buildIosAppStoreUrl(`c-${linkId.replace(/-/g, '').slice(0, 24)}`, base)
 }
 
 function buildIosAppStoreUrl(slug: string, base?: string) {

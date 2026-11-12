@@ -56,7 +56,7 @@ export default function LegacyHomepage({assignment, preview, ios}: {assignment: 
           {desktop ? (
             <div ref={hero} className="w-full">
               <PortraitHero title="Mogging. Your face, in focus.">
-                <EvaluationChoices showPhoneDownload={ios} showDesktopDownload track={destination => trackDestination(destination, 'hero')} />
+                <EvaluationChoices preferAppStore showPhoneDownload={ios} showDesktopDownload track={destination => trackDestination(destination, 'hero')} />
               </PortraitHero>
             </div>
           ) : (
@@ -73,7 +73,7 @@ export default function LegacyHomepage({assignment, preview, ios}: {assignment: 
                 Explore your facial features with a comprehensive report, a detailed face map, and a personalized routine. Keep track of your photos and progress in the Mogging app.
               </p>
               <div className="mt-8">
-                <EvaluationChoices showPhoneDownload={ios} showDesktopDownload track={destination => trackDestination(destination, 'hero')} />
+                <EvaluationChoices preferAppStore showPhoneDownload={ios} showDesktopDownload track={destination => trackDestination(destination, 'hero')} />
               </div>
               </div>
             </div>
@@ -97,7 +97,8 @@ export default function LegacyHomepage({assignment, preview, ios}: {assignment: 
           </div>
         </section>
       </main>
-      <StickyMobileScan hero={hero} onStart={() => trackDestination('web_analysis', 'sticky_scan')} />
+      <StickyMobileScan hero={hero} onStart={() => trackDestination('web_analysis', 'sticky_scan')}
+        onDownload={ios ? () => trackDestination('app_store', 'sticky_app_store') : undefined} />
   </LazyMotion>
 }
 

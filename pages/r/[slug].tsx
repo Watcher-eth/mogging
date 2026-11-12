@@ -3,7 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { trackWebEvent } from '@/lib/analytics/client'
+import { flushWebAnalytics, trackWebEvent } from '@/lib/analytics/client'
 import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
 import type { GetServerSideProps, NextApiRequest, NextApiResponse } from 'next'
 import { ArrowRight, Check, Copy, Sparkles } from '@/components/ui/mogging-glyphs'
@@ -27,6 +27,7 @@ type CreatorLinkPageProps = {
   webUrl: string
   clickId: string
   trackingLinkId: string
+  ios: boolean
 }
 
 export default function CreatorLinkPage(props: CreatorLinkPageProps) {
@@ -99,8 +100,11 @@ export default function CreatorLinkPage(props: CreatorLinkPageProps) {
         <span role="status" className="sr-only">{copied === 'code' ? 'Creator code copied' : copied === 'link' ? 'Referral link copied' : ''}</span>
       </div>
       <div className="mt-6">
-        <EvaluationChoices storeHref={props.iosStoreUrl || appStoreUrl} webHref={props.webUrl}
-          track={destination => trackWebEvent(destination === 'app_store' ? 'app_store_redirected' : 'landing_cta_clicked', { ...eventContext, destination, placement: 'creator_landing' })} />
+        <EvaluationChoices preferAppStore showPhoneDownload={props.ios} storeHref={props.iosStoreUrl || appStoreUrl} webHref={props.webUrl}
+          track={destination => {
+            trackWebEvent(destination === 'app_store' ? 'app_store_redirected' : 'landing_cta_clicked', { ...eventContext, destination, placement: 'creator_landing' })
+            void flushWebAnalytics()
+          }} />
       </div>
       {props.storeUrl ? <>
         <Button type="button" variant="ghost" onClick={() => void copyAndInstall()} className="mt-3 min-h-11 rounded-full text-sm">Copy referral and install<ArrowRight /></Button>
@@ -147,8 +151,8 @@ export const getServerSideProps: GetServerSideProps<CreatorLinkPageProps> = asyn
   webUrl.searchParams.set('utm_campaign', attribution.link.slug)
   webUrl.searchParams.set('utm_content', account.handle || attribution.link.socialAccountId)
 
+  if (!attribution.isBot) webUrl.searchParams.set('creator_entry', 'direct')
   if (!attribution.isBot && !query.fallback && !query.login && !query.next) {
-    webUrl.searchParams.set('creator_entry', 'direct')
     return { redirect: { destination: webUrl.pathname + webUrl.search, permanent: false } }
   }
 
@@ -156,6 +160,7 @@ export const getServerSideProps: GetServerSideProps<CreatorLinkPageProps> = asyn
     props: {
       clickId: attribution.click.id,
       trackingLinkId: attribution.link.id,
+      ios: device === 'ios',
       creator: account.displayName || account.handle || 'Your creator',
       avatarUrl: account.avatarUrl,
       url: `${siteUrl}/r/${slug}`,

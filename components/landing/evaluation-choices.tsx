@@ -6,29 +6,40 @@ import { appStoreUrl } from '@/lib/seo'
 import { useEffect, useState, type RefObject } from 'react'
 
 const pill = 'inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-3 py-2 text-center text-xs font-semibold transition-[background-color,transform] active:scale-[0.98] motion-reduce:transform-none sm:px-5 sm:text-sm'
-const scanPill = `${pill} bg-zinc-950 px-5 text-white hover:bg-zinc-800`
+const primaryPill = 'bg-zinc-950 px-5 text-white hover:bg-zinc-800'
+const secondaryPill = 'border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100'
+const scanPill = `${pill} ${primaryPill}`
 
-export function EvaluationChoices({ track, webHref, storeHref = appStoreUrl, showDesktopDownload = false, showPhoneDownload = true }: {
+export function EvaluationChoices({ track, webHref, storeHref = appStoreUrl, showDesktopDownload = false, showPhoneDownload = true, preferAppStore = false }: {
   track?: (destination: 'app_store' | 'web_analysis') => void
   webHref?: string
   storeHref?: string
   showDesktopDownload?: boolean
   showPhoneDownload?: boolean
+  preferAppStore?: boolean
 }) {
   const { t } = useTranslation()
   const desktop = !usePhoneLayout(true)
-  return <div className={`inline-flex max-w-full items-center justify-center gap-2 whitespace-nowrap sm:gap-3 ${desktop ? 'flex-wrap' : ''}`}>
-    <Link href={webHref ?? '/analysis'} prefetch={false} onClick={() => track?.('web_analysis')} className={`${scanPill} ${desktop ? 'min-w-36' : ''}`}>
-      <ScanFace className="size-4 shrink-0" aria-hidden="true" />{desktop ? 'Start now' : 'Start my face scan'}
+  const storeFirst = !desktop && showPhoneDownload && preferAppStore
+  const store = (desktop ? showDesktopDownload : showPhoneDownload) ? (
+    <a href={storeHref} onClick={() => track?.('app_store')}
+      className={`${pill} ${storeFirst ? primaryPill : desktop ? 'text-zinc-600 hover:bg-zinc-100' : secondaryPill}`}>
+      <AppleMark />{desktop ? t('landing.download') : 'Get the iPhone app'}
+    </a>
+  ) : null
+  return <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 whitespace-nowrap sm:gap-3">
+    {storeFirst && store}
+    <Link href={webHref ?? '/analysis'} prefetch={false} onClick={() => track?.('web_analysis')}
+      className={`${pill} ${storeFirst ? secondaryPill : primaryPill} ${desktop ? 'min-w-36' : ''}`}>
+      <ScanFace className="size-4 shrink-0" aria-hidden="true" />{desktop ? 'Start now' : storeFirst ? 'Scan on web' : 'Start my face scan'}
     </Link>
-    {(desktop ? showDesktopDownload : showPhoneDownload) && <a href={storeHref} onClick={() => track?.('app_store')}
-      className={`${pill} ${desktop ? 'text-zinc-600 hover:bg-zinc-100' : 'border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100'}`}>
-      <AppleMark />{desktop ? t('landing.download') : 'Download'}
-    </a>}
+    {!storeFirst && store}
   </div>
 }
 
-export function StickyMobileScan({ hero, onStart }: { hero: RefObject<HTMLElement | null>; onStart: () => void }) {
+export function StickyMobileScan({ hero, onStart, onDownload }: {
+  hero: RefObject<HTMLElement | null>; onStart: () => void; onDownload?: () => void
+}) {
   const phone = usePhoneLayout(false)
   const [pastHero, setPastHero] = useState(false)
   useEffect(() => {
@@ -42,9 +53,11 @@ export function StickyMobileScan({ hero, onStart }: { hero: RefObject<HTMLElemen
   }, [hero, phone])
   if (!phone || !pastHero) return null
   return <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center bg-gradient-to-t from-white/95 via-white/75 to-transparent px-4 pt-6 pb-[calc(env(safe-area-inset-bottom)+12px)]">
-    <Link href="/analysis" prefetch={false} onClick={onStart} className={`${scanPill} pointer-events-auto min-h-12 w-full max-w-xs text-sm shadow-lg shadow-black/15`}>
+    {onDownload ? <div className="pointer-events-auto">
+      <EvaluationChoices preferAppStore track={destination => destination === 'app_store' ? onDownload() : onStart()} />
+    </div> : <Link href="/analysis" prefetch={false} onClick={onStart} className={`${scanPill} pointer-events-auto min-h-12 w-full max-w-xs text-sm shadow-lg shadow-black/15`}>
       <ScanFace className="size-4 shrink-0" aria-hidden="true" />Start my face scan
-    </Link>
+    </Link>}
   </div>
 }
 

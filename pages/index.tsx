@@ -61,7 +61,7 @@ function NewHomepage({ assignment, preview, phoneEntry, ios }: Props) {
   const hero = useRef<HTMLElement>(null);
 
   function downloadButton(placement: string) {
-    return <EvaluationChoices showPhoneDownload={ios} showDesktopDownload={placement === "hero" || placement === "footer"} track={destination => trackDestination(destination, placement)} />;
+    return <EvaluationChoices preferAppStore showPhoneDownload={ios} showDesktopDownload={placement === "hero" || placement === "footer"} track={destination => trackDestination(destination, placement)} />;
   }
 
   return (
@@ -206,7 +206,8 @@ function NewHomepage({ assignment, preview, phoneEntry, ios }: Props) {
         </main>
         <LandingFooter actions={downloadButton("footer")} />
       </div>
-      <StickyMobileScan hero={hero} onStart={() => trackDestination('web_analysis', 'sticky_scan')} />
+      <StickyMobileScan hero={hero} onStart={() => trackDestination('web_analysis', 'sticky_scan')}
+        onDownload={ios ? () => trackDestination('app_store', 'sticky_app_store') : undefined} />
     </LazyMotion>
   );
 }

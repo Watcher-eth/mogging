@@ -1,3 +1,4 @@
+import { creatorLinkPlatform } from '@/lib/creator/link-routing'
 import { countryFromTimeZone, skipEthnicity } from '@/components/analysis/population-distribution'
 import type { BasicReport as BasicReportData } from '@/lib/analysis-v2/basic-preview'
 import { WEB_ANALYSIS_VARIANTS, webRequestContext } from '@/lib/analytics/web-context'
@@ -224,13 +225,16 @@ type ImageFramePositions = Record<string, CaptureFrameImagePosition>
 const defaultFramePosition: CaptureFrameImagePosition = { x: 50, y: 50, scale: 1 }
 
 const previewPhotoUrl = '/model.png'
-type AnalysisEntryProps = { country: string | null; startWithPhoto: boolean; phoneEntry: boolean; uploadFirst: boolean; creatorEntry: { clickId: string; trackingLinkId: string } | null; previewDevice: 'mobile' | 'desktop' | null; walkthrough: boolean; sampleReport: boolean; assignedOnboarding: PaywallExposure | null }
+type AnalysisEntryProps = { country: string | null; startWithPhoto: boolean; phoneEntry: boolean; uploadFirst: boolean; creatorEntry: { clickId: string; trackingLinkId: string; iosAppStoreUrl: string | null } | null; previewDevice: 'mobile' | 'desktop' | null; walkthrough: boolean; sampleReport: boolean; assignedOnboarding: PaywallExposure | null }
 
 export const getServerSideProps: GetServerSideProps<AnalysisEntryProps> = async ({ query, req, res }) => {
   const userAgent = req.headers['user-agent'] ?? ''
   const phoneEntry = isPhoneUserAgent(userAgent, req.headers['sec-ch-ua-mobile']?.toString())
   const attribution = query.creator_entry === 'direct'
-    ? await import('@/lib/creator/attribution').then(({ resolveCreatorAttribution }) => resolveCreatorAttribution({ req }))
+    ? await import('@/lib/creator/attribution').then(({ resolveCreatorAttribution }) => resolveCreatorAttribution({
+      req,
+      includeIosAppStoreUrl: creatorLinkPlatform(userAgent) === 'ios',
+    }))
     : null
   const secret = process.env.NEXTAUTH_SECRET
   const eligible = !query.from && !query.checkout && !query.analysisId && !query.preview && !query.resumePhoto && !query.basic
@@ -243,7 +247,11 @@ export const getServerSideProps: GetServerSideProps<AnalysisEntryProps> = async 
     country: getRequestLocation(req).country,
     phoneEntry,
     uploadFirst: webRequestContext(userAgent).browser_family === 'tiktok',
-    creatorEntry: attribution ? { clickId: attribution.clickId, trackingLinkId: attribution.trackingLinkId } : null,
+    creatorEntry: attribution ? {
+      clickId: attribution.clickId,
+      trackingLinkId: attribution.trackingLinkId,
+      iosAppStoreUrl: attribution.iosAppStoreUrl ?? null,
+    } : null,
     startWithPhoto: query.start === '1' && !assignedOnboarding,
     sampleReport: process.env.NODE_ENV === 'development' && (query.preview === 'mobile' || query.preview === 'desktop') && query.walkthrough === '1' && query.report === 'sample',
     previewDevice: process.env.NODE_ENV === 'development' && (query.preview === 'mobile' || query.preview === 'desktop') ? query.preview : null,
@@ -260,6 +268,16 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
     trackWebEvent('attribution_diagnostic', { surface: 'creator_landing', action: 'creator_analysis_redirected', placement: 'creator_direct',
       provider: 'mogging', creator_click_id: creatorEntry.clickId, creator_tracking_link_id: creatorEntry.trackingLinkId })
   }, [creatorEntry, walkthrough])
+  const creatorAppLink = !walkthrough && creatorEntry?.iosAppStoreUrl ? (
+    <a href={creatorEntry.iosAppStoreUrl} className="inline-flex min-h-11 items-center justify-center px-3 text-sm font-medium underline underline-offset-4"
+      onClick={() => {
+        trackWebEvent('app_store_redirected', {
+          surface: 'web_analysis', destination: 'app_store', placement: 'creator_scan_entry',
+          creator_click_id: creatorEntry.clickId, creator_tracking_link_id: creatorEntry.trackingLinkId,
+        })
+        void flushWebAnalytics()
+      }}>Get the iPhone app</a>
+  ) : null
   const phoneLayout = usePhoneLayout(phoneEntry)
   const previewMobile = previewDevice === 'mobile'
   const mobileScan = previewDevice ? previewMobile : phoneLayout
@@ -1279,7 +1297,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
         ) : <AnimatePresence initial={mobileScan} mode={step === 'story' ? 'wait' : 'popLayout'}>
           {step === 'intro' && mobileScan ? (
             <ScreenMotion key="intro" managedMotion>
-              <MobileScanWelcome onBegin={() => setStep('story')} onSignIn={() => {
+              <MobileScanWelcome appLink={creatorAppLink} onBegin={() => setStep('story')} onSignIn={() => {
                 setLoginCallback(router.asPath)
                 setLoginOpen(true)
               }} />
@@ -1329,7 +1347,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
 
           {step === 'upload' && mobileScan ? (
             <ScreenMotion key="upload" managedMotion>
-              <MobileUploadScreen isPreparingUploads={isPreparingUploads}
+              <MobileUploadScreen appLink={creatorAppLink} isPreparingUploads={isPreparingUploads}
                 uploadFirst={uploadFirst}
                 previewImage={previewImage} imagePosition={selectedImage ? imageFramePositions[selectedImage.id] ?? defaultFramePosition : defaultFramePosition}
                 selectedImageId={selectedImage?.id ?? null} canStart={canStart}
@@ -1525,7 +1543,8 @@ const ScreenMotion = forwardRef<HTMLDivElement, { children: ReactNode; managedMo
   )
 })
 
-function MobileUploadScreen({ canStart, imagePosition, isPreparingUploads, onCamera, onImagePositionChange, onRemove, onStart, onUpload, onUseSample, previewImage, selectedImageId, uploadFirst }: {
+function MobileUploadScreen({ appLink, canStart, imagePosition, isPreparingUploads, onCamera, onImagePositionChange, onRemove, onStart, onUpload, onUseSample, previewImage, selectedImageId, uploadFirst }: {
+  appLink?: ReactNode
   canStart: boolean
   imagePosition: CaptureFrameImagePosition
   isPreparingUploads: boolean
@@ -1558,6 +1577,7 @@ function MobileUploadScreen({ canStart, imagePosition, isPreparingUploads, onCam
         </div>}
         <h2>Add a front-facing photo</h2>
         <p>{uploadFirst ? 'Choose a clear photo where you’re looking at the camera.' : 'Take a photo or choose one from your library.'}</p>
+        {appLink}
         {onUseSample && <button type="button" className="mt-4 rounded-full bg-white/15 px-4 py-2 text-sm" onClick={onUseSample}>Use sample photo</button>}
       </motion.div>}
       <AnimatePresence mode="wait">
