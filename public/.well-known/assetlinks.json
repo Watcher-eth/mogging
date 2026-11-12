@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.mogging.scan",
+      "sha256_cert_fingerprints": [
+        "18:1B:86:9A:B4:27:D1:22:61:5A:A9:65:08:B8:58:A6:EB:4B:8C:D6:28:7E:B9:BE:FA:C6:9E:83:62:8B:C5:6D"
+      ]
+    }
+  }
+]
