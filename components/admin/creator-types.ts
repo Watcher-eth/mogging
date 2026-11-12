@@ -197,7 +197,7 @@ export type AdminQueueSubmission = Pick<AdminSubmission,
   'adminUsAudiencePercent' | 'createdAt' | 'reviewRequestedAt' | 'studioGenerationId' | 'sprintTerms' | 'analyticsVideoRequest'
 > & { formatName?: string | null; retainerTerms?: import('@/lib/creator/retainer').CreatorRetainer | null;
   submitOnPublish?: boolean; viewCountThreshold?: number | null;
-  awaitingAnalyticsVideo?: boolean; hasAnalyticsRecording?: boolean; analyticsScreenshotUrl?: string | null }
+  hasWrongCampaignWarning?: boolean; awaitingAnalyticsVideo?: boolean; hasAnalyticsRecording?: boolean; analyticsScreenshotUrl?: string | null }
 
 export type AdminBundleData = {
   submissions: Pick<AdminSubmission, 'id' | 'title' | 'platform' | 'socialHandle' | 'sprintId' | 'approvedAmountCents' | 'status' | 'adminViewCountThreshold' | 'adminUsAudiencePercent'>[]

@@ -312,6 +312,7 @@ export async function getCreatorAdminDashboard({ includeCoverage = true, creator
 const submission = schema.creatorSubmissions
 const payment = schema.creatorPayments
 const request = schema.creatorPayoutRequests
+const warning = schema.creatorInternalWarnings
 const submitOnPublish = sql<boolean>`coalesce(${submission.sprintTerms}->'submitOnPublish' = 'true'::jsonb, false)`
 
 const queueSubmissionFields = {
@@ -342,9 +343,14 @@ const queueSubmissionFields = {
   reviewRequestedAt: submission.reviewRequestedAt,
 }
 
-function getQueueSubmissionRows(scope: SQL | undefined) {
+function getQueueSubmissionRows(scope: SQL | undefined, includeWarningHistory = false) {
   return db.select({
     ...queueSubmissionFields,
+    ...(includeWarningHistory ? {
+      hasWrongCampaignWarning: sql<boolean>`exists (select 1 from ${warning}
+        where ${warning.creatorProfileId} = ${submission.creatorProfileId}
+          and ${warning.category} = ${'wrong_campaign'})`,
+    } : {}),
     cursorTime: sql<string>`to_char(${submission.createdAt}, 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
   })
     .from(submission)
@@ -378,7 +384,7 @@ export async function getCreatorReviewQueue(now = new Date()) {
       coalesce(sum(amount_cents), 0)::float8 as "outstandingCents",
       coalesce(sum(amount_cents) filter (where ${recent(sql`created_at`)}), 0)::float8 as "newOutstandingCents"
       from creator_payments where status in ('pending', 'processing')`),
-    getQueueSubmissionRows(sql`(${queuedSubmission}) or ${submission.analyticsVideoRequest} is not null or ${requestedSubmission}`).orderBy(desc(submission.createdAt), desc(submission.id)),
+    getQueueSubmissionRows(sql`(${queuedSubmission}) or ${submission.analyticsVideoRequest} is not null or ${requestedSubmission}`, true).orderBy(desc(submission.createdAt), desc(submission.id)),
     db.query.creatorPayoutRequests.findMany({ where: eq(request.status, 'pending'), orderBy: [desc(request.requestedAt)] }),
     db.select({
       submissionId: payment.submissionId, payoutRequestId: payment.payoutRequestId, amountCents: payment.amountCents,

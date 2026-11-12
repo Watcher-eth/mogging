@@ -31,6 +31,7 @@ import { CreatorHeader } from '@/components/creator/creator-header'
 import { adminPage } from '@/lib/admin/navigation'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  AlertTriangle,
   ArrowUpRight,
   BadgeCheck,
   Check,
@@ -197,6 +198,9 @@ function Overview({ data, onSelectSubmission, onRefresh, historyVersion = 0 }: {
 }) {
   const reviewQueues = useMemo(() => getSubmissionReviewQueues<AdminQueueSubmission>(data), [data])
   const compact = 'counts' in data
+  const wrongCampaignCreators = useMemo(() => new Set('counts' in data ? [] : data.creators
+    .filter(creator => creator.warnings?.some(warning => warning.category === 'wrong_campaign'))
+    .map(creator => creator.id)), [data])
   const { data: campaigns, mutate: refreshCampaigns } = useSWR<{ sprints: MoveCampaign[] }>(
     compact ? '/api/admin/creator/sprints?view=move' : '/api/admin/creator/sprints', apiGet,
   )
@@ -223,9 +227,15 @@ function Overview({ data, onSelectSubmission, onRefresh, historyVersion = 0 }: {
       ['approved', 'paid'].includes(item.status) && `${item.creatorName} ${item.socialHandle ?? ''} ${item.title} ${item.sprintName ?? ''}`.toLowerCase().includes(deferredSearch.toLowerCase()),
     ).slice(0, reviewedLimit + 1)
   const hasMore = compact ? Boolean(history.data?.at(-1)?.next) : reviewedPosts.length > reviewedLimit
+  const queueRow = (item: AdminQueueSubmission) => <QueueRow
+    key={item.id}
+    item={item}
+    showWrongCampaignWarning={!reviewed && (item.hasWrongCampaignWarning ?? wrongCampaignCreators.has(item.creatorProfileId))}
+    onClick={() => onSelectSubmission(item)}
+  />
   const row = (item: AdminQueueSubmission) => (
     <DraggableCampaignSubmission key={item.id} submission={item}>
-      <QueueRow item={item} onClick={() => onSelectSubmission(item)} />
+      {queueRow(item)}
     </DraggableCampaignSubmission>
   )
   const queueSubmissions: AdminQueueSubmission[] = data.submissions
@@ -269,13 +279,13 @@ function Overview({ data, onSelectSubmission, onRefresh, historyVersion = 0 }: {
             </summary>
             <p className="border-t border-zinc-100 px-5 py-3 text-xs text-zinc-500">These videos enter the review queue when the creator submits analytics showing at least 20K views.</p>
             {initialFacialSubmissions.length ? <div className="admin-list px-3">
-              {initialFacialSubmissions.map(item => <QueueRow key={item.id} item={item} onClick={() => onSelectSubmission(item)} />)}
+              {initialFacialSubmissions.map(queueRow)}
             </div> : <p className="px-5 pb-4 text-xs text-zinc-400">No initial submissions waiting.</p>}
           </details> : null}
         </div>)}</div> : <EmptyState title="You’re all caught up" description="New submissions ready for review will appear here." />}
         {!reviewed && waitingForAnalytics.length ? <section aria-label="Waiting for creator analytics" className="creator-surface mt-6 overflow-hidden">
           <h3 className="px-5 py-4 text-sm font-semibold">Waiting for creator analytics · {waitingForAnalytics.length}</h3>
-          <div className="admin-list px-3">{waitingForAnalytics.map(item => <QueueRow key={item.id} item={item} onClick={() => onSelectSubmission(item)} />)}</div>
+          <div className="admin-list px-3">{waitingForAnalytics.map(queueRow)}</div>
         </section> : null}
       </section>
     </CampaignSubmissionMoves>
@@ -549,12 +559,23 @@ function ApprovalBadge({ target }: { target: Exclude<ReviewTarget, { resource: '
   return <span className={cn('inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-semibold', type.color)}>{type.label}</span>
 }
 
-function QueueRow({ item, onClick }: { item: AdminQueueSubmission; onClick: () => void }) {
+function QueueRow({ item, showWrongCampaignWarning, onClick }: { item: AdminQueueSubmission; showWrongCampaignWarning: boolean; onClick: () => void }) {
   const submittedAt = approvalSubmittedAt({ resource: 'submission', item })
   const type = approvalTypes.submission
   return <button type="button" onClick={onClick} className="admin-resource-row flex w-full min-w-0 items-center gap-3 text-left">
     <span className={cn('grid size-11 shrink-0 place-items-center rounded-xl border', type.color)}><Video className="size-5" /></span>
-    <span className="min-w-0 flex-1"><span className={cn('inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-semibold', type.color)}>{type.label}</span><span className="mt-2 block truncate text-sm font-semibold">{item.title}</span><span className="mt-1 block break-words text-xs text-zinc-500">{item.creatorName} · {capitalize(item.platform)}</span><span className="mt-1 block text-xs text-zinc-400 sm:hidden">{formatDate(submittedAt)}</span></span>
+    <span className="min-w-0 flex-1">
+      <span className="flex flex-wrap items-center gap-2">
+        <span className={cn('inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-semibold', type.color)}>{type.label}</span>
+        {showWrongCampaignWarning ? <span className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+          <AlertTriangle aria-hidden="true" className="size-3 shrink-0" />
+          Wrong campaign before
+        </span> : null}
+      </span>
+      <span className="mt-2 block truncate text-sm font-semibold">{item.title}</span>
+      <span className="mt-1 block break-words text-xs text-zinc-500">{item.creatorName} · {capitalize(item.platform)}</span>
+      <span className="mt-1 block text-xs text-zinc-400 sm:hidden">{formatDate(submittedAt)}</span>
+    </span>
     <span className="hidden text-xs text-zinc-400 sm:block">{formatDate(submittedAt)}</span><StatusPill status={item.status} /><ArrowUpRight className="size-4 shrink-0 text-zinc-400" />
   </button>
 }
