@@ -31,7 +31,7 @@ export function ReachViewTag({ counts }: { counts?: ReachViewCounts | null }) {
     category ? ranges[category].color : 'border-zinc-200 bg-zinc-50 text-zinc-600')}>
     {category === 'heavyLooping' ? <AlertTriangle aria-hidden="true" className="size-3 shrink-0" /> : null}
     {percent === null ? 'Reach / views unavailable' : <>
-      Reach / views {counts?.approximate ? '≈' : ''}{percentFormat.format(percent)}%
+      Reach / views {counts?.approximate || counts?.unverified ? '≈' : ''}{percentFormat.format(percent)}%
       {category ? ` · ${ranges[category].label}` : ''}
     </>}
   </span>
@@ -91,12 +91,12 @@ export function SubmissionReachViews({ id, storageKey, counts, onSaved }: {
       <p className="text-xs text-zinc-600">Enter the counts shown for the same video and reporting period.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-1 text-xs font-medium text-zinc-700">
-          Reach (unique viewers)
+          Reach (Total Viewers)
           <input className="creator-field tabular-nums" type="text" inputMode="numeric" value={fields.reach} placeholder="e.g. 15,000" disabled={saving}
             onChange={event => setDraft({ ...fields, reach: event.target.value.replace(/,/g, '') })} />
         </label>
         <label className="grid gap-1 text-xs font-medium text-zinc-700">
-          Total views
+          Video views
           <input className="creator-field tabular-nums" type="text" inputMode="numeric" value={fields.views} placeholder="e.g. 20,000" disabled={saving}
             onChange={event => setDraft({ ...fields, views: event.target.value.replace(/,/g, '') })} />
         </label>
@@ -107,7 +107,7 @@ export function SubmissionReachViews({ id, storageKey, counts, onSaved }: {
         {hasRatio ? <Button size="sm" type="button" variant="ghost" disabled={saving} onClick={() => { setDraft(null); setError('') }}>Cancel</Button> : null}
       </div>
     </form> : <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-      <p className="text-xs tabular-nums text-zinc-600">{displayedCounts?.reach?.toLocaleString()} unique viewers · {displayedCounts?.approximate ? '≈' : ''}{displayedCounts?.views?.toLocaleString()} views · {displayedCounts?.source === 'manual' ? 'Entered by admin' : 'OCR'}</p>
+      <p className="text-xs tabular-nums text-zinc-600">{displayedCounts?.reach?.toLocaleString()} unique viewers · {displayedCounts?.approximate ? '≈' : ''}{displayedCounts?.views?.toLocaleString()} views · {displayedCounts?.source === 'manual' ? 'Entered by admin' : displayedCounts?.unverified ? 'Unverified OCR' : 'OCR'}</p>
       {displayedCounts?.source === 'manual' ? <Button size="sm" type="button" variant="outline" onClick={() => setDraft(defaults)}>Edit counts</Button> : null}
     </div>}
     {error ? <p role="alert" className="mt-2 text-xs text-red-700">{error}</p> : null}

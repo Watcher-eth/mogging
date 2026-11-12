@@ -34,7 +34,7 @@ export function RecordingAnalytics({ check }: { check: AudienceCheck | null | un
   const metrics = check?.metrics
   const rows: [AudienceMetric, string, number | null | undefined, string][] = metrics ? [
     ['totalViews', 'Video views', metrics.totalViews, metrics.totalViewsExact === false ? ' (approx.)' : ''],
-    ['totalViewers', 'Total viewers', metrics.totalViewers, ''],
+    ['totalViewers', 'Reach (Total Viewers)', metrics.totalViewers, ''],
     ['averageWatchTimeSeconds', 'Average watch time', metrics.averageWatchTimeSeconds, 's'],
     ['dropOffTimeSeconds', 'Drop-off time', metrics.dropOffTimeSeconds, 's'],
   ] : []

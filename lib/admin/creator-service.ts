@@ -106,8 +106,10 @@ const reachViewCounts = sql<import('./reach-views').ReachViewCounts | null>`case
     then jsonb_build_object('reach', ${manualCounts}->'reach', 'views', ${manualCounts}->'views', 'source', 'manual')
   when ${check}->>'storageKey' = ${submission.analyticsStorageKey} and ${check}->>'status' in ('verified', 'needs_review')
     then jsonb_build_object(
-      'reach', case when ${check}#>'{metricsVerified,totalViewers}' = 'true'::jsonb then ${check}#>'{metrics,totalViewers}' end,
-      'views', case when ${check}#>'{metricsVerified,totalViews}' = 'true'::jsonb then ${check}#>'{metrics,totalViews}' end,
+      'reach', ${check}#>'{metrics,totalViewers}',
+      'views', ${check}#>'{metrics,totalViews}',
+      'unverified', not coalesce(${check}#>'{metricsVerified,totalViewers}' = 'true'::jsonb
+        and ${check}#>'{metricsVerified,totalViews}' = 'true'::jsonb, false),
       'approximate', not coalesce(${check}#>'{metricsVerified,totalViewsExact}' = 'true'::jsonb
         and ${check}#>'{metrics,totalViewsExact}' = 'true'::jsonb, false),
       'source', 'ocr'

@@ -5,6 +5,7 @@ export type ReachViewCounts = {
   views: number | null
   source: 'ocr' | 'manual'
   approximate?: boolean
+  unverified?: boolean
 }
 
 export type ManualReachViewCounts = {
