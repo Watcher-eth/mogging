@@ -23,8 +23,8 @@ export function EvaluationChoices({ track, webHref, storeHref = appStoreUrl, sho
   const desktop = !usePhoneLayout(true)
   const android = useAndroidDevice()
   const apkUrl = useAndroidDownload()
-  const androidStore = !desktop && apkUrl ? <AndroidDownload href={apkUrl} className={scanPill} /> : null
-  const storeFirst = !desktop && (Boolean(androidStore) || (!android && showPhoneDownload && preferAppStore))
+  const androidStore = apkUrl ? <AndroidDownload href={apkUrl} className={scanPill} /> : null
+  const storeFirst = Boolean(androidStore) || (!desktop && !android && showPhoneDownload && preferAppStore)
   const store = androidStore ?? (!android && (desktop ? showDesktopDownload : showPhoneDownload) ? (
     <a href={storeHref} onClick={() => track?.('app_store')}
       className={`${pill} ${storeFirst ? primaryPill : desktop ? 'text-zinc-600 hover:bg-zinc-100' : secondaryPill}`}>
