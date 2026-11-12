@@ -13,6 +13,7 @@ import { hasLaunchCampaignBonuses, launchCampaign } from '@/lib/creator/campaign
 import dynamic from 'next/dynamic'
 import { canReceiveCreatorPayout, creatorContentBalances, creatorPaymentLabel, creatorPayoutDestination, remainingCreatorPaymentCents } from '@/lib/creator/money'
 import { SubmissionPayoutSummary } from '@/components/admin/submission-payout-summary'
+import { ReachViewGuide, ReachViewTag, SubmissionReachViews } from './submission-reach-views'
 import { CreatorWarningPanel } from '@/components/admin/creator-warning-panel'
 import { CreatorReviewScore } from '@/components/admin/creator-score-detail'
 import { BundledPayoutQueue, PayoutVideoBreakdown } from '@/components/admin/bundled-payout-queue'
@@ -256,6 +257,7 @@ function Overview({ data, onSelectSubmission, onRefresh, historyVersion = 0 }: {
       <div className="mt-7"><BundledPayoutQueue data={data} onRefresh={onRefresh} /></div>
       <section className="mt-7">
         <div className="mb-4"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Review queues</p><div className="mt-2 flex flex-wrap items-baseline justify-between gap-2"><h2 className="text-2xl font-semibold tracking-[-0.045em]">First come, first served</h2><span className="text-xs tabular-nums text-zinc-400">{attentionCount} awaiting review</span></div></div>
+        <ReachViewGuide />
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <Button variant={reviewed ? 'outline' : 'default'} size="sm" aria-pressed={!reviewed} onClick={() => setReviewed(false)}>Awaiting review</Button>
           <Button variant={reviewed ? 'default' : 'outline'} size="sm" aria-pressed={reviewed} onClick={() => setReviewed(true)}>Approved &amp; paid</Button>
@@ -571,6 +573,7 @@ function QueueRow({ item, showWrongCampaignWarning, onClick }: { item: AdminQueu
           <AlertTriangle aria-hidden="true" className="size-3 shrink-0" />
           Wrong campaign before
         </span> : null}
+        <ReachViewTag counts={item.reachViewCounts} />
       </span>
       <span className="mt-2 block truncate text-sm font-semibold">{item.title}</span>
       <span className="mt-1 block break-words text-xs text-zinc-500">{item.creatorName} · {capitalize(item.platform)}</span>
@@ -791,6 +794,7 @@ export function ReviewDialog({ target, creator, payments, metrics, contentBalanc
             <Tabs.List aria-label="Submission review" className="flex shrink-0 gap-1 overflow-x-auto rounded-full bg-zinc-100 p-1">{['video', 'review', 'earnings', 'warnings', 'attribution', 'messages', 'history'].map(value => <Tabs.Trigger key={value} value={value} className="min-h-11 min-w-[84px] flex-1 rounded-full px-2 text-[11px] font-medium capitalize text-zinc-500 data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm sm:text-sm">{capitalize(value)}{value === 'warnings' && activeWarningCount ? <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">{activeWarningCount}</span> : null}{value === 'messages' && target.item.unreadMessages ? <span className="ml-1 rounded-full bg-[#007aff] px-1.5 py-0.5 text-[10px] text-white">{target.item.unreadMessages}</span> : null}</Tabs.Trigger>)}</Tabs.List>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
               <Tabs.Content value="video" className="outline-none">
+                <SubmissionReachViews id={target.item.id} storageKey={target.item.analyticsStorageKey ?? null} counts={target.item.reachViewCounts} onSaved={onRefresh} />
                 <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-5">
                   <div className="min-w-0">
                     <SubmissionVideo submission={target.item} />

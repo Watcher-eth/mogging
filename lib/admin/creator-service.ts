@@ -98,9 +98,26 @@ export const CREATOR_CONVERSION_BONUS_CAP_RATE = 0.25
 export type CreatorAdminReviewInput = z.infer<typeof creatorAdminReviewSchema>
 export type CreatorAdminPaymentInput = z.infer<typeof creatorAdminPaymentSchema>
 
+const submission = schema.creatorSubmissions
+const check = submission.audienceCheck
+const manualCounts = submission.manualReachViewCounts
+const reachViewCounts = sql<import('./reach-views').ReachViewCounts | null>`case
+  when ${manualCounts} is not null and (${manualCounts}->>'storageKey') is not distinct from ${submission.analyticsStorageKey}
+    then jsonb_build_object('reach', ${manualCounts}->'reach', 'views', ${manualCounts}->'views', 'source', 'manual')
+  when ${check}->>'storageKey' = ${submission.analyticsStorageKey} and ${check}->>'status' in ('verified', 'needs_review')
+    then jsonb_build_object(
+      'reach', case when ${check}#>'{metricsVerified,totalViewers}' = 'true'::jsonb then ${check}#>'{metrics,totalViewers}' end,
+      'views', case when ${check}#>'{metricsVerified,totalViews}' = 'true'::jsonb then ${check}#>'{metrics,totalViews}' end,
+      'approximate', not coalesce(${check}#>'{metricsVerified,totalViewsExact}' = 'true'::jsonb
+        and ${check}#>'{metrics,totalViewsExact}' = 'true'::jsonb, false),
+      'source', 'ocr'
+    )
+  end`
+
 function getAdminSubmissions(scope?: SQL, reviewId?: string) {
   return db.select({
     id: schema.creatorSubmissions.id,
+    reachViewCounts,
     unreadMessages: submissionUnreadCount('team'),
     studioGenerationId: schema.creatorSubmissions.studioGenerationId,
     creatorProfileId: schema.creatorSubmissions.creatorProfileId,
@@ -309,13 +326,13 @@ export async function getCreatorAdminDashboard({ includeCoverage = true, creator
   }
 }
 
-const submission = schema.creatorSubmissions
 const payment = schema.creatorPayments
 const request = schema.creatorPayoutRequests
 const warning = schema.creatorInternalWarnings
 const submitOnPublish = sql<boolean>`coalesce(${submission.sprintTerms}->'submitOnPublish' = 'true'::jsonb, false)`
 
 const queueSubmissionFields = {
+  reachViewCounts,
   id: submission.id,
   studioGenerationId: submission.studioGenerationId,
   awaitingAnalyticsVideo: sql<boolean>`${submission.analyticsVideoRequest} is not null`,

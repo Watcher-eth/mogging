@@ -1,0 +1,30 @@
+export const MAX_REACH_VIEW_COUNT = 2_000_000_000
+
+export type ReachViewCounts = {
+  reach: number | null
+  views: number | null
+  source: 'ocr' | 'manual'
+  approximate?: boolean
+}
+
+export type ManualReachViewCounts = {
+  reach: number
+  views: number
+  storageKey: string | null
+}
+
+export function isReachViewCount(value: number | null | undefined): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= MAX_REACH_VIEW_COUNT
+}
+
+export function reachViewPercent(reach: number | null | undefined, views: number | null | undefined) {
+  if (!isReachViewCount(reach) || !isReachViewCount(views) || views === 0 || reach > views) return null
+  return (reach * 100) / views
+}
+
+export function reachViewCategory(percent: number) {
+  if (percent >= 90) return 'pureReach'
+  if (percent >= 65 && percent <= 85) return 'sweetSpot'
+  if (percent < 50) return 'heavyLooping'
+  return null
+}

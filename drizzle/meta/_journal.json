@@ -596,6 +596,13 @@
       "when": 1794440040000,
       "tag": "0082_creator_analytics_video_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1794516000000,
+      "tag": "0083_creator_submission_reach_views",
+      "breakpoints": true
     }
   ]
 }
