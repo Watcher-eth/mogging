@@ -161,8 +161,11 @@ export function getCheckoutLineItem(product: PaymentProduct) {
   }
 }
 
-export function generatePaymentActivationCode() {
-  return String(randomInt(0, 1_000_000)).padStart(6, '0')
+export function generatePaymentActivationCode(checkoutAttempt?: string) {
+  const number = checkoutAttempt
+    ? createHmac('sha256', getActivationCodeSecret()).update(`android-checkout-code:${checkoutAttempt}`).digest().readUInt32BE(0) % 1_000_000
+    : randomInt(0, 1_000_000)
+  return String(number).padStart(6, '0')
 }
 
 // Both the redirect and webhook grant the same checkout exactly once.

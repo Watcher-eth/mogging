@@ -29,7 +29,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await recordServerEvent({ eventName: 'purchase_activated', eventId: `${hash.slice(0,8)}-${hash.slice(8,12)}-5${hash.slice(13,16)}-a${hash.slice(17,20)}-${hash.slice(20,32)}`,
         accountId: userId, sessionId, source: 'stripe_access_verified', properties: { ...analytics, surface: entitlement.source, product: entitlement.product, provider: 'stripe' } })
     }
-    return json(res, 200, { entitlements: summary, analytics })
+    return json(res, 200, { entitlements: summary, analytics, product: entitlement.product })
   } catch (error) { return handleApiError(error, res) }
 }
 

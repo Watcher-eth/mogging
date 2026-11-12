@@ -1,3 +1,4 @@
+import { AndroidDownload, useAndroidDownload } from '@/components/landing/android-download'
 import { creatorLinkPlatform } from '@/lib/creator/link-routing'
 import { countryFromTimeZone, skipEthnicity } from '@/components/analysis/population-distribution'
 import type { BasicReport as BasicReportData } from '@/lib/analysis-v2/basic-preview'
@@ -272,7 +273,10 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, captureMode, 
     trackWebEvent('attribution_diagnostic', { surface: 'creator_landing', action: 'creator_analysis_redirected', placement: 'creator_direct',
       provider: 'mogging', creator_click_id: creatorEntry.clickId, creator_tracking_link_id: creatorEntry.trackingLinkId })
   }, [creatorEntry, walkthrough])
-  const creatorAppLink = !walkthrough && creatorEntry?.iosAppStoreUrl ? (
+  const apkUrl = useAndroidDownload()
+  const creatorAppLink = !walkthrough && creatorEntry && apkUrl
+    ? <AndroidDownload href={apkUrl} className="inline-flex min-h-11 items-center px-3 text-sm font-medium underline underline-offset-4" />
+    : !walkthrough && creatorEntry?.iosAppStoreUrl ? (
     <a href={creatorEntry.iosAppStoreUrl} className="inline-flex min-h-11 items-center justify-center px-3 text-sm font-medium underline underline-offset-4"
       onClick={() => {
         trackWebEvent('app_store_redirected', {

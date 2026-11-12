@@ -1,3 +1,4 @@
+import { AndroidDownload, useAndroidDevice, useAndroidDownload } from './android-download'
 import { usePhoneLayout } from '@/hooks/use-phone-layout'
 import Link from 'next/link'
 import { ScanFace } from '@/components/ui/mogging-glyphs'
@@ -20,13 +21,16 @@ export function EvaluationChoices({ track, webHref, storeHref = appStoreUrl, sho
 }) {
   const { t } = useTranslation()
   const desktop = !usePhoneLayout(true)
-  const storeFirst = !desktop && showPhoneDownload && preferAppStore
-  const store = (desktop ? showDesktopDownload : showPhoneDownload) ? (
+  const android = useAndroidDevice()
+  const apkUrl = useAndroidDownload()
+  const androidStore = !desktop && apkUrl ? <AndroidDownload href={apkUrl} className={scanPill} /> : null
+  const storeFirst = !desktop && (Boolean(androidStore) || (!android && showPhoneDownload && preferAppStore))
+  const store = androidStore ?? (!android && (desktop ? showDesktopDownload : showPhoneDownload) ? (
     <a href={storeHref} onClick={() => track?.('app_store')}
       className={`${pill} ${storeFirst ? primaryPill : desktop ? 'text-zinc-600 hover:bg-zinc-100' : secondaryPill}`}>
       <AppleMark />{desktop ? t('landing.download') : 'Get the iPhone app'}
     </a>
-  ) : null
+  ) : null)
   return <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 whitespace-nowrap sm:gap-3">
     {storeFirst && store}
     <Link href={webHref ?? (desktop ? '/analysis' : '/analysis?entry=scan')} prefetch={false} onClick={() => track?.('web_analysis')}
@@ -41,6 +45,7 @@ export function StickyMobileScan({ hero, onStart, onDownload }: {
   hero: RefObject<HTMLElement | null>; onStart: () => void; onDownload?: () => void
 }) {
   const phone = usePhoneLayout(false)
+  const apkUrl = useAndroidDownload()
   const [pastHero, setPastHero] = useState(false)
   useEffect(() => {
     const element = hero.current
@@ -53,8 +58,8 @@ export function StickyMobileScan({ hero, onStart, onDownload }: {
   }, [hero, phone])
   if (!phone || !pastHero) return null
   return <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center bg-gradient-to-t from-white/95 via-white/75 to-transparent px-4 pt-6 pb-[calc(env(safe-area-inset-bottom)+12px)]">
-    {onDownload ? <div className="pointer-events-auto">
-      <EvaluationChoices preferAppStore track={destination => destination === 'app_store' ? onDownload() : onStart()} />
+    {onDownload || apkUrl ? <div className="pointer-events-auto">
+      <EvaluationChoices preferAppStore track={destination => destination === 'app_store' ? onDownload?.() : onStart()} />
     </div> : <Link href="/analysis?entry=scan" prefetch={false} onClick={onStart} className={`${scanPill} pointer-events-auto min-h-12 w-full max-w-xs text-sm shadow-lg shadow-black/15`}>
       <ScanFace className="size-4 shrink-0" aria-hidden="true" />Start my face scan
     </Link>}

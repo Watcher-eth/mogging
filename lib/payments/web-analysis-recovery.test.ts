@@ -46,8 +46,8 @@ function route(file: string, overrides: Record<string, unknown> = {}) {
   const source = readFileSync(new URL(`../../pages/api/payments/${file}.ts`, import.meta.url), 'utf8')
     .replace(/^import .*\n/gm, '').replace(/^export default .*$/gm, '')
   compile(source + '\nglobalThis.handler=handler', scope)
-  return { calls, headers, run: (body = { sessionId: 'cs_live_fixture' }, cookies: Record<string, string> = {}) =>
-    scope.handler({ method: 'POST', body, headers: { host: 'www.mogging.com', 'x-forwarded-proto': 'https' }, cookies },
+  return { calls, headers, run: (body = { sessionId: 'cs_live_fixture' }, cookies: Record<string, string> = {}, requestHeaders: Record<string, string> = {}) =>
+    scope.handler({ method: 'POST', body, headers: { host: 'www.mogging.com', 'x-forwarded-proto': 'https', ...requestHeaders }, cookies },
       { setHeader: (name: string, value: unknown) => { headers[name] = value } }) }
 }
 
@@ -56,6 +56,22 @@ test('retired weekly membership cannot create a new web Stripe session', async (
   const response = await f.run({ product: 'mobile_subscription_weekly', mobileInstallId: 'fixture-install', source: 'web_analysis', returnTo: 'analysis' } as any)
   expect(response.status).toBe(410)
   expect(f.calls).toHaveLength(0)
+})
+
+test('Android checkout requires the app session and exact quote, and returns to the app', async () => {
+  const f = route('web-checkout', {
+    process: { env: { MOGGING_ANDROID_DIRECT_CHECKOUT: '1' } },
+    priceAmounts: () => ({ usd: 499 }),
+  })
+  const body = { product: 'mobile_subscription_weekly', mobileInstallId: 'fixture-install', source: 'android_direct_paywall' }
+  const auth = { authorization: 'Bearer fixture-app-session' }
+  expect((await f.run(body as any)).status).toBe(401)
+  expect((await f.run(body as any, {}, auth)).status).toBe(400)
+  expect((await f.run({ ...body, currency: 'usd', unitAmount: 999 } as any, {}, auth)).status).toBe(409)
+  expect(f.calls).toHaveLength(0)
+  expect((await f.run({ ...body, currency: 'usd', unitAmount: 499 } as any, {}, auth)).status).toBe(200)
+  expect(f.calls[0].success_url).toBe('https://www.mogging.com/app/handoff?session_id={CHECKOUT_SESSION_ID}&android=1')
+  expect(f.calls[0].subscription_data.metadata.accountId).toBe('buyer')
 })
 
 test('website checkout returns to analysis, not mobile handoff', async () => {

@@ -61,7 +61,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const channelMetadata: Record<string, string> = webSurface ? { webSurface } : {}
     const signedIn = await getRequestUserId(req, res)
     const productId = input.product
-    if (productId === 'mobile_subscription_weekly') {
+    const androidDirect = input.source === 'android_direct_paywall'
+    if (androidDirect) {
+      if (process.env.MOGGING_ANDROID_DIRECT_CHECKOUT !== '1') throw new ApiError(503, 'Android checkout is unavailable')
+      if (!signedIn || !req.headers.authorization?.startsWith('Bearer ')) throw new ApiError(401, 'Sign in in the app before starting checkout')
+      if (!subscriptionProducts.some(plan => plan === productId) && productId !== 'evaluation' && productId !== 'evaluation_pack_3') {
+        throw new ApiError(400, 'Select an Android plan or scan pack')
+      }
+      if (input.returnTo || input.guestCheckout || input.returnOfferSessionId || input.starterIntro || input.paywallExperimentId
+        || input.currency == null || input.unitAmount == null) {
+        throw new ApiError(400, 'Refresh the prices in the app and retry checkout')
+      }
+    }
+    if (productId === 'mobile_subscription_weekly' && !androidDirect) {
       throw new ApiError(410, 'This weekly offer has ended. Reopen the paywall to select a current plan.')
     }
     const webPlan = isWebAnalysisProduct(productId)
@@ -115,14 +127,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       if (amount === undefined) throw new ApiError(400, 'The selected currency is unavailable')
       if (input.unitAmount !== undefined && input.unitAmount !== amount) throw new ApiError(409, 'The price has changed. Please reload the plans')
     }
-    if (webPlan && signedIn) {
+    if (signedIn && (webPlan || (androidDirect && product.mode === 'subscription'))) {
       const access = await getEntitlementSummary({ userId: signedIn, mobileInstallId: input.mobileInstallId })
       if (access.subscription.active || access.subscription.tier) throw new ApiError(409, 'Your current membership is still active. Manage it before starting another.')
     }
     const guest = signedIn ? null : await createWebCheckoutGuest(req, res)
     const accountId = guest?.accountId ?? signedIn!
     const source = input.source || 'web2app'
-    const activationCode = guest ? undefined : generatePaymentActivationCode()
+    const activationCode = guest ? undefined : generatePaymentActivationCode(androidDirect && input.attemptId ? `${accountId}:${input.attemptId}` : undefined)
     const attribution = await resolveCheckoutCreator(req, accountId, guest ? undefined : input.mobileInstallId)
     const attributionMetadata = stripeAttributionMetadata(attribution)
     const couponId = webPlan ? WEB_ANALYSIS_CREATOR_COUPON : CREATOR_MONTHLY_COUPON
@@ -226,9 +238,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               },
             }
           : null),
-        success_url: scanReturn ? `${scanReturn}&scan_checkout=success&session_id={CHECKOUT_SESSION_ID}` : input.returnTo === 'analysis' ? `${origin}/analysis?checkout=success${guest ? '&guest=1' : ''}&session_id={CHECKOUT_SESSION_ID}` : `${origin}/app/handoff?session_id={CHECKOUT_SESSION_ID}`,
+        success_url: scanReturn ? `${scanReturn}&scan_checkout=success&session_id={CHECKOUT_SESSION_ID}` : input.returnTo === 'analysis' ? `${origin}/analysis?checkout=success${guest ? '&guest=1' : ''}&session_id={CHECKOUT_SESSION_ID}` : `${origin}/app/handoff?session_id={CHECKOUT_SESSION_ID}${androidDirect ? '&android=1' : ''}`,
         cancel_url: scanReturn ? `${scanReturn}&scan_checkout=cancelled` : input.returnTo === 'analysis' ? `${origin}/analysis?checkout=cancelled` : `${origin}${input.returnLocale && input.returnLocale !== 'en' ? `/${input.returnLocale}` : ''}/?checkout=cancelled&product=${input.product}`,
-      }, previousOfferSession ? { idempotencyKey: `web-return:${previousOfferSession.id}:${input.attemptId ?? 'default'}` } : undefined)
+      }, previousOfferSession ? { idempotencyKey: `web-return:${previousOfferSession.id}:${input.attemptId ?? 'default'}` }
+        : androidDirect && input.attemptId ? { idempotencyKey: `android-checkout:${accountId}:${input.attemptId}` } : undefined)
       if (previousOfferSession) {
         try { await getStripe().checkout.sessions.expire(previousOfferSession.id) }
         catch (error) {

@@ -23,6 +23,7 @@ export default function PaymentHandoffPage() {
   const reduceMotion = useReducedMotion()
   const { status } = useSession()
   const sessionId = singleQueryValue(router.query.session_id)
+  const androidReturn = router.query.android === '1' && sessionId && /^cs_(?:test_|live_)?[A-Za-z0-9]+$/.test(sessionId) ? sessionId : null
   const suppliedToken = singleQueryValue(router.query.token)
   const [handoff, setHandoff] = useState<HandoffResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +31,7 @@ export default function PaymentHandoffPage() {
 
   useEffect(() => {
     if (!router.isReady) return
-    if (!sessionId || status !== 'authenticated') return
+    if (!sessionId || androidReturn || status !== 'authenticated') return
     setError(null)
     setHandoff(null)
 
@@ -67,16 +68,17 @@ export default function PaymentHandoffPage() {
       cancelled = true
       if (timer) clearTimeout(timer)
     }
-  }, [router, router.isReady, sessionId, status, retry])
+  }, [router, router.isReady, sessionId, status, retry, androidReturn])
 
   const token = handoff?.token || (!sessionId || status === 'unauthenticated' ? suppliedToken : null)
   const appUrl = useMemo(() => {
+    if (androidReturn) return `mogging://app/handoff?session_id=${encodeURIComponent(androidReturn)}`
     if (!token) return null
     // An explicit scheme also opens the app from Safari on this same domain.
     const url = new URL('mogging://app/handoff')
     url.searchParams.set('token', token)
     return url.toString()
-  }, [token])
+  }, [token, androidReturn])
 
   return (
     <>
@@ -97,14 +99,14 @@ export default function PaymentHandoffPage() {
           </p>
 
           <div className="mt-10 border-t border-zinc-200 pt-8">
-            {status === 'loading' || (!token && !error && !!sessionId && status === 'authenticated') ? (
+            {!androidReturn && (status === 'loading' || (!token && !error && !!sessionId && status === 'authenticated')) ? (
               <div className="flex items-center gap-3 text-sm font-medium text-zinc-600">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 Securing your one-time app handoff
               </div>
             ) : null}
 
-            {status === 'unauthenticated' && !suppliedToken ? (
+            {!androidReturn && status === 'unauthenticated' && !suppliedToken ? (
               <div>
                 <p className="text-sm text-zinc-600">Sign in with the account used at checkout to continue.</p>
                 <Link
@@ -133,13 +135,13 @@ export default function PaymentHandoffPage() {
                 >
                   <Check className="h-5 w-5" /> Open Mogging
                 </a>
-                <a
+                {!androidReturn && <a
                   href={appStoreUrl}
                   onClick={() => trackWebEvent('handoff_opened', { destination: 'app_store' })}
                   className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-zinc-200 transition-transform active:scale-[.98] motion-reduce:transform-none px-6 text-sm font-semibold text-black"
                 >
                   <Download className="h-5 w-5" /> Download the app
-                </a>
+                </a>}
               </div>
             ) : null}
           </div>
