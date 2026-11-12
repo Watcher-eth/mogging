@@ -1,8 +1,7 @@
-import { AndroidDownload, useAndroidDevice, useAndroidDownload } from './android-download'
+import { AndroidDownload, getAndroidDownloadUrl, useAndroidDevice } from './android-download'
 import { usePhoneLayout } from '@/hooks/use-phone-layout'
 import Link from 'next/link'
 import { ScanFace } from '@/components/ui/mogging-glyphs'
-import { useTranslation } from 'react-i18next'
 import { appStoreUrl } from '@/lib/seo'
 import { useEffect, useState, type RefObject } from 'react'
 
@@ -11,41 +10,39 @@ const primaryPill = 'bg-zinc-950 px-5 text-white hover:bg-zinc-800'
 const secondaryPill = 'border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100'
 const scanPill = `${pill} ${primaryPill}`
 
-export function EvaluationChoices({ track, webHref, storeHref = appStoreUrl, showDesktopDownload = false, showPhoneDownload = true, preferAppStore = false }: {
+export function EvaluationChoices({ track, webHref, storeHref = appStoreUrl, androidOnServer = false, preferAppStore = false }: {
   track?: (destination: 'app_store' | 'web_analysis') => void
   webHref?: string
   storeHref?: string
-  showDesktopDownload?: boolean
-  showPhoneDownload?: boolean
+  androidOnServer?: boolean
   preferAppStore?: boolean
 }) {
-  const { t } = useTranslation()
   const desktop = !usePhoneLayout(true)
-  const android = useAndroidDevice()
-  const apkUrl = useAndroidDownload()
+  const android = useAndroidDevice(androidOnServer)
+  const apkUrl = android ? getAndroidDownloadUrl() : null
   const androidStore = apkUrl ? <AndroidDownload href={apkUrl} className={scanPill} /> : null
-  const storeFirst = Boolean(androidStore) || (!desktop && !android && showPhoneDownload && preferAppStore)
-  const store = androidStore ?? (!android && (desktop ? showDesktopDownload : showPhoneDownload) ? (
+  const storeFirst = Boolean(androidStore) || (!android && preferAppStore)
+  const store = androidStore ?? (!android ? (
     <a href={storeHref} onClick={() => track?.('app_store')}
-      className={`${pill} ${storeFirst ? primaryPill : desktop ? 'text-zinc-600 hover:bg-zinc-100' : secondaryPill}`}>
-      <AppleMark />{desktop ? t('landing.download') : 'Get the iPhone app'}
+      className={`${pill} ${storeFirst ? primaryPill : secondaryPill}`}>
+      <AppleMark />Get the iPhone app
     </a>
   ) : null)
   return <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 whitespace-nowrap sm:gap-3">
     {storeFirst && store}
     <Link href={webHref ?? (desktop ? '/analysis' : '/analysis?entry=scan')} prefetch={false} onClick={() => track?.('web_analysis')}
       className={`${pill} ${storeFirst ? secondaryPill : primaryPill} ${desktop ? 'min-w-36' : ''}`}>
-      <ScanFace className="size-4 shrink-0" aria-hidden="true" />{desktop ? 'Start now' : storeFirst ? 'Scan on web' : 'Start my face scan'}
+      <ScanFace className="size-4 shrink-0" aria-hidden="true" />Scan now
     </Link>
     {!storeFirst && store}
   </div>
 }
 
-export function StickyMobileScan({ hero, onStart, onDownload }: {
-  hero: RefObject<HTMLElement | null>; onStart: () => void; onDownload?: () => void
+export function StickyMobileScan({ hero, onStart, onDownload, androidOnServer, preferAppStore }: {
+  hero: RefObject<HTMLElement | null>; onStart: () => void; onDownload: () => void
+  androidOnServer: boolean; preferAppStore: boolean
 }) {
   const phone = usePhoneLayout(false)
-  const apkUrl = useAndroidDownload()
   const [pastHero, setPastHero] = useState(false)
   useEffect(() => {
     const element = hero.current
@@ -58,11 +55,9 @@ export function StickyMobileScan({ hero, onStart, onDownload }: {
   }, [hero, phone])
   if (!phone || !pastHero) return null
   return <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center bg-gradient-to-t from-white/95 via-white/75 to-transparent px-4 pt-6 pb-[calc(env(safe-area-inset-bottom)+12px)]">
-    {onDownload || apkUrl ? <div className="pointer-events-auto">
-      <EvaluationChoices preferAppStore track={destination => destination === 'app_store' ? onDownload?.() : onStart()} />
-    </div> : <Link href="/analysis?entry=scan" prefetch={false} onClick={onStart} className={`${scanPill} pointer-events-auto min-h-12 w-full max-w-xs text-sm shadow-lg shadow-black/15`}>
-      <ScanFace className="size-4 shrink-0" aria-hidden="true" />Start my face scan
-    </Link>}
+    <div className="pointer-events-auto">
+      <EvaluationChoices androidOnServer={androidOnServer} preferAppStore={preferAppStore} track={destination => destination === 'app_store' ? onDownload() : onStart()} />
+    </div>
   </div>
 }
 

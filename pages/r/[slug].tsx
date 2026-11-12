@@ -28,6 +28,7 @@ type CreatorLinkPageProps = {
   clickId: string
   trackingLinkId: string
   ios: boolean
+  android: boolean
 }
 
 export default function CreatorLinkPage(props: CreatorLinkPageProps) {
@@ -100,7 +101,7 @@ export default function CreatorLinkPage(props: CreatorLinkPageProps) {
         <span role="status" className="sr-only">{copied === 'code' ? 'Creator code copied' : copied === 'link' ? 'Referral link copied' : ''}</span>
       </div>
       <div className="mt-6">
-        <EvaluationChoices preferAppStore showPhoneDownload={props.ios} storeHref={props.iosStoreUrl || appStoreUrl} webHref={props.webUrl}
+        <EvaluationChoices preferAppStore={props.ios} androidOnServer={props.android} storeHref={props.iosStoreUrl || appStoreUrl} webHref={props.webUrl}
           track={destination => {
             trackWebEvent(destination === 'app_store' ? 'app_store_redirected' : 'landing_cta_clicked', { ...eventContext, destination, placement: 'creator_landing' })
             void flushWebAnalytics()
@@ -161,6 +162,7 @@ export const getServerSideProps: GetServerSideProps<CreatorLinkPageProps> = asyn
       clickId: attribution.click.id,
       trackingLinkId: attribution.link.id,
       ios: device === 'ios',
+      android: device === 'android',
       creator: account.displayName || account.handle || 'Your creator',
       avatarUrl: account.avatarUrl,
       url: `${siteUrl}/r/${slug}`,

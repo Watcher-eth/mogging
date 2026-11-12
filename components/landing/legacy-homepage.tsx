@@ -31,7 +31,7 @@ const reviewCards = [
 const averageRating = (reviewCards.reduce((sum, review) => sum + review.rating, 0) / reviewCards.length).toFixed(1)
 
 
-export default function LegacyHomepage({assignment, preview, ios}: {assignment: LandingAssignment; preview: boolean; ios: boolean}) {
+export default function LegacyHomepage({assignment, preview, ios, android}: {assignment: LandingAssignment; preview: boolean; ios: boolean; android: boolean}) {
   const {sections, trackDestination} = useLandingTracking(assignment, preview)
   const entrance = useHomepageEntrance()
   const desktop = useDesktop()
@@ -56,7 +56,7 @@ export default function LegacyHomepage({assignment, preview, ios}: {assignment: 
           {desktop ? (
             <div ref={hero} className="w-full">
               <PortraitHero title="Mogging. Your face, in focus.">
-                <EvaluationChoices preferAppStore showPhoneDownload={ios} showDesktopDownload track={destination => trackDestination(destination, 'hero')} />
+                <EvaluationChoices preferAppStore={ios} androidOnServer={android} track={destination => trackDestination(destination, 'hero')} />
               </PortraitHero>
             </div>
           ) : (
@@ -73,7 +73,7 @@ export default function LegacyHomepage({assignment, preview, ios}: {assignment: 
                 Explore your facial features with a comprehensive report, a detailed face map, and a personalized routine. Keep track of your photos and progress in the Mogging app.
               </p>
               <div className="mt-8">
-                <EvaluationChoices preferAppStore showPhoneDownload={ios} showDesktopDownload track={destination => trackDestination(destination, 'hero')} />
+                <EvaluationChoices preferAppStore={ios} androidOnServer={android} track={destination => trackDestination(destination, 'hero')} />
               </div>
               </div>
             </div>
@@ -97,8 +97,8 @@ export default function LegacyHomepage({assignment, preview, ios}: {assignment: 
           </div>
         </section>
       </main>
-      <StickyMobileScan hero={hero} onStart={() => trackDestination('web_analysis', 'sticky_scan')}
-        onDownload={ios ? () => trackDestination('app_store', 'sticky_app_store') : undefined} />
+      <StickyMobileScan hero={hero} preferAppStore={ios} androidOnServer={android} onStart={() => trackDestination('web_analysis', 'sticky_scan')}
+        onDownload={() => trackDestination('app_store', 'sticky_app_store')} />
   </LazyMotion>
 }
 

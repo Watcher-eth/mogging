@@ -1,6 +1,7 @@
 import { PortraitHero } from '@/components/landing/portrait-hero'
 import { useDesktop } from '@/components/landing/use-desktop'
 import { EvaluationChoices, StickyMobileScan } from "@/components/landing/evaluation-choices";
+import { isAndroidDevice } from "@/components/landing/android-download";
 import { useHomepageEntrance } from '@/components/landing/use-homepage-entrance'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionChevron } from '@/components/ui/accordion'
 import { useTranslation } from 'react-i18next';
@@ -40,18 +41,18 @@ import {
 const DesktopMemberPreview = dynamic(() => import('@/components/landing/desktop-member-preview').then(module => module.DesktopMemberPreview))
 const LegacyHomepage = dynamic(() => import("@/components/landing/legacy-homepage"));
 
-type Props = { assignment: LandingAssignment | null; preview: boolean; phoneEntry: boolean; ios: boolean };
+type Props = { assignment: LandingAssignment | null; preview: boolean; phoneEntry: boolean; ios: boolean; android: boolean };
 
 export default function HomePage(props: Props) {
   return <>
     {props.assignment?.arm === landingArms[0]
-      ? <><LegacyHomepage assignment={props.assignment} preview={props.preview} ios={props.ios} /><PublicFooter /></>
+      ? <><LegacyHomepage assignment={props.assignment} preview={props.preview} ios={props.ios} android={props.android} /><PublicFooter /></>
       : <NewHomepage {...props} />}
     <div aria-hidden="true" className="h-[calc(72px+env(safe-area-inset-bottom))] min-[768px]:hidden" />
   </>;
 }
 
-function NewHomepage({ assignment, preview, phoneEntry, ios }: Props) {
+function NewHomepage({ assignment, preview, phoneEntry, ios, android }: Props) {
   const { locale } = useRouter();
   const { t } = useTranslation();
   const entrance = useHomepageEntrance();
@@ -61,7 +62,7 @@ function NewHomepage({ assignment, preview, phoneEntry, ios }: Props) {
   const hero = useRef<HTMLElement>(null);
 
   function downloadButton(placement: string) {
-    return <EvaluationChoices preferAppStore showPhoneDownload={ios} showDesktopDownload={placement === "hero" || placement === "footer"} track={destination => trackDestination(destination, placement)} />;
+    return <EvaluationChoices preferAppStore={ios} androidOnServer={android} track={destination => trackDestination(destination, placement)} />;
   }
 
   return (
@@ -206,8 +207,8 @@ function NewHomepage({ assignment, preview, phoneEntry, ios }: Props) {
         </main>
         <LandingFooter actions={downloadButton("footer")} />
       </div>
-      <StickyMobileScan hero={hero} onStart={() => trackDestination('web_analysis', 'sticky_scan')}
-        onDownload={ios ? () => trackDestination('app_store', 'sticky_app_store') : undefined} />
+      <StickyMobileScan hero={hero} preferAppStore={ios} androidOnServer={android} onStart={() => trackDestination('web_analysis', 'sticky_scan')}
+        onDownload={() => trackDestination('app_store', 'sticky_app_store')} />
     </LazyMotion>
   );
 }
@@ -337,5 +338,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({
     }
   }
   if (redirect) return { redirect: { destination: handoff, permanent: false } };
-  return { props: { assignment, preview: Boolean(previewArm) || automated, phoneEntry, ios: /iPhone|iPod/i.test(req.headers['user-agent'] ?? '') } };
+  const userAgent = req.headers['user-agent'] ?? '';
+  const android = isAndroidDevice(userAgent, req.headers['sec-ch-ua-platform']?.toString());
+  return { props: { assignment, preview: Boolean(previewArm) || automated, phoneEntry, ios: /iPhone|iPod|iPad|Macintosh.*Mobile/i.test(userAgent), android } };
 };
