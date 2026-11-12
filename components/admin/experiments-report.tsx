@@ -13,7 +13,7 @@ const onboardingTest = 'web-onboarding'
 const defaultTest = landingExperiments[0]
 const options = [
   { value: defaultTest.id, label: 'Mobile homepage · Old vs new' },
-  { value: onboardingTest, label: 'Web onboarding · Full vs short' },
+  { value: onboardingTest, label: 'Web onboarding · A/B tests' },
   { value: paywallTest, label: 'Web paywall · A/B tests' },
   { value: webTest, label: 'Web analysis · Old vs new' },
   ...landingExperiments.slice(1).map(item => ({ value: item.id, label: 'Archived · ' + item.name })),
@@ -96,17 +96,16 @@ function PaywallExperiments({ data, onboarding }: { data: AnalyticsDashboard; on
   </>
 }
 
-const onboardingSeries = [
-  { label: 'Full onboarding', color: chartColors.blue },
-  { label: 'Short onboarding', color: chartColors.violet },
-]
 const onboardingStages = [
-  ['photo_ready', 'Photos ready'], ['paywall_reached', 'Paywall reached'], ['checkouts', 'Checkout started'],
+  ['capture_reached', 'Capture reached'], ['photo_ready', 'Photos ready'], ['paywall_reached', 'Paywall reached'], ['checkouts', 'Checkout started'],
 ] as const
 const percentage = (value: number) => `${value.toFixed(1)}%`
 
 function PaywallExperiment({ name, rows, now, daily }: { name: string; rows: MetricRow[]; now: number; daily: MetricRow[] }) {
   const onboarding = rows[0].kind === 'onboarding'
+  const entry = onboarding && rows[0].focus === 'entry'
+  const labels = entry ? ['Welcome first', 'Start with questionnaire'] : ['Full onboarding', 'Short onboarding']
+  const onboardingSeries = labels.map((label, i) => ({ label, color: i === 0 ? chartColors.blue : chartColors.violet }))
   const testLabel = onboarding ? 'Onboarding' : rows[0].kind === 'price' ? 'Price' : 'Paywall length'
   const [control, treatment] = ['control', 'treatment'].map(arm => rows.find(row => row.arm === arm && row.browser === 'all') ?? { arm })
   const sample = [control, treatment]
@@ -141,24 +140,25 @@ function PaywallExperiment({ name, rows, now, daily }: { name: string; rows: Met
     const buyers = metric(row, 'paid')
     return {
       browser: row.browser ?? 'all', arm: row.arm, exposed: metric(row, 'exposed'), pending: metric(row, 'exposed') - n,
-      photo_ready: metric(row, 'photo_ready'), paywall_reached: metric(row, 'paywall_reached'),
+      capture_reached: metric(row, 'capture_reached'), photo_ready: metric(row, 'photo_ready'), paywall_reached: metric(row, 'paywall_reached'),
       tapped: metric(row, 'tapped'), checkouts: metric(row, 'checkouts'), checkout_failures: metric(row, 'checkout_failures'),
       paid: buyers, observed_paid: metric(row, 'observed_paid'), paid_rate: percent(buyers, n),
       first_charge_per_exposure: n && buyers === metric(row, 'paid_usd') ? usd.format(metric(row, 'first_charge_usd_cents') / (n * 100)) : '—',
     }
   }
-  const columns = ['arm', 'exposed', 'pending', ...(onboarding ? ['photo_ready', 'paywall_reached'] : []), 'tapped', 'checkouts', 'checkout_failures', 'observed_paid', 'paid', 'paid_rate', 'first_charge_per_exposure']
-  return <Panel title={onboarding ? `${device} · Full vs short` : name} description={`${testLabel} test · ${status} · ${count(minimum)} mature exposures per arm required · Enrollment ends ${formatReportingTime(new Date(end), { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}`}
+  const columns = ['arm', 'exposed', 'pending', ...(onboarding ? ['capture_reached', 'photo_ready', 'paywall_reached'] : []), 'tapped', 'checkouts', 'checkout_failures', 'observed_paid', 'paid', 'paid_rate', 'first_charge_per_exposure']
+  return <Panel title={onboarding ? `${device} · ${entry ? 'Welcome vs direct entry' : 'Full vs short'}` : name} description={`${testLabel} test · ${status} · ${count(minimum)} mature exposures per arm required · Enrollment ends ${formatReportingTime(new Date(end), { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}`}
     note="First-charge revenue is gross USD before refunds and fees. It is hidden when paid outcomes use another currency. Browser breakdowns diagnose friction and are exploratory.">
     {onboarding && <div className="mb-5 text-sm leading-6 text-[#73777d]">
-      {rows[0].surface === 'mobile'
+      {entry ? 'Compares the welcome screen with opening the same questionnaire directly after a mobile homepage scan tap.'
+        : rows[0].surface === 'mobile'
         ? 'Short skips obstacles, experience, methods and time commitment.'
         : 'Short skips ethnicity and combines photo consent with the scan action.'}
     </div>}
     <div className="admin-stats-grid">
       {sample.map((row, index) => {
         const interval = intervals[index]
-        return <Stat key={String(row.arm)} title={onboarding ? index === 0 ? 'Full onboarding' : 'Short onboarding' : index === 0 ? 'Current paywall' : 'Variant'} value={percent(paid[index], mature[index])}
+        return <Stat key={String(row.arm)} title={onboarding ? labels[index] : index === 0 ? 'Current paywall' : 'Variant'} value={percent(paid[index], mature[index])}
           note={`${count(paid[index])} paid / ${count(mature[index])} mature${interval ? ` · 95% CI ${interval[0].toFixed(1)}–${interval[1].toFixed(1)}%` : ''}`} />
       })}
       <Stat title="Change" value={difference !== null ? `${difference.toFixed(2)} pp` : '—'}

@@ -31,7 +31,7 @@ export type AnalyticsProperties = Record<string, string | number | boolean | nul
 // demographics, coordinates, user input, or report scores leave the product.
 const paywallExperimentKeys = [
   'paywall_experiment_id', 'paywall_experiment_unit', 'paywall_experiment_arm', 'paywall_experiment_surface',
-  'paywall_experiment_kind', 'paywall_experiment_ends_at', 'paywall_experiment_minimum',
+  'paywall_experiment_kind', 'paywall_experiment_focus', 'paywall_experiment_ends_at', 'paywall_experiment_minimum',
 ]
 const propertyKeys = new Set([
   'course_id', 'lesson_id', 'lesson_index', 'lesson_count', 'completed_count', 'revisit', 'history_state', 'profile_type',

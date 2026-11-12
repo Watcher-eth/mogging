@@ -21,7 +21,7 @@ const fields = {
 const surfaces = z.enum(['mobile', 'desktop', 'both'])
 const configSchema = z.discriminatedUnion('kind', [
   z.object({ ...fields, kind: z.literal('length'), surface: surfaces }).strict(),
-  z.object({ ...fields, kind: z.literal('onboarding'), surface: surfaces }).strict(),
+  z.object({ ...fields, kind: z.literal('onboarding'), surface: surfaces, focus: z.literal('entry').optional() }).strict(),
   z.object({
     ...fields, kind: z.literal('price'), surface: z.enum(['mobile', 'desktop']),
     stripePriceId: z.string().regex(/^price_[A-Za-z0-9]+$/), unitAmount: z.number().int().min(50).max(100_000),
@@ -45,7 +45,7 @@ export function assignPaywallExperiment(config: Config, visitor: string, surface
   return {
     id: config.id, unit: digest.subarray(1, 17).toString('hex'),
     arm: digest[0] % 2 === 0 ? 'control' : 'treatment',
-    surface, kind: config.kind, endsAt: Date.parse(config.endsAt), minimumPerArm: config.minimumPerArm,
+    surface, kind: config.kind, ...(config.kind === 'onboarding' && config.focus ? { focus: config.focus } : {}), endsAt: Date.parse(config.endsAt), minimumPerArm: config.minimumPerArm,
   }
 }
 
@@ -63,10 +63,11 @@ function setVisitor(res: ServerResponse, id: string) {
   res.setHeader('Set-Cookie', [...cookies, `${cookieName}=${id}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`])
 }
 
-export function quotePaywallExperiment(req: Pick<NextApiRequest, 'cookies'>, res: ServerResponse, surface: PaywallSurface, secret: string, placement: 'paywall' | 'onboarding' = 'paywall'): Assignment | null {
+export function quotePaywallExperiment(req: Pick<NextApiRequest, 'cookies'>, res: ServerResponse, surface: PaywallSurface, secret: string, placement: 'paywall' | 'onboarding' = 'paywall', manualScanEntry = false): Assignment | null {
   const config = configuration()
   const now = Date.now()
   if (!config || (placement === 'onboarding') !== (config.kind === 'onboarding') || (config.surface !== 'both' && config.surface !== surface) || now < Date.parse(config.startsAt) || now >= Date.parse(config.endsAt)) return null
+  if (config.kind === 'onboarding' && config.focus === 'entry' && (surface !== 'mobile' || !manualScanEntry)) return null
   const existing = visitorId.safeParse(req.cookies[cookieName])
   const id = existing.success ? existing.data : randomUUID()
   if (!existing.success) setVisitor(res, id)

@@ -105,6 +105,27 @@ export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClo
     return () => window.clearTimeout(timer)
   }, [countdown, phase])
 
+  const acceptFrontPhoto = useEffectEvent(() => {
+    track('front_photo_auto_used')
+    completeStep()
+    setPhase('done')
+  })
+
+  useEffect(() => {
+    if (phase !== 'front') return
+    let timer: number | undefined
+    const schedule = () => {
+      window.clearTimeout(timer)
+      if (!document.hidden) timer = window.setTimeout(acceptFrontPhoto, 3000)
+    }
+    schedule()
+    document.addEventListener('visibilitychange', schedule)
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('visibilitychange', schedule)
+    }
+  }, [phase])
+
   useEffect(() => {
     if (!reader || phase !== 'scan') return
     let lastAdvance = performance.now()
@@ -191,7 +212,7 @@ export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClo
   const message = !cameraReady ? 'Preparing your camera…'
     : phase === 'ready' ? showFrameError ? 'Couldn’t take the photo. Try again.' : 'Look straight at the camera'
     : phase === 'countdown' ? 'Hold still for the photo'
-    : phase === 'front' ? 'Your front photo is ready'
+    : phase === 'front' ? 'Using your front photo…'
     : phase === 'done' ? percent === 100 ? 'Scan complete' : 'Photo ready'
     : modelError ? 'Your front photo is ready to use.'
     : !reader ? 'Photo taken. Preparing the optional scan…'
@@ -238,7 +259,7 @@ export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClo
     </div> : <>
       <div className="guided-scan-copy" data-reviewing={reviewing || undefined}>
         <p role="status">{message}</p>
-        {(phase === 'ready' || phase === 'countdown') && cameraReady && <small>The camera takes your photo when the timer ends.</small>}
+        {(phase === 'ready' || phase === 'countdown') && cameraReady && <small>The camera takes a front photo for your scan when the timer ends.</small>}
         {phase === 'scan' && <small>You can continue with the photo you’ve taken.</small>}
       </div>
       {reviewing ? <div className="guided-scan-review-actions">

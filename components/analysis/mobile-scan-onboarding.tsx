@@ -39,7 +39,7 @@ export function MobileScanOnboarding({ profile, onProgress, onComplete, analytic
   const lastAdvancedStep = useRef<OnboardingProfileStepId | null>(null)
   const [comparison, setComparison] = useState(50)
   const { answers } = profile
-  const variant = experiment?.arm === 'treatment' ? 'short' : 'full'
+  const variant = experiment?.arm === 'treatment' && experiment.focus !== 'entry' ? 'short' : 'full'
   const steps = getOnboardingProfileSteps(answers.experience?.[0], variant)
   const fullSteps = getOnboardingProfileSteps(answers.experience?.[0])
   const resumedStep = steps.includes(profile.step) ? profile.step

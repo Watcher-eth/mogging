@@ -52,6 +52,7 @@ export function webJourneyCTEs(start: string, end: string, days: number, version
       min(occurred_at) filter(where platform='web' and event_name='onboarding_step_viewed'
         and properties->>'surface'='web_analysis' and (properties->>'step' like 'capture.%' or properties->>'step'='upload')) as capture_at,
       min(occurred_at) filter(where event_name='photo_selected' or (event_name='face_capture_result' and properties->>'result'='captured')) as photo_at,
+      min(occurred_at) filter(where event_name='photo_preparation_completed' and properties->>'step'='capture.both') as both_photos_at,
       min(occurred_at) filter(where event_name='report_viewed') as report_at,
       max(occurred_at) filter(where platform='server' and event_name='evaluation_request_completed' and source='web_analysis') as evaluated_at,
       bool_or(event_name='purchase_reconciled' and properties->>'result'='existing_access') as existing_access
@@ -151,6 +152,7 @@ export function webJourneyCTEs(start: string, end: string, days: number, version
     select channel,count(*) filter(where analysis_at is not null) as analysis_opened,
       count(*) filter(where capture_at>=analysis_at) as capture_opened,
       count(*) filter(where photo_at>=analysis_at) as photo_ready,
+      count(*) filter(where both_photos_at>=analysis_at) as both_photos_ready,
       count(*) filter(where analysis_paywall_at>=analysis_at) as analysis_paywalls,
       count(*) filter(where evaluated_at>=analysis_at) as evaluations_completed,
       count(*) filter(where report_at>=analysis_at) as report_viewed
@@ -229,6 +231,9 @@ export function webJourneyCTEs(start: string, end: string, days: number, version
       or (a.event_name='paywall_products_loaded' and a.properties->>'products_loaded'='false')
       or (a.event_name='permission_result' and a.properties->>'result' in ('failed','denied'))
       or (a.event_name in ('photo_preparation_stage','face_capture_result') and a.properties->>'result' in ('failed','stalled'))
+      or (a.event_name='photo_picker_result' and a.properties->>'result'='cancelled')
+      or (a.event_name='onboarding_interaction' and a.properties->>'action'='analysis_checkpoint_resolved'
+        and a.properties->>'result' in ('timed_out','unavailable'))
     group by 1,2,3,4 order by journeys desc limit 100
   ), wj_catalog as (
     select c.channel,coalesce(a.properties->>'mode','unknown') as mode,

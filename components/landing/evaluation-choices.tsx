@@ -29,7 +29,7 @@ export function EvaluationChoices({ track, webHref, storeHref = appStoreUrl, sho
   ) : null
   return <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 whitespace-nowrap sm:gap-3">
     {storeFirst && store}
-    <Link href={webHref ?? '/analysis'} prefetch={false} onClick={() => track?.('web_analysis')}
+    <Link href={webHref ?? (desktop ? '/analysis' : '/analysis?entry=scan')} prefetch={false} onClick={() => track?.('web_analysis')}
       className={`${pill} ${storeFirst ? secondaryPill : primaryPill} ${desktop ? 'min-w-36' : ''}`}>
       <ScanFace className="size-4 shrink-0" aria-hidden="true" />{desktop ? 'Start now' : storeFirst ? 'Scan on web' : 'Start my face scan'}
     </Link>
@@ -55,7 +55,7 @@ export function StickyMobileScan({ hero, onStart, onDownload }: {
   return <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center bg-gradient-to-t from-white/95 via-white/75 to-transparent px-4 pt-6 pb-[calc(env(safe-area-inset-bottom)+12px)]">
     {onDownload ? <div className="pointer-events-auto">
       <EvaluationChoices preferAppStore track={destination => destination === 'app_store' ? onDownload() : onStart()} />
-    </div> : <Link href="/analysis" prefetch={false} onClick={onStart} className={`${scanPill} pointer-events-auto min-h-12 w-full max-w-xs text-sm shadow-lg shadow-black/15`}>
+    </div> : <Link href="/analysis?entry=scan" prefetch={false} onClick={onStart} className={`${scanPill} pointer-events-auto min-h-12 w-full max-w-xs text-sm shadow-lg shadow-black/15`}>
       <ScanFace className="size-4 shrink-0" aria-hidden="true" />Start my face scan
     </Link>}
   </div>

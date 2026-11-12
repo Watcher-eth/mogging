@@ -9,7 +9,11 @@ assert(['127.0.0.1', 'localhost'].includes(origin.hostname), 'Use a local develo
 const front = resolve('public/analysis/studio/pair-front.jpg')
 const side = resolve('public/analysis/studio/pair-side.jpg')
 const engine = process.env.WEB_PAYWALL_BROWSER === 'webkit' ? webkit : chromium
-const browser = await engine.launch({ executablePath: process.env.WEB_PAYWALL_BROWSER_EXECUTABLE })
+const entryTest = process.env.WEB_ENTRY_TEST_ID
+const browser = await engine.launch({
+  executablePath: process.env.WEB_PAYWALL_BROWSER_EXECUTABLE,
+  ...(entryTest && engine === chromium ? { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] } : {}),
+})
 
 async function testPaywall(browser: Browser, surface: PaywallSurface, arm: PaywallExposure['arm']) {
   const mobile = surface === 'mobile'
@@ -118,16 +122,17 @@ async function testPaywall(browser: Browser, surface: PaywallSurface, arm: Paywa
 }
 
 async function testOnboarding(surface: PaywallSurface, arm: PaywallExposure['arm']) {
-  const short = arm === 'treatment'
+  const treatment = arm === 'treatment'
+  const short = treatment && !entryTest
   const mobile = surface === 'mobile'
-  const experimentId = process.env.WEB_ONBOARDING_TEST_ID!
+  const experimentId = entryTest ?? process.env.WEB_ONBOARDING_TEST_ID!
   const secret = process.env.NEXTAUTH_SECRET
   assert(secret, 'Provide the local server signing secret')
   const context = await browser.newContext(mobile ? devices['iPhone 15'] : { viewport: { width: 1440, height: 950 } })
   let visitor: string
   do {
     visitor = randomUUID()
-  } while (createHmac('sha256', secret).update(`mogging:paywall:${experimentId}:${surface}:${visitor}`).digest()[0] % 2 !== Number(short))
+  } while (createHmac('sha256', secret).update(`mogging:paywall:${experimentId}:${surface}:${visitor}`).digest()[0] % 2 !== Number(treatment))
   await context.addCookies([{ name: 'mogging_paywall_visitor', value: visitor, url: origin.origin }])
   const page = await context.newPage()
   page.setDefaultTimeout(20_000)
@@ -139,9 +144,14 @@ async function testOnboarding(surface: PaywallSurface, arm: PaywallExposure['arm
       if (url.pathname.startsWith('/api/')) return route.fulfill({ status: 404, json: { error: { message: 'Endpoint outside browser fixture' } } })
       return route.continue()
     })
-    await page.goto(new URL('/analysis?start=1', origin).href, { waitUntil: 'domcontentloaded' })
+    await page.goto(new URL(entryTest ? '/analysis?entry=scan' : '/analysis', origin).href, { waitUntil: 'domcontentloaded' })
     if (mobile) {
-      await page.getByRole('button', { name: 'I’m ready to Mog' }).click()
+      const welcome = page.getByRole('button', { name: 'I’m ready to Mog' })
+      if (!entryTest || !treatment) await welcome.click()
+      else {
+        await page.locator('[data-mobile-onboarding-step="dating"]').waitFor()
+        assert.equal(await welcome.count(), 0)
+      }
       const steps = ['dating', 'motivation', 'relevance', 'agency', 'transformation', 'goals',
         ...(short ? [] : ['obstacle', 'experience']), 'evidence', 'age', 'gender', ...(short ? [] : ['time']), 'commit']
       for (const step of steps) {
@@ -183,10 +193,48 @@ async function testOnboarding(surface: PaywallSurface, arm: PaywallExposure['arm
   }
 }
 
+async function testDirectCapture(tiktok: boolean) {
+  const device = tiktok
+    ? { ...devices['Pixel 7'], userAgent: devices['Pixel 7'].userAgent + ' musical_ly_2024203040' }
+    : devices['iPhone 15']
+  const context = await browser.newContext({ ...device, permissions: tiktok ? [] : ['camera'] })
+  const page = await context.newPage()
+  page.setDefaultTimeout(30_000)
+  try {
+    await context.route('**/*', route => {
+      const url = new URL(route.request().url())
+      if (url.origin !== origin.origin) return route.abort()
+      if (url.pathname === '/api/auth/session') return route.fulfill({ json: {} })
+      if (url.pathname.startsWith('/api/')) return route.fulfill({ json: {} })
+      return route.continue()
+    })
+    await page.goto(new URL('/analysis?start=1', origin).href)
+    if (tiktok) {
+      await page.getByRole('button', { name: 'Choose from library' }).waitFor()
+      assert.equal(await page.getByRole('button', { name: 'Open camera' }).count(), 0)
+      const picker = page.waitForEvent('filechooser')
+      await page.getByRole('button', { name: 'Choose from library' }).click()
+      await (await picker).setFiles(front)
+      await page.getByRole('button', { name: 'Use photo', exact: true }).click()
+    } else {
+      await page.getByRole('button', { name: 'Open camera' }).click()
+      await page.getByRole('button', { name: 'Take photo', exact: true }).click()
+      await page.getByRole('button', { name: 'Retake photo', exact: true }).waitFor()
+    }
+    await page.locator('[data-scan-step="preview-analysis"]').waitFor()
+    console.log(`PASS: direct ${tiktok ? 'Android TikTok library' : 'mobile camera auto-accept'} → scan preview`)
+  } finally {
+    await context.close()
+  }
+}
+
 try {
-  const cases = (['mobile', 'desktop'] as const).flatMap(surface => (['control', 'treatment'] as const).map(arm =>
-    process.env.WEB_ONBOARDING_TEST_ID ? testOnboarding(surface, arm) : testPaywall(browser, surface, arm),
-  ))
+  const cases = entryTest
+    ? [testOnboarding('mobile', 'control'), testOnboarding('mobile', 'treatment'), testDirectCapture(true),
+      ...(engine === chromium ? [testDirectCapture(false)] : [])]
+    : (['mobile', 'desktop'] as const).flatMap(surface => (['control', 'treatment'] as const).map(arm =>
+      process.env.WEB_ONBOARDING_TEST_ID ? testOnboarding(surface, arm) : testPaywall(browser, surface, arm),
+    ))
   const results = await Promise.allSettled(cases)
   const errors = results.flatMap(result => result.status === 'rejected' ? [result.reason] : [])
   if (errors.length) throw new AggregateError(errors, 'Web analysis browser checks failed')

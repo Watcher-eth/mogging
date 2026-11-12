@@ -12,7 +12,6 @@ import styles from './app-store-handoff.module.css'
 
 const ScanReportPreview = dynamic(() => import('./mobile-preview').then(module => module.ScanReportPreview))
 
-const analysisEntry = '/analysis?start=1'
 const storeAttemptKey = 'mogging.handoff.store-attempted'
 
 export function AppStoreHandoff({ assignment, autoRedirect = true, destination = 'store' }: { assignment: LandingAssignment; autoRedirect?: boolean; destination?: 'web' | 'store' }) {
@@ -36,6 +35,7 @@ export function AppStoreHandoff({ assignment, autoRedirect = true, destination =
       return
     }
     if (!automatic) document.cookie = homepageDestinationCookie('web', location.protocol === 'https:')
+    const analysisEntry = automatic ? '/analysis' : '/analysis?entry=scan'
     leavingForWeb.current = true
     if (storeAttempted.current) window.stop()
     void flushWebAnalytics()

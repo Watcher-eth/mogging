@@ -118,11 +118,14 @@ export function WebOnboardingDashboard({ data, days }: { data: AnalyticsDashboar
       }))} columns={['channel', ...webStages.map(([key]) => key), 'analysis_to_photo']} />
     </Panel>
     {['mobile_web', 'desktop_web'].map(channel => {
+      const stages = channel === 'desktop_web'
+        ? [...webStages.slice(0, 3), ['both_photos_ready', 'Both photos ready'] as const, ...webStages.slice(3)]
+        : webStages
       const stats = web.channels.find(row => row.channel === channel)
       const daily = (web.onboardingDaily ?? []).filter(row => row.channel === channel)
       const steps = web.steps.filter(row => row.channel === channel && Number(row.viewed) > 0)
       return <Panel key={channel} title={analyticsChannelLabel(channel)} description="Stage reach, activity by entry date, and screen-level continuation.">
-        <Bars animated rows={webStages.map(([key, title]) => ({ label: title, value: Number(stats?.[key] ?? 0) }))} />
+        <Bars animated rows={stages.map(([key, title]) => ({ label: title, value: Number(stats?.[key] ?? 0) }))} />
         <AnalyticsChart rows={daily} title={analyticsChannelLabel(channel) + ' onboarding over time'} metrics={webOnboardingMetrics} days={days} />
         <DataDetails><Table rows={steps.map(row => ({ ...row, completion_rate: percent(Number(row.completed), Number(row.viewed)) }))}
           columns={['step', 'viewed', 'completed', 'completion_rate', 'median_ms']} />

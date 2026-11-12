@@ -24,6 +24,7 @@ try{
  await event('paid','attribution_diagnostic',0,{path:'/r/fixture',action:'creator_landing_viewed',surface:'creator_landing'})
  await event('paid','onboarding_step_viewed',0,{step:'profile.motivation',analysis_variant:'desktop_photo_offer_v1'})
  await event('paid','onboarding_step_completed',.5,{step:'profile.motivation'})
+ await event('paid','photo_preparation_completed',.7,{step:'capture.both'})
  await event('paid','paywall_viewed',1)
  await event('paid','purchase_started',2,{attempt_id:'attempt-paid'})
  // The device clock can be ahead of the server. Exact checkout/attempt links own ordering.
@@ -65,7 +66,7 @@ try{
  assert.deepEqual(r.funnel.map((x:any)=>x.journeys),[4,2,2,2,1,1,1,1])
  assert(r.outcomes.some((x:any)=>x.channel==='desktop_web'&&x.outcome==='Stripe payment verified'&&x.attempts===2))
  assert(r.channels.some((x:any)=>x.channel==='mobile_web'&&x.capture_opened===1&&x.paid_journeys===0))
- assert(r.channels.some((x:any)=>x.channel==='desktop_web'&&x.creator_discount_purchases===1))
+ assert(r.channels.some((x:any)=>x.channel==='desktop_web'&&x.creator_discount_purchases===1&&x.both_photos_ready===1))
  assert(r.outcomes.some((x:any)=>x.outcome==='Stripe checkout expired'&&x.attempts===1))
  assert.deepEqual(r.postPurchase[0],{paid_accounts:2,accounts_evaluated:1,d1_eligible:2,d7_eligible:2,d1_returned:1,d7_returned:1})
  assert.equal(r.steps.find((step:any)=>step.step==='profile.motivation').completed,1)
@@ -92,10 +93,11 @@ try{
  await event('test-b', 'checkout_completed', 16, { ...treatment, ...payment, price: 0 }, 'server', 'free', null, 'stripe_verified')
  await event('test-b', 'checkout_completed', 1500, { ...treatment, ...payment }, 'server', 'late', null, 'stripe_verified')
  await event('test-c', 'paywall_plan_viewed', 1500, pending)
- const onboard = { ...experiment('d'), paywall_experiment_id: 'fixture_onboarding', paywall_experiment_kind: 'onboarding' }
+ const onboard = { ...experiment('d'), paywall_experiment_id: 'fixture_onboarding', paywall_experiment_kind: 'onboarding', paywall_experiment_focus: 'entry' }
  const dropout = { ...onboard, paywall_experiment_unit: 'e'.repeat(32) }
  await event('onboard-a', 'onboarding_interaction', 1, { ...onboard, action: 'experiment_entered' })
  await event('onboard-b', 'onboarding_interaction', 1, { ...dropout, action: 'experiment_entered' })
+ await event('onboard-a', 'onboarding_step_viewed', 2, { ...onboard, step: 'upload' })
  await event('onboard-a', 'onboarding_step_completed', 3, { ...onboard, step: 'upload' })
  await event('onboard-a', 'paywall_viewed', 4, onboard)
  await event('onboard-a', 'checkout_completed', 5, { ...onboard, ...payment }, 'server', 'cs_test_onboard', null, 'stripe_verified')
@@ -107,6 +109,7 @@ try{
  assert.deepEqual([b.exposed, b.mature, b.checkout_failures, b.paid].map(Number), [2, 1, 1, 0])
  assert(rows.some(row => row.arm === 'treatment' && row.browser === 'tiktok' && Number(row.mature) === 1))
  const onboarding = rows.find(row => row.kind === 'onboarding' && row.browser === 'all')!
- assert.deepEqual([onboarding.exposed, onboarding.photo_ready, onboarding.paywall_reached, onboarding.paid].map(Number), [2, 1, 1, 1])
+ assert.equal(onboarding.focus, 'entry')
+ assert.deepEqual([onboarding.exposed, onboarding.capture_reached, onboarding.photo_ready, onboarding.paywall_reached, onboarding.paid].map(Number), [2, 1, 1, 1, 1])
  console.log('PASS: browser-level paywall experiments, verified positive payments only, duplicate receipts, 24-hour maturity and browser diagnostics')
 }finally{await db.end()}

@@ -34,7 +34,7 @@ export const scanSequence: Variants = {
   leave: { transition: { staggerChildren: .018, staggerDirection: -1 } },
 }
 
-export function MobileScanWelcome({ appLink, onBegin, onSignIn }: { appLink?: ReactNode; onBegin: () => void; onSignIn: () => void }) {
+export function MobileScanWelcome({ appLink, onBegin, onSignIn, starting = false }: { appLink?: ReactNode; onBegin: () => void; onSignIn: () => void; starting?: boolean }) {
   const reduced = useReducedMotion()
   const feedback = useScanFeedback()
   const [scene, setScene] = useState(0)
@@ -61,7 +61,7 @@ export function MobileScanWelcome({ appLink, onBegin, onSignIn }: { appLink?: Re
       <motion.h1 variants={scanPart} custom={-14}>Ascend to your true potential.</motion.h1>
       <motion.p variants={scanPart} custom={-14}>Discover your true potential. Unlock the glow-up you’ve been dreaming of.</motion.p>
       <motion.div className={styles.dock} variants={scanPart} custom={24}>
-        <ScanButton onClick={onBegin}>I’m ready to Mog</ScanButton>
+        <ScanButton onClick={onBegin} disabled={starting}>{starting ? 'Starting…' : 'I’m ready to Mog'}</ScanButton>
         {appLink}
         <motion.button type="button" whileTap={reduced ? undefined : { scale: .96 }} onClick={() => { feedback(); onSignIn() }} className={styles.returning}>Already have an account? Sign in</motion.button>
       </motion.div>

@@ -6,6 +6,7 @@ export type PaywallExposure = {
   arm: 'control' | 'treatment'
   surface: PaywallSurface
   kind: 'length' | 'price' | 'onboarding'
+  focus?: 'entry'
   endsAt: number
   minimumPerArm: number
 }
@@ -18,6 +19,7 @@ export function paywallExperimentProperties(experiment?: PaywallExposure | null)
     paywall_experiment_arm: experiment.arm,
     paywall_experiment_surface: experiment.surface,
     paywall_experiment_kind: experiment.kind,
+    ...(experiment.focus ? { paywall_experiment_focus: experiment.focus } : {}),
     paywall_experiment_ends_at: experiment.endsAt,
     paywall_experiment_minimum: experiment.minimumPerArm,
   } : {}

@@ -225,11 +225,14 @@ type ImageFramePositions = Record<string, CaptureFrameImagePosition>
 const defaultFramePosition: CaptureFrameImagePosition = { x: 50, y: 50, scale: 1 }
 
 const previewPhotoUrl = '/model.png'
-type AnalysisEntryProps = { country: string | null; startWithPhoto: boolean; phoneEntry: boolean; uploadFirst: boolean; creatorEntry: { clickId: string; trackingLinkId: string; iosAppStoreUrl: string | null } | null; previewDevice: 'mobile' | 'desktop' | null; walkthrough: boolean; sampleReport: boolean; assignedOnboarding: PaywallExposure | null }
+type CaptureMode = 'camera_first' | 'library_first' | 'library_only'
+
+type AnalysisEntryProps = { country: string | null; startWithPhoto: boolean; phoneEntry: boolean; captureMode: CaptureMode; creatorEntry: { clickId: string; trackingLinkId: string; iosAppStoreUrl: string | null } | null; previewDevice: 'mobile' | 'desktop' | null; walkthrough: boolean; sampleReport: boolean; assignedOnboarding: PaywallExposure | null }
 
 export const getServerSideProps: GetServerSideProps<AnalysisEntryProps> = async ({ query, req, res }) => {
   const userAgent = req.headers['user-agent'] ?? ''
   const phoneEntry = isPhoneUserAgent(userAgent, req.headers['sec-ch-ua-mobile']?.toString())
+  const { browser_family, device_platform } = webRequestContext(userAgent)
   const attribution = query.creator_entry === 'direct'
     ? await import('@/lib/creator/attribution').then(({ resolveCreatorAttribution }) => resolveCreatorAttribution({
       req,
@@ -237,29 +240,30 @@ export const getServerSideProps: GetServerSideProps<AnalysisEntryProps> = async 
     }))
     : null
   const secret = process.env.NEXTAUTH_SECRET
-  const eligible = !query.from && !query.checkout && !query.analysisId && !query.preview && !query.resumePhoto && !query.basic
+  const startWithPhoto = query.start === '1'
+  const eligible = !startWithPhoto && !query.from && !query.checkout && !query.analysisId && !query.preview && !query.resumePhoto && !query.basic
   const assignedOnboarding = eligible && secret
-    ? quotePaywallExperiment(req, res, phoneEntry ? 'mobile' : 'desktop', secret, 'onboarding')?.exposure ?? null
+    ? quotePaywallExperiment(req, res, phoneEntry ? 'mobile' : 'desktop', secret, 'onboarding', query.entry === 'scan')?.exposure ?? null
     : null
   if (assignedOnboarding || query.creator_entry === 'direct') res.setHeader('Cache-Control', 'private, no-store')
   return { props: {
     assignedOnboarding,
     country: getRequestLocation(req).country,
     phoneEntry,
-    uploadFirst: webRequestContext(userAgent).browser_family === 'tiktok',
+    captureMode: browser_family !== 'tiktok' ? 'camera_first' : device_platform === 'android' ? 'library_only' : 'library_first',
     creatorEntry: attribution ? {
       clickId: attribution.clickId,
       trackingLinkId: attribution.trackingLinkId,
       iosAppStoreUrl: attribution.iosAppStoreUrl ?? null,
     } : null,
-    startWithPhoto: query.start === '1' && !assignedOnboarding,
+    startWithPhoto,
     sampleReport: process.env.NODE_ENV === 'development' && (query.preview === 'mobile' || query.preview === 'desktop') && query.walkthrough === '1' && query.report === 'sample',
     previewDevice: process.env.NODE_ENV === 'development' && (query.preview === 'mobile' || query.preview === 'desktop') ? query.preview : null,
     walkthrough: process.env.NODE_ENV === 'development' && (query.preview === 'mobile' || query.preview === 'desktop') && query.walkthrough === '1',
   } }
 }
 
-export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, creatorEntry, previewDevice, walkthrough, sampleReport, assignedOnboarding, country: requestCountry }: AnalysisEntryProps) {
+export default function AnalysisPage({ startWithPhoto, phoneEntry, captureMode, creatorEntry, previewDevice, walkthrough, sampleReport, assignedOnboarding, country: requestCountry }: AnalysisEntryProps) {
   const router = useRouter()
   const creatorEntryTracked = useRef<string | null>(null)
   useEffect(() => {
@@ -307,7 +311,8 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
   }, [detectedCountry, mobileScan])
   const [privacyAccepted, setPrivacyAccepted] = useState(false)
   const setupStep = setupSteps[setupIndex] ?? setupSteps[0]
-  const entryStep = startWithPhoto ? 'upload' : mobileScan ? 'intro' : 'desktop-setup'
+  const entryStep = startWithPhoto ? 'upload' : !mobileScan ? 'desktop-setup'
+    : onboardingExperiment?.focus === 'entry' && onboardingExperiment.arm === 'treatment' ? 'story' : 'intro'
   const [step, setStep] = useState<FlowStep>(sampleReport ? 'results' : entryStep)
   useEffect(() => {
     setStep(current => current === 'intro' || current === 'upload' || current === 'desktop-setup'
@@ -347,16 +352,32 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
   const [loadedCheckpointScope, setLoadedCheckpointScope] = useState<string>()
   const restoredCheckpoint = useRef(false)
   const checkpointReady = !checkpointEnabled || specialEntry || loadedCheckpointScope === checkpointScope
+  const showPendingWelcome = !checkpointReady && mobileScan && step === 'intro'
+  const [beginRequested, setBeginRequested] = useState(false)
+  const startupAt = useRef<number | null>(null)
+  const firstScreenTracked = useRef(false)
+  useEffect(() => {
+    if (walkthrough) return
+    startupAt.current ??= performance.now()
+    if (firstScreenTracked.current || (!checkpointReady && !showPendingWelcome)) return
+    firstScreenTracked.current = true
+    trackWebEvent('onboarding_interaction', {
+      surface: 'web_analysis', action: 'analysis_entry_rendered', step: mobileScan ? step : step === 'desktop-setup' ? `profile.${setupStep}` : step,
+      result: checkpointReady ? 'restored_or_fresh' : 'welcome_while_restoring',
+      duration_ms: Math.round(performance.now() - startupAt.current),
+      ...paywallExperimentProperties(onboardingExperiment),
+    })
+  }, [checkpointReady, mobileScan, onboardingExperiment, setupStep, showPendingWelcome, step, walkthrough])
   const desktopPreview = !mobileScan && step === 'actual-analysis' && !analysisUnlocked
   const desktopReport = desktopPreview || (!mobileScan && step === 'results' && !offerInstall)
   const desktopStep = step === 'desktop-setup' ? `profile.${setupStep}` : step === 'upload' ? `capture.${captureStep}` : step
-  const completeStep = useWebStep(desktopPreview ? 'report-preview' : mobileScan ? step : desktopStep, !walkthrough && checkpointReady, mobileScan ? WEB_ANALYSIS_VARIANTS.mobile : WEB_ANALYSIS_VARIANTS.desktop, onboardingExperiment)
+  const completeStep = useWebStep(desktopPreview ? 'report-preview' : mobileScan ? step : desktopStep, !walkthrough && (checkpointReady || showPendingWelcome), mobileScan ? WEB_ANALYSIS_VARIANTS.mobile : WEB_ANALYSIS_VARIANTS.desktop, onboardingExperiment)
   const enteredExperiment = useRef<string | undefined>(undefined)
   useEffect(() => {
-    if (!checkpointReady || !onboardingExperiment || enteredExperiment.current === onboardingExperiment.unit || (step !== 'intro' && step !== 'desktop-setup')) return
+    if ((!checkpointReady && !showPendingWelcome) || !onboardingExperiment || enteredExperiment.current === onboardingExperiment.unit || !['intro', 'story', 'desktop-setup'].includes(step)) return
     enteredExperiment.current = onboardingExperiment.unit
     trackWebEvent('onboarding_interaction', { surface: 'web_analysis', action: 'experiment_entered', ...paywallExperimentProperties(onboardingExperiment) })
-  }, [checkpointReady, onboardingExperiment, step])
+  }, [checkpointReady, onboardingExperiment, showPendingWelcome, step])
   const desktopConsentNotice = <div className="max-w-sm space-y-2 text-sm">
     {!inlineConsent && <label className="flex cursor-pointer items-center gap-2">
       <input type="checkbox" className="size-4 shrink-0 accent-black" checked={privacyAccepted} onChange={event => setPrivacyAccepted(event.target.checked)} />
@@ -428,7 +449,9 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
     if (canPreview && checkpoint?.paywallOpen) setPaywallPlacement('restored')
     setPaymentDialogOpen(canPreview && Boolean(checkpoint?.paywallOpen))
     setAutoPaywall(canPreview && Boolean(checkpoint?.autoPaywall))
-    const savedStep = checkpoint?.step ?? entryStep
+    const resumeSetup = checkpoint && ['intro', 'story', 'desktop-setup'].includes(checkpoint.step)
+    const savedStep = startWithPhoto && resumeSetup ? 'upload' : checkpoint?.step ?? entryStep
+    if (startWithPhoto && resumeSetup && !mobileScan) setCaptureStep('front')
     setPreviewDeadline(savedStep === 'preview-analysis' ? checkpoint?.previewDeadline ?? Date.now() + 10_000 : null)
     setDesktopScanStartedAt(savedStep === 'desktop-scan' ? checkpoint?.desktopScanStartedAt ?? Date.now() : undefined)
     const scanStep = savedStep === 'desktop-scan' || savedStep === 'preview-analysis' || savedStep === 'actual-analysis'
@@ -442,14 +465,43 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
       return
     }
     let active = true
-    void loadAnalysisCheckpoint(checkpointScope).catch(() => null).then(checkpoint => {
+    const started = performance.now()
+    const finish = (checkpoint: Awaited<ReturnType<typeof loadAnalysisCheckpoint>>, result: string) => {
       if (!active) return
+      active = false
       restoredCheckpoint.current = Boolean(checkpoint)
       restoreCheckpoint(checkpoint)
       setLoadedCheckpointScope(checkpointScope)
+      if (!walkthrough) trackWebEvent('onboarding_interaction', {
+        surface: 'web_analysis', action: 'analysis_checkpoint_resolved', result,
+        duration_ms: Math.round(performance.now() - started),
+      })
+    }
+    const timeout = window.setTimeout(() => finish(null, 'timed_out'), 5000)
+    void loadAnalysisCheckpoint(checkpointScope)
+      .then(checkpoint => finish(checkpoint, checkpoint ? 'restored' : 'empty'), () => finish(null, 'unavailable'))
+      .finally(() => window.clearTimeout(timeout))
+    return () => { active = false; window.clearTimeout(timeout) }
+  }, [checkpointEnabled, checkpointScope, loadedCheckpointScope, router.isReady, specialEntry, status, walkthrough])
+
+  useEffect(() => {
+    if (!checkpointReady || !beginRequested) return
+    setBeginRequested(false)
+    if (step === 'intro') {
+      completeStep()
+      setStep('story')
+    }
+  }, [beginRequested, checkpointReady, completeStep, step])
+
+  function beginMobileOnboarding() {
+    if (!walkthrough) trackWebEvent('onboarding_interaction', {
+      surface: 'web_analysis', step: 'intro', action: 'welcome_cta_tapped',
+      result: checkpointReady ? 'ready' : 'restoring', ...paywallExperimentProperties(onboardingExperiment),
     })
-    return () => { active = false }
-  }, [checkpointEnabled, checkpointScope, loadedCheckpointScope, router.isReady, specialEntry, status])
+    if (!checkpointReady) { setBeginRequested(true); return }
+    completeStep()
+    setStep('story')
+  }
 
   useCheckpointEffect(() => {
     if (!checkpointEnabled || !router.isReady || specialEntry || loadedCheckpointScope !== checkpointScope) return
@@ -473,7 +525,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
   const primaryScore = primaryResult?.analysis.pslScore ?? null
   const isPreparingUploads = Object.values(landmarkPendingIds).some(Boolean)
   const reportCount = images.filter(image => image.view !== 'side').length
-  const canStart = images.some(image => image.view !== 'side') && (mobileScan || images.some(image => image.view === 'side')) && step === 'upload' && (!mobileScan || !isPreparingUploads) && !preparingScan && (walkthrough || status !== 'loading')
+  const canStart = images.some(image => image.view !== 'side') && (mobileScan || images.some(image => image.view === 'side')) && step === 'upload' && !preparingScan && (walkthrough || status !== 'loading')
 
   const selectedImage = useMemo(
     () => images.find((image) => image.id === selectedImageId) ?? images[images.length - 1] ?? null,
@@ -481,13 +533,41 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
   )
   const previewImage = selectedImage?.dataUrl ?? null
 
+  const pendingPicker = useRef<{ placement: string; step: string; started: number } | null>(null)
+  function openPhotoPicker(placement: 'upload' | 'camera', side = false) {
+    const input = side ? sideInputRef.current : uploadInputRef.current
+    if (!input) return
+    const step = mobileScan ? 'upload' : side ? 'capture.side' : 'capture.front'
+    pendingPicker.current = { placement, step, started: performance.now() }
+    if (!walkthrough) trackWebEvent('photo_source_selected', { surface: 'web_analysis', source: 'picker', placement, step })
+    input.click()
+  }
+
+  const finishPicker = useCallback((result: 'selected' | 'cancelled') => {
+    const picker = pendingPicker.current
+    pendingPicker.current = null
+    if (!walkthrough && picker) trackWebEvent('photo_picker_result', {
+      surface: 'web_analysis', placement: picker.placement, step: picker.step, result,
+      duration_ms: Math.round(performance.now() - picker.started),
+    })
+  }, [walkthrough])
+
   useEffect(() => {
-    const input = uploadInputRef.current
-    if (mobileScan || !input) return
-    const finish = () => setDesktopPhotoStatus(null)
-    input.addEventListener('cancel', finish)
-    return () => input.removeEventListener('cancel', finish)
-  }, [mobileScan])
+    const inputs = [uploadInputRef.current, sideInputRef.current]
+    const cancel = () => { setDesktopPhotoStatus(null); finishPicker('cancelled') }
+    inputs.forEach(input => input?.addEventListener('cancel', cancel))
+    return () => inputs.forEach(input => input?.removeEventListener('cancel', cancel))
+  }, [finishPicker, mobileScan])
+
+  const hasDesktopPair = !mobileScan && images.some(image => image.view !== 'side') && images.some(image => image.view === 'side')
+  const trackedDesktopPair = useRef(false)
+  useEffect(() => {
+    if (!hasDesktopPair || walkthrough || trackedDesktopPair.current) return
+    trackedDesktopPair.current = true
+    trackWebEvent('photo_preparation_completed', {
+      surface: 'web_analysis', step: 'capture.both', count: 2, ...paywallExperimentProperties(onboardingExperiment),
+    })
+  }, [hasDesktopPair, onboardingExperiment, walkthrough])
 
   async function handleFiles(event: ChangeEvent<HTMLInputElement>, side = false) {
     const replace = mobileScan ? undefined
@@ -495,6 +575,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
     const remaining = Math.max(0, 3 - images.length) + Number(Boolean(replace))
     const files = Array.from(event.target.files || []).slice(0, !mobileScan ? Math.min(1, remaining) : remaining)
     event.target.value = ''
+    finishPicker(files.length ? 'selected' : 'cancelled')
     if (files.length === 0) {
       if (!mobileScan) setDesktopPhotoStatus(null)
       return
@@ -1257,7 +1338,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
       {!mobileScan && <input ref={sideInputRef} className="hidden" type="file" accept="image/*" onChange={event => void handleFiles(event, true)} />}
       <MotionConfig reducedMotion="user"><LayoutGroup id="desktop-analysis">
       <section ref={scanFrame} className="public-frame relative min-h-[calc(100svh-5rem)] overflow-hidden bg-white">
-        {!checkpointReady ? <ProcessScreen><p className="text-center text-sm text-zinc-500" role="status">Restoring your progress…</p></ProcessScreen> : walkthroughCheckout ? (
+        {!checkpointReady && !showPendingWelcome ? <ProcessScreen><p className="text-center text-sm text-zinc-500" role="status">Restoring your progress…</p></ProcessScreen> : walkthroughCheckout ? (
           <div className="assessment-columns public-gutters">
             <div className="assessment-copy">
               <p className="assessment-kicker">Walkthrough preview</p>
@@ -1297,7 +1378,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
         ) : <AnimatePresence initial={mobileScan} mode={step === 'story' ? 'wait' : 'popLayout'}>
           {step === 'intro' && mobileScan ? (
             <ScreenMotion key="intro" managedMotion>
-              <MobileScanWelcome appLink={creatorAppLink} onBegin={() => setStep('story')} onSignIn={() => {
+              <MobileScanWelcome appLink={creatorAppLink} onBegin={beginMobileOnboarding} starting={beginRequested} onSignIn={() => {
                 setLoginCallback(router.asPath)
                 setLoginOpen(true)
               }} />
@@ -1334,8 +1415,8 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
                   : !startWithPhoto ? () => { setDesktopDirection(-1); setSetupIndex(setupSteps.length - 1); setStep('desktop-setup') } : undefined}
                 onContinue={advanceDesktopCapture} onChooseFront={() => {
                   if (captureStep === 'front' && images.some(image => image.view !== 'side')) setDesktopPhotoStatus('Choose a replacement photo…')
-                  uploadInputRef.current?.click()
-                }} onChooseSide={() => sideInputRef.current?.click()}
+                  openPhotoPicker('upload')
+                }} onChooseSide={() => openPhotoPicker('upload', true)}
                 onCamera={() => setCameraOpen(true)}
                 onRemove={id => {
                   removeImage(id)
@@ -1347,18 +1428,15 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
 
           {step === 'upload' && mobileScan ? (
             <ScreenMotion key="upload" managedMotion>
-              <MobileUploadScreen appLink={creatorAppLink} isPreparingUploads={isPreparingUploads}
-                uploadFirst={uploadFirst}
+              <MobileUploadScreen appLink={creatorAppLink}
+                captureMode={captureMode}
                 previewImage={previewImage} imagePosition={selectedImage ? imageFramePositions[selectedImage.id] ?? defaultFramePosition : defaultFramePosition}
                 selectedImageId={selectedImage?.id ?? null} canStart={canStart}
                 onCamera={() => setCameraOpen(true)} onUseSample={walkthrough ? () => selectSamplePhoto() : undefined}
                 onImagePositionChange={position => {
                   if (selectedImage) setImageFramePositions(current => ({ ...current, [selectedImage.id]: position }))
                 }}
-                onRemove={removeImage} onStart={() => void startPseudoAnalysis()} onUpload={() => {
-                  if (!walkthrough) trackWebEvent('photo_source_selected', { surface: 'web_analysis', source: 'picker', placement: 'upload' })
-                  uploadInputRef.current?.click()
-                }} />
+                onRemove={removeImage} onStart={() => void startPseudoAnalysis()} onUpload={() => openPhotoPicker('upload')} />
             </ScreenMotion>
           ) : null}
 
@@ -1507,11 +1585,9 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
           onFrontPhoto={dataUrl => setCameraFront(dataUrl ? { id: crypto.randomUUID(), name: 'Camera photo', dataUrl } : null)}
           onClose={() => { setCameraFront(null); setCameraOpen(false) }}
           onUpload={() => {
-            if (!walkthrough) trackWebEvent('photo_source_selected', { surface: 'web_analysis', source: 'picker', placement: 'camera' })
             setCameraFront(null)
             setCameraOpen(false)
-            const input = !mobileScan && captureStep === 'side' ? sideInputRef : uploadInputRef
-            input.current?.click()
+            openPhotoPicker('camera', !mobileScan && captureStep === 'side')
           }}
         />
       ) : null}
@@ -1543,11 +1619,10 @@ const ScreenMotion = forwardRef<HTMLDivElement, { children: ReactNode; managedMo
   )
 })
 
-function MobileUploadScreen({ appLink, canStart, imagePosition, isPreparingUploads, onCamera, onImagePositionChange, onRemove, onStart, onUpload, onUseSample, previewImage, selectedImageId, uploadFirst }: {
+function MobileUploadScreen({ appLink, canStart, imagePosition, onCamera, onImagePositionChange, onRemove, onStart, onUpload, onUseSample, previewImage, selectedImageId, captureMode }: {
   appLink?: ReactNode
   canStart: boolean
   imagePosition: CaptureFrameImagePosition
-  isPreparingUploads: boolean
   onCamera: () => void
   onImagePositionChange: (position: CaptureFrameImagePosition) => void
   onRemove: (id: string) => void
@@ -1556,9 +1631,10 @@ function MobileUploadScreen({ appLink, canStart, imagePosition, isPreparingUploa
   onUseSample?: () => void
   previewImage: string | null
   selectedImageId: string | null
-  uploadFirst: boolean
+  captureMode: CaptureMode
 }) {
   const feedback = useScanFeedback()
+  const uploadFirst = captureMode !== 'camera_first'
   return (
     <motion.div className="mobile-capture-screen" variants={scanSequence} initial="enter" animate="visible" exit="leave">
       {previewImage && <div data-scan-portrait="review" className="mobile-capture-photo">
@@ -1587,14 +1663,14 @@ function MobileUploadScreen({ appLink, canStart, imagePosition, isPreparingUploa
           {previewImage ? <>
             <motion.button type="button" className="mobile-capture-primary" disabled={!canStart}
               whileTap={{ scale: .95 }} onClick={() => { feedback('action'); onStart() }}>
-              {isPreparingUploads ? <Loader2 size={21} className="animate-spin" /> : <ScanFace size={21} />} Use photo
+              <ScanFace size={21} /> Use photo
             </motion.button>
             <motion.button type="button" className="mobile-capture-icon" aria-label="Retake photo" whileTap={{ scale: .94 }}
               onClick={() => { feedback(); if (selectedImageId) onRemove(selectedImageId) }}><RotateCcw size={22} /></motion.button>
           </> : uploadFirst ? <>
             <motion.button type="button" className="mobile-capture-primary" whileTap={{ scale: .95 }}
               onClick={() => { feedback('action'); onUpload() }}><ImagePlus size={19} /> Choose from library</motion.button>
-            <button type="button" className="guided-scan-secondary" onClick={() => { feedback(); onCamera() }}>Open camera</button>
+            {captureMode === 'library_first' && <button type="button" className="guided-scan-secondary" onClick={() => { feedback(); onCamera() }}>Open camera</button>}
           </> : <motion.button type="button" className="mobile-capture-primary" whileTap={{ scale: .95 }}
             onClick={() => { feedback('action'); onCamera() }}><Camera size={17} /> Open camera</motion.button>}
         </motion.div>
