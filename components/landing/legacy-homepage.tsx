@@ -65,8 +65,7 @@ export default function LegacyHomepage({assignment, preview, ios, android}: {ass
               className={"flex w-full flex-col items-center"}
             >
               <div className="contents">
-              <p className="font-mono text-sm font-bold uppercase tracking-normal text-zinc-500 sm:text-base">Ascend now with</p>
-              <h1 className="mt-5 max-w-6xl text-center text-[3.6rem] font-semibold leading-[0.9] tracking-[-0.075em] text-black sm:text-[7rem] lg:text-[clamp(4rem,6vw,7rem)] lg:text-left">
+              <h1 className="max-w-6xl text-center text-[3.6rem] font-semibold leading-[0.9] tracking-[-0.075em] text-black sm:text-[7rem] lg:text-[clamp(4rem,6vw,7rem)] lg:text-left">
                 Mogging. Your face, in focus.
               </h1>
               <p className="mt-7 max-w-3xl text-center text-xl leading-8 text-zinc-500 sm:text-2xl sm:leading-9 lg:text-left">
