@@ -33,6 +33,7 @@ export function ReachViewTag({ counts }: { counts?: ReachViewCounts | null }) {
     {percent === null ? 'Reach / views unavailable' : <>
       Reach / views {counts?.approximate || counts?.unverified ? '≈' : ''}{percentFormat.format(percent)}%
       {category ? ` · ${ranges[category].label}` : ''}
+      {counts?.source === 'creator_submitted_views' ? ' · Creator-submitted views' : null}
     </>}
   </span>
 }
@@ -53,6 +54,10 @@ export function SubmissionReachViews({ id, storageKey, counts, onSaved }: {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const displayedCounts = savedCounts ?? counts
+  const usesSubmittedViews = displayedCounts?.source === 'creator_submitted_views'
+  const countSource = displayedCounts?.source === 'manual' ? 'Entered by admin'
+    : usesSubmittedViews ? 'OCR reach'
+    : displayedCounts?.unverified ? 'Unverified OCR' : 'OCR'
   const hasRatio = reachViewPercent(displayedCounts?.reach, displayedCounts?.views) !== null
   const defaults = {
     reach: isReachViewCount(displayedCounts?.reach) ? String(displayedCounts.reach) : '',
@@ -107,8 +112,8 @@ export function SubmissionReachViews({ id, storageKey, counts, onSaved }: {
         {hasRatio ? <Button size="sm" type="button" variant="ghost" disabled={saving} onClick={() => { setDraft(null); setError('') }}>Cancel</Button> : null}
       </div>
     </form> : <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-      <p className="text-xs tabular-nums text-zinc-600">{displayedCounts?.reach?.toLocaleString()} unique viewers · {displayedCounts?.approximate ? '≈' : ''}{displayedCounts?.views?.toLocaleString()} views · {displayedCounts?.source === 'manual' ? 'Entered by admin' : displayedCounts?.unverified ? 'Unverified OCR' : 'OCR'}</p>
-      {displayedCounts?.source === 'manual' ? <Button size="sm" type="button" variant="outline" onClick={() => setDraft(defaults)}>Edit counts</Button> : null}
+      <p className="text-xs tabular-nums text-zinc-600">{displayedCounts?.reach?.toLocaleString()} unique viewers · {displayedCounts?.approximate ? '≈' : ''}{displayedCounts?.views?.toLocaleString()} views · {countSource}</p>
+      {usesSubmittedViews || displayedCounts?.source === 'manual' ? <Button size="sm" type="button" variant="outline" onClick={() => setDraft(defaults)}>Edit counts</Button> : null}
     </div>}
     {error ? <p role="alert" className="mt-2 text-xs text-red-700">{error}</p> : null}
   </section>
