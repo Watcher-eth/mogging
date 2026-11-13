@@ -93,6 +93,7 @@ export type AdminAccount = {
 }
 
 export type AdminSubmission = {
+  tiktokAnchorLinked?: boolean
   reachViewCounts?: import('@/lib/admin/reach-views').ReachViewCounts | null
   studioGenerationId?: string | null
   exclusivityConfirmed?: boolean
@@ -194,7 +195,7 @@ export type AdminDashboard = {
 
 export type AdminQueueSubmission = Pick<AdminSubmission,
   'id' | 'creatorProfileId' | 'creatorName' | 'socialHandle' | 'sprintId' | 'sprintName' |
-  'formatId' | 'title' | 'platform' | 'status' | 'approvedAmountCents' | 'adminViewCountThreshold' | 'reachViewCounts' |
+  'formatId' | 'title' | 'platform' | 'tiktokAnchorLinked' | 'status' | 'approvedAmountCents' | 'adminViewCountThreshold' | 'reachViewCounts' |
   'adminUsAudiencePercent' | 'createdAt' | 'reviewRequestedAt' | 'studioGenerationId' | 'sprintTerms' | 'analyticsVideoRequest'
 > & { formatName?: string | null; retainerTerms?: import('@/lib/creator/retainer').CreatorRetainer | null;
   submitOnPublish?: boolean; viewCountThreshold?: number | null;

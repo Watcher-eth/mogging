@@ -97,6 +97,24 @@ describe('admin overview approvals', () => {
     ])
   })
 
+  test('prioritizes reported TikTok Anchor posts within their campaign and keeps review request order', () => {
+    const feature = { status: 'pending', platform: 'TikTok', formatId: 'launch-feature-comparison-v1' } as const
+    const submissions = [
+      { ...feature, id: 'old-standard', createdAt: '2026-11-08' },
+      { ...feature, id: 'new-anchor', createdAt: '2026-11-12', tiktokAnchorLinked: true },
+      { ...feature, id: 'anchor-rereview', createdAt: '2026-11-01', reviewRequestedAt: '2026-11-13', tiktokAnchorLinked: true },
+      { ...feature, id: 'earliest-anchor', createdAt: '2026-11-11', tiktokAnchorLinked: true },
+      { ...feature, id: 'instagram', platform: 'Instagram Reels', createdAt: '2026-11-09', tiktokAnchorLinked: true },
+      { ...feature, id: 'approved', status: 'approved', createdAt: '2026-11-01', tiktokAnchorLinked: true },
+      { ...feature, id: 'other-campaign', formatId: 'launch-general-looksmaxxing-v1', createdAt: '2026-11-10', tiktokAnchorLinked: true },
+    ] as AdminQueueSubmission[]
+
+    const [general, comparison] = getSubmissionReviewQueues({ submissions })
+    expect(general.priority.map(({ item }) => item.id)).toEqual(['other-campaign'])
+    expect(comparison.priority.map(({ item }) => item.id)).toEqual(['earliest-anchor', 'new-anchor', 'anchor-rereview'])
+    expect(comparison.standard.map(({ item }) => item.id)).toEqual(['old-standard', 'instagram'])
+  })
+
   test('uses a rolling 24-hour window and excludes invalid or future timestamps', () => {
     const now = Date.parse('2026-09-29T12:00:00Z')
     expect(isNewInLastDay('2026-09-28T12:00:01Z', now)).toBe(true)

@@ -10,6 +10,7 @@ import { CampaignVersionToggle } from './campaign-version-toggle'
 import { launchCampaign } from '@/lib/creator/campaign-launch'
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { TikTokAccountDialog } from './tiktok-anchor-onboarding'
+import { TikTokAnchorPriorityCheckbox } from './tiktok-anchor-priority-checkbox'
 import { publishingTikTokHandle, tiktokAnchorEligible } from '@/lib/creator/tiktok-anchor'
 import { detectPostingAccount } from '@/lib/creator/post-account'
 import { creatorContentRestriction } from '@/lib/creator/content-policy'
@@ -113,6 +114,7 @@ export function SubmissionDialog({
   const [selectedAccountId, setAccountId] = useState(existingSubmission?.socialAccountId || '')
   const [anchorSetupOpen, setAnchorSetupOpen] = useState(false)
   const [usedRefCode, setUsedRefCode] = useState(false)
+  const [tiktokAnchorLinked, setTikTokAnchorLinked] = useState(false)
   const [postUrl, setPostUrl] = useState(existingSubmission?.postUrl || '')
   const [recording, setRecording] = useState<File | null>(null)
   const [physicalConfirmed, setPhysicalConfirmed] = useState(false)
@@ -266,6 +268,7 @@ export function SubmissionDialog({
         requirementsConfirmed: true,
         socialAccountId: accountId || null,
         postUrl,
+        ...(!existingSubmission && platform === 'tiktok' ? { tiktokAnchorLinked } : {}),
         ...(earlySubmission ? { earlySubmission: true } : evidence),
         ...(analyticsRequest ? { analyticsVideoRequestId: analyticsRequest.id } : {}),
       })
@@ -413,7 +416,21 @@ export function SubmissionDialog({
                       </div>
                       <PublishedPostPlayer postUrl={postUrl} />
                       <div className="grid gap-2">
-                      <Field label="Video URL"><input className={fieldClass} type="url" value={postUrl} onChange={event => { setPostUrl(event.target.value); setAccountId(''); setConfirmed([]) }} placeholder={sprint?.terms.platforms.includes('youtube') ? "Paste your TikTok, Instagram or YouTube link" : "Paste your TikTok or Instagram link"} required /></Field>
+                      <Field label="Video URL">
+                        <input
+                          className={fieldClass}
+                          type="url"
+                          value={postUrl}
+                          onChange={event => {
+                            if (event.target.value.trim() !== postUrl.trim()) setTikTokAnchorLinked(false)
+                            setPostUrl(event.target.value)
+                            setAccountId('')
+                            setConfirmed([])
+                          }}
+                          placeholder={sprint?.terms.platforms.includes('youtube') ? 'Paste your TikTok, Instagram or YouTube link' : 'Paste your TikTok or Instagram link'}
+                          required
+                        />
+                      </Field>
                       {((detected.handle && !publishingAccount) || (platform && platform !== 'youtube' && !detected.candidates.length)) ? <div aria-live="polite">
                         {detected.handle && !publishingAccount ? <p className="text-xs leading-5 text-amber-700">This post is from @{detected.handle}. <Link href="/creator/accounts" className="font-semibold underline">Connect this account</Link> before submitting.</p> : platform && !detected.candidates.length ? <p className="text-xs text-amber-700"><Link href="/creator/accounts" className="underline">Connect a {platform} account</Link> before submitting.</p> : null}
                       </div> : null}
@@ -427,6 +444,9 @@ export function SubmissionDialog({
                       <span>Did you use a ref code <span className="text-zinc-400">(optional)</span></span>
                     </label>
                       </div>
+                      {platform === 'tiktok' ? (
+                        <TikTokAnchorPriorityCheckbox checked={tiktokAnchorLinked} onChange={setTikTokAnchorLinked} />
+                      ) : null}
                       {anchorAvailable && publishingAccount ? (
                         <div className="rounded-xl bg-zinc-100 p-4 text-sm leading-6">
                           <strong>TikTok app anchor · Required</strong>

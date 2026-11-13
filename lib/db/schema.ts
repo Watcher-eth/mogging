@@ -837,6 +837,7 @@ export const creatorSubmissions = pgTable(
     caption: text('caption'),
     postUrl: text('post_url'),
     postKey: text('post_key'),
+    tiktokAnchorLinked: boolean('tiktok_anchor_linked').notNull().default(false),
     studioGenerationId: text('studio_generation_id').references(() => creatorStudioGenerations.id),
     videoUrl: text('video_url'),
     videoStorageKey: text('video_storage_key'),

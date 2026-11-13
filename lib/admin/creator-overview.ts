@@ -72,7 +72,16 @@ export function getSubmissionReviewQueues<T extends AdminQueueSubmission>(data: 
     const queueId = submissionReviewQueueId(target.item)
     queues.get(queueId)!.push(target)
   }
-  return [...queues].filter(([id, items]) => id !== 'other' || items.length).map(([id, items]) => ({ id, label: submissionReviewQueueLabels[id], items }))
+  return [...queues].filter(([id, items]) => id !== 'other' || items.length).map(([id, items]) => {
+    const priority: QueueTarget<T>[] = []
+    const standard: QueueTarget<T>[] = []
+    for (const target of items) {
+      const { platform, tiktokAnchorLinked } = target.item
+      const group = tiktokAnchorLinked === true && platform?.toLowerCase() === 'tiktok' ? priority : standard
+      group.push(target)
+    }
+    return { id, label: submissionReviewQueueLabels[id], items: [...priority, ...standard], priority, standard }
+  })
 }
 
 export function isNewInLastDay(value: string, now = Date.now()) {

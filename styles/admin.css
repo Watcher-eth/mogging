@@ -39,6 +39,10 @@
 .admin-list { border-top: 1px solid var(--admin-border); }
 .admin-resource-row { padding: 20px 8px; border-bottom: 1px solid var(--admin-border); background: white; }
 .admin-resource-row:hover { background: #fafbfc; }
+.admin-anchor-priority .admin-resource-row { background: transparent; border-bottom: 0; }
+.admin-anchor-priority > * + * { border-top: 1px solid #dbeafe; }
+.admin-anchor-priority .admin-resource-row:hover { background: #e4efff; }
+.admin-anchor-priority :is(button, a):focus-visible { outline-offset: -3px; }
 .admin-portal .admin-page :is(h2, h3) { font-weight: 500; }
 .admin-portal .admin-page [class*="shadow-"] { box-shadow: none; }
 .admin-portal .admin-page [class*="rounded-[28px]"] { border-radius: 14px; }

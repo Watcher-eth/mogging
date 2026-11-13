@@ -491,6 +491,7 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
       requirementsConfirmedAt: new Date(),
       title: format.name,
       platform: creatorPostPlatformLabels[platform],
+      tiktokAnchorLinked: platform === 'tiktok' && input.tiktokAnchorLinked === true,
       caption: input.caption || draft?.caption || null,
       postedAt: input.postedAt ? new Date(input.postedAt) : draft?.postedAt || null,
       isDraft: false,

@@ -36,11 +36,23 @@ beforeEach(() => {
 })
 test('new facial videos can be tracked at zero views without invented analytics or reserved earnings', async () => {
   const result = await createCreatorSubmission('user', input)
-  expect(result).toMatchObject({ viewCountThreshold: 0, usAudiencePercent: null, analyticsScreenshotUrl: null, analyticsStorageKey: null, isDraft: false })
+  expect(result).toMatchObject({ viewCountThreshold: 0, usAudiencePercent: null, analyticsScreenshotUrl: null, analyticsStorageKey: null, isDraft: false, tiktokAnchorLinked: false })
   expect(result.sprintTerms?.rules).toContain(ANCHOR_REQUIREMENT)
   expect(evidenceChecks).toBe(0)
   expect(requestedCents).toBe(0)
 })
+test('saves the creator’s Anchor report for TikTok posts from both submission forms', async () => {
+  const result = await createCreatorSubmission('user', { ...input, tiktokAnchorLinked: true })
+  expect(result.tiktokAnchorLinked).toBe(true)
+
+  const generationId = '22222222-2222-4222-8222-222222222222'
+  generation = { id: generationId, sprintId: campaign.id, sprintTerms: generatedTerms, formatId: input.formatId, composition: { title: 'Export' } }
+  const studio = await submitStudioPost('user', {
+    generationId, postUrl: input.postUrl, socialAccountId: account.id, requirementsConfirmed: true, tiktokAnchorLinked: true,
+  })
+  expect(studio.tiktokAnchorLinked).toBe(true)
+})
+
 test('other campaigns cannot use the early submission API to skip analytics', async () => {
   campaign.terms = launchCampaignTerms(LAUNCH_CAMPAIGNS[1])
   await expect(createCreatorSubmission('user', input)).rejects.toThrow('requires analytics at its first milestone')
@@ -56,13 +68,14 @@ test('duplicate and inactive campaigns are still rejected for immediate submissi
 
 test('MGC accepts a YouTube Short without a connected account and stores its canonical identity', async () => {
   const result = await createCreatorSubmission('user', {
-    ...input, socialAccountId: null, postUrl: 'https://www.youtube.com/shorts/AbCdEf123_4?si=share',
+    ...input, socialAccountId: null, postUrl: 'https://www.youtube.com/shorts/AbCdEf123_4?si=share', tiktokAnchorLinked: true,
   })
   expect(result).toMatchObject({
     platform: 'YouTube',
     socialAccountId: null,
     postUrl: 'https://www.youtube.com/watch?v=AbCdEf123_4',
     postKey: 'youtube:AbCdEf123_4',
+    tiktokAnchorLinked: false,
     viewCountThreshold: 0,
   })
   expect(evidenceChecks).toBe(0)

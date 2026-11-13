@@ -19,7 +19,7 @@ export const studioGenerationSchema = z.object({
   id: z.string().uuid(), personId: z.string().trim().min(1).max(100), storyId: z.string().trim().min(1).max(160),
   contentHash: z.string().regex(/^[a-f0-9]{64}$/), composition: compositionSchema,
 }).strict()
-export const studioPostSchema = z.object({ generationId: z.string().uuid(), postUrl: creatorPostUrlSchema, socialAccountId: z.string().uuid().nullable(), requirementsConfirmed: z.literal(true) }).strict()
+export const studioPostSchema = z.object({ generationId: z.string().uuid(), postUrl: creatorPostUrlSchema, socialAccountId: z.string().uuid().nullable(), requirementsConfirmed: z.literal(true), tiktokAnchorLinked: z.boolean().optional() }).strict()
   .refine(input => creatorPostPlatform(input.postUrl) === 'youtube' ? input.socialAccountId === null : Boolean(input.socialAccountId), { path: ['socialAccountId'], message: 'Choose a matching posting account for TikTok or Instagram' })
 export const studioCampaignAllows = canSeeCampaign
 export function studioCampaignKey(recipe: VideoRecipe) { return recipe === 'measurement-explainer' ? 'feature-comparison' : 'detailed-analysis' }
@@ -92,7 +92,22 @@ export async function submitStudioPost(userId: string, value: unknown) {
     if (!format) throw new ApiError(409, 'The saved campaign format is unavailable')
     const terms = { ...generation.sprintTerms, platforms: campaignSubmissionPlatforms({ id: campaign.id, terms: generation.sprintTerms }) }
     const submissionTerms = withAnchorRequirement(creatorRetainerTerms(terms, profile.retainerTerms))
-    const [submission] = await tx.insert(schema.creatorSubmissions).values({ creatorProfileId: profile.id, socialAccountId: socialAccount?.id, studioGenerationId: generation.id, sprintId: generation.sprintId, sprintTerms: submissionTerms, formatId: generation.formatId, title: generation.composition.title, platform: creatorPostPlatformLabels[platform], postUrl: postLink.url, postKey: postLink.key, requirementsConfirmedAt: new Date(), isDraft: false, status: 'pending' }).returning()
+    const [submission] = await tx.insert(schema.creatorSubmissions).values({
+      creatorProfileId: profile.id,
+      socialAccountId: socialAccount?.id,
+      studioGenerationId: generation.id,
+      sprintId: generation.sprintId,
+      sprintTerms: submissionTerms,
+      formatId: generation.formatId,
+      title: generation.composition.title,
+      platform: creatorPostPlatformLabels[platform],
+      tiktokAnchorLinked: platform === 'tiktok' && input.tiktokAnchorLinked === true,
+      postUrl: postLink.url,
+      postKey: postLink.key,
+      requirementsConfirmedAt: new Date(),
+      isDraft: false,
+      status: 'pending',
+    }).returning()
     await recordSubmissionUpdate(tx, submission.id, 'submitted', submissionTerms.retainer ? 'Posted under the per-video retainer. Add analytics to verify the minimum audience; no view minimum applies.' : 'Posted from Creator Video Studio. Analytics can be added at the first campaign milestone.')
     return submission
   }).catch(rethrowCreatorPostConflict)

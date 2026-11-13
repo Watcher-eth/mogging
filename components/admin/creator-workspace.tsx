@@ -257,7 +257,7 @@ function Overview({ data, onSelectSubmission, onRefresh, historyVersion = 0 }: {
       </div>
       <div className="mt-7"><BundledPayoutQueue data={data} onRefresh={onRefresh} /></div>
       <section className="mt-7">
-        <div className="mb-4"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Review queues</p><div className="mt-2 flex flex-wrap items-baseline justify-between gap-2"><h2 className="text-2xl font-semibold tracking-[-0.045em]">First come, first served</h2><span className="text-xs tabular-nums text-zinc-400">{attentionCount} awaiting review</span></div></div>
+        <div className="mb-4"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Review queues</p><div className="mt-2 flex flex-wrap items-baseline justify-between gap-2"><h2 className="text-2xl font-semibold tracking-[-0.045em]">Campaign review queues</h2><span className="text-xs tabular-nums text-zinc-400">{attentionCount} awaiting review</span></div></div>
         <ReachViewGuide />
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <Button variant={reviewed ? 'outline' : 'default'} size="sm" aria-pressed={!reviewed} onClick={() => setReviewed(false)}>Awaiting review</Button>
@@ -273,8 +273,17 @@ function Overview({ data, onSelectSubmission, onRefresh, historyVersion = 0 }: {
           </div> : <EmptyState title="No matching submissions" description="Approved and paid submissions will appear here." />
         ) : attentionCount || initialFacialSubmissions.length ? <div className="grid gap-6">{reviewQueues.map(queue => <div key={queue.id} className="grid gap-2">
           <CampaignReviewQueue queueId={queue.id} label={queue.label}>
-            <div className="flex items-center justify-between gap-3 px-5 py-4"><div><h3 id={`review-queue-${queue.id}`} className="text-sm font-semibold">{queue.label}</h3><p className="mt-1 text-xs text-zinc-400">Oldest submission first</p></div><span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold tabular-nums text-zinc-600">{queue.items.length}</span></div>
-            {queue.items.length ? <div className="admin-list px-3">{queue.items.map(target => row(target.item))}</div> : <p className="border-t border-zinc-100 px-5 py-5 text-sm text-zinc-400">No submissions waiting.</p>}
+            <div className="flex items-center justify-between gap-3 px-5 py-4"><div><h3 id={`review-queue-${queue.id}`} className="text-sm font-semibold">{queue.label}</h3><p className="mt-1 text-xs text-zinc-400">{queue.priority.length ? 'Oldest first within each group' : 'Oldest submission first'}</p></div><span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold tabular-nums text-zinc-600">{queue.items.length}</span></div>
+            {queue.priority.length ? (
+              <section aria-label="Mogging Anchor priority" className="admin-anchor-priority mx-3 mb-2.5 overflow-hidden rounded-xl border border-blue-200 bg-blue-50 px-1">
+                {queue.priority.map(target => row(target.item))}
+              </section>
+            ) : null}
+            {queue.standard.length ? (
+              <div className="admin-list px-3">{queue.standard.map(target => row(target.item))}</div>
+            ) : !queue.items.length ? (
+              <p className="border-t border-zinc-100 px-5 py-5 text-sm text-zinc-400">No submissions waiting.</p>
+            ) : null}
           </CampaignReviewQueue>
           {queue.id === 'detailed-analysis' ? <details className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
             <summary className="cursor-pointer px-5 py-4 text-sm font-semibold">

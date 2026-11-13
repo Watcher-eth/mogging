@@ -1,4 +1,5 @@
 import { CampaignAnchorLink, ImmediateSubmissionNotice } from './campaign-publishing-requirements'
+import { TikTokAnchorPriorityCheckbox } from './tiktok-anchor-priority-checkbox'
 import { ANCHOR_REQUIREMENT } from '@/lib/creator/facial-campaign-update'
 import { ANCHOR_GRACE_ACKNOWLEDGEMENT, BIO_LINK_GRACE_ACKNOWLEDGEMENT, CAMPAIGN_BIO_LINK_REQUIREMENT, campaignPublishingGraceActive } from '@/lib/creator/campaign-publishing-policy'
 import { useState, type FormEvent } from 'react'
@@ -15,6 +16,7 @@ export type StudioExport = { id: string; title: string; campaignName: string; mi
 export function StudioPostDialog({ generation, preview = false, onClose, onSubmitted }: { generation: StudioExport | null; preview?: boolean; onClose: () => void; onSubmitted: () => void }) {
   const { data } = useSWR<CreatorDashboard>(generation && !preview ? '/api/creator?view=accounts' : null, apiGet)
   const [postUrl, setPostUrl] = useState('')
+  const [tiktokAnchorLinked, setTikTokAnchorLinked] = useState(false)
   const [accountId, setAccountId] = useState('')
   const [confirmed, setConfirmed] = useState(false)
   const [anchorConfirmed, setAnchorConfirmed] = useState(false)
@@ -33,7 +35,13 @@ export function StudioPostDialog({ generation, preview = false, onClose, onSubmi
     if (!generation || preview || saving || !requirementsConfirmed || !accepted) return
     setSaving(true); setError('')
     try {
-      await apiPatch('/api/creator/studio', { generationId: generation.id, postUrl, socialAccountId: youtube ? null : selectedAccount, requirementsConfirmed })
+      await apiPatch('/api/creator/studio', {
+        generationId: generation.id,
+        postUrl,
+        socialAccountId: youtube ? null : selectedAccount,
+        requirementsConfirmed,
+        ...(platform === 'tiktok' ? { tiktokAnchorLinked } : {}),
+      })
       toast.success('Post submitted. Add analytics when you reach your first milestone.')
       onSubmitted()
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not submit your post') }
@@ -48,7 +56,13 @@ export function StudioPostDialog({ generation, preview = false, onClose, onSubmi
         {generation?.submitOnPublish ? <ImmediateSubmissionNotice /> : null}
         <div className="rounded-xl bg-neutral-50 p-4 text-sm"><p className="font-medium">{generation?.campaignName}</p><p className="mt-1 text-xs leading-5 text-neutral-500">{generation?.title}<br />{generation?.minimumViews === 0 ? 'No minimum views · Your per-video retainer rate and minimum audience apply.' : <>First review at {generation?.minimumViews.toLocaleString('en-US')} views · Existing campaign payout terms apply.</>}</p></div>
         {preview ? <p className="text-xs text-amber-800" role="note">Dialog preview only. No export or submission is being saved.</p> : null}
-        <label className="grid gap-2 text-sm font-medium">Published post link<input autoFocus type="url" required value={postUrl} onChange={event => setPostUrl(event.target.value)} placeholder={generation?.youtubeAllowed ? "TikTok, Instagram or YouTube post URL" : "TikTok or Instagram post URL"} className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal" /></label>
+        <label className="grid gap-2 text-sm font-medium">Published post link<input autoFocus type="url" required value={postUrl} onChange={event => {
+          if (event.target.value.trim() !== postUrl.trim()) setTikTokAnchorLinked(false)
+          setPostUrl(event.target.value)
+        }} placeholder={generation?.youtubeAllowed ? "TikTok, Instagram or YouTube post URL" : "TikTok or Instagram post URL"} className="h-11 rounded-xl border border-neutral-200 px-3 text-sm font-normal" /></label>
+        {platform === 'tiktok' ? (
+          <TikTokAnchorPriorityCheckbox checked={tiktokAnchorLinked} onChange={setTikTokAnchorLinked} />
+        ) : null}
         {!youtube ? <label className="grid gap-2 text-sm font-medium">Posting account<select required value={selectedAccount} onChange={event => setAccountId(event.target.value)} className="h-11 rounded-xl border border-neutral-200 bg-white px-3 text-sm font-normal"><option value="">Choose your account</option>{accounts.map(account => <option value={account.id} key={account.id}>{account.handle ?? account.displayName ?? account.platform}</option>)}</select></label> : null}
         {youtube && !generation?.youtubeAllowed ? <p role="alert" className="text-xs text-red-700">YouTube is only available for the Detailed Facial Analysis campaign.</p> : null}
         {!youtube && !preview && data && !accounts.length ? <p className="text-xs text-neutral-500"><Link className="underline" href="/creator/accounts" target="_blank">Connect your posting account</Link>, then return here.</p> : null}
