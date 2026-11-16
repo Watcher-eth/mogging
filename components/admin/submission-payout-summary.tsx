@@ -7,7 +7,7 @@ import { creatorPaymentLabel, remainingCreatorPaymentCents } from '@/lib/creator
 const money = (cents: number, currency = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100)
 const date = (value: string) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value))
 
-export function SubmissionPayoutSummary({ totalCents, payments, bonuses = [], projectedBonuses = [], additionalToPayOverrideCents }: { totalCents: number | null; payments: AdminPayment[]; bonuses?: AdminPayment[]; projectedBonuses?: BonusTarget[]; additionalToPayOverrideCents?: number }) {
+export function SubmissionPayoutSummary({ totalCents, payments, bonuses = [], projectedBonuses = [], additionalToPayOverrideCents, reduction }: { totalCents: number | null; payments: AdminPayment[]; bonuses?: AdminPayment[]; projectedBonuses?: BonusTarget[]; additionalToPayOverrideCents?: number; reduction?: { cents: number; percent: number | null } }) {
   const bonusCents = bonusPaymentTotal(bonuses) + projectedBonuses.reduce((sum, bonus) => sum + bonus.cents, 0)
   const combinedTotalCents = totalCents === null ? null : totalCents + bonusCents
   const settled = [...payments, ...bonuses].filter(payment => payment.status === 'paid')
@@ -21,6 +21,10 @@ export function SubmissionPayoutSummary({ totalCents, payments, bonuses = [], pr
   return <section aria-label="Submission payout summary" className="mt-5 rounded-2xl border border-zinc-200 p-4">
     <h3 className="text-sm font-semibold">Earnings breakdown</h3>
     <dl className="mt-4 space-y-3 text-sm tabular-nums">
+      {reduction && totalCents !== null ? <>
+        <div className="flex items-center justify-between gap-4"><dt className="text-zinc-500">Calculated post earnings</dt><dd className="font-medium">{money(totalCents + reduction.cents)}</dd></div>
+        <div className="flex items-center justify-between gap-4 text-amber-800"><dt>Payout reduction{reduction.percent === null ? '' : ` (${reduction.percent}%)`}</dt><dd className="font-medium">−{money(reduction.cents)}</dd></div>
+      </> : null}
       <div className="flex items-center justify-between gap-4"><dt className="text-zinc-500">Milestone total</dt><dd className="font-medium">{totalCents === null ? '—' : money(totalCents)}</dd></div>
       {bonuses.map(bonus => <div key={bonus.id} className="flex items-start justify-between gap-4 text-amber-800"><dt>{bonus.bonusNote?.split(' · ')[0] || 'Bonus'}<span className="mt-0.5 block text-xs text-zinc-500">{bonusPaymentStatus(bonus)}</span></dt><dd className="font-medium">+{money(bonus.amountCents)}</dd></div>)}
       {projectedBonuses.map(bonus => <div key={bonus.subject} className="flex items-start justify-between gap-4 text-amber-800"><dt>{bonus.label}<span className="mt-0.5 block text-xs text-zinc-500">Automatically added on approval</span></dt><dd className="font-medium">+{money(bonus.cents)}</dd></div>)}

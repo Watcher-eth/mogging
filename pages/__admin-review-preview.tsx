@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { ReviewDialog } from '@/components/admin/creator-workspace'
 import type { AdminSubmission, AdminPayment } from '@/components/admin/creator-types'
 import { launchCampaignTerms, LAUNCH_CAMPAIGNS } from '@/lib/creator/campaign-launch'
+import type { AudienceCheck } from '@/lib/creator/audience-check'
 
 const terms = launchCampaignTerms(LAUNCH_CAMPAIGNS.find(campaign => campaign.name === 'General Looksmaxxing Content') || LAUNCH_CAMPAIGNS[0])
 const submission: AdminSubmission = {
@@ -16,10 +17,16 @@ const submission: AdminSubmission = {
   reviewNote: null, reviewChecklist: null, createdAt: '2026-10-22T12:00:00Z', sprintId: 'preview-campaign', sprintName: 'General Looksmaxxing Content', sprintTerms: terms,
 }
 const payments: AdminPayment[] = [{ id: 'preview-payment', creatorProfileId: 'preview', creatorName: 'Preview creator', creatorEmail: 'preview@example.invalid', submissionId: submission.id, submissionTitle: submission.title, amountCents: 1500, currency: 'USD', status: 'paid', paymentOption: 'paypal', providerReference: null, paidAt: submission.createdAt, createdAt: submission.createdAt }]
+const earningsCheck: AudienceCheck = {
+  version: 1, storageKey: 'preview-analytics', status: 'verified', percent: 62, minimumPercent: 62, maximumPercent: 62,
+  metrics: { totalViewers: 78000, totalViews: 100000, totalViewsExact: true, averageWatchTimeSeconds: null, age: [] },
+  metricsVerified: { totalViewers: true, totalViews: true, totalViewsExact: true },
+}
 export default function AdminReviewPreview() {
   const router = useRouter()
   const [ready, setReady] = useState(false)
   const [saved, setSaved] = useState('')
+  const earningsCase = router.query.case === 'earnings'
   useEffect(() => {
     const original = window.fetch
     window.fetch = Object.assign(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -34,16 +41,24 @@ export default function AdminReviewPreview() {
         {id:'rereview',type:'rereview_requested',note:null,createdAt:submission.reviewRequestedAt!,historySnapshot:{submittedViews:47100,submittedAudiencePercent:57.8,verifiedViews:20000,verifiedAudiencePercent:40,approvedAmountCents:1500,campaignId:'preview',campaignName:'General Looksmaxxing Content'}},
       ],[],payments.map(p=>({...p,paidAt:'2026-10-22T18:00:00Z'}))) } })
       if (url.includes(`/submissions/${submission.id}/messages`)) return Response.json({ data: { submission: { status: 'in_review', unreadMessages: 0 }, messages: [], nextCursor: null } })
+      if (url.includes(`/submissions/${submission.id}/audience`)) return Response.json({ data: earningsCase
+        ? { check: earningsCheck, storageKey: earningsCheck.storageKey }
+        : { check: null, storageKey: null } })
       return original(input, init)
     }, original)
     setReady(true)
     return () => { window.fetch = original }
-  }, [])
+  }, [earningsCase])
   if (['mobile', 'compact'].includes(String(router.query.device))) return <iframe title="Mobile review preview" src="/__admin-review-preview" style={{ width: 390, height: router.query.device === 'compact' ? 360 : 640, border: 0 }} />
   const detailedCase = ['mgc', 'detailed'].includes(String(router.query.case))
   const detailed = launchCampaignTerms(LAUNCH_CAMPAIGNS.find(campaign => campaign.key === 'detailed-analysis')!)
   const versionTerms = router.query.case === 'mgc' ? detailedAnalysisVariantTerms(detailed, 'bd0d7a74-3c39-44dd-98ec-21bf6667a714') : detailed
   const reviewSubmission = detailedCase ? { ...submission, title: 'Detailed analysis · 100K views', sprintName: router.query.case === 'mgc' ? 'Mogging Detailed Analysis MGC' : 'Mogging Detailed Analysis', sprintTerms: versionTerms, formatId: versionTerms.formats[0].id, status: 'pending' as const, approvedAmountCents: null, reviewRequestedAt: null, viewCountThreshold: 100000, usAudiencePercent: 32, adminViewCountThreshold: null, adminUsAudiencePercent: null } : router.query.case === 'bonus' ? { ...submission, title: '100K views · 62% Tier 1 audience', status: 'pending' as const, approvedAmountCents: null, reviewRequestedAt: null, viewCountThreshold: 100000, usAudiencePercent: 62, adminViewCountThreshold: null, adminUsAudiencePercent: null } : submission
-  return <main className="p-8"><p>Local sample only. No production writes.</p><output aria-label="Saved review payload">{saved}</output>{ready ? <ReviewDialog target={{ resource: 'submission', item: reviewSubmission }} payments={detailedCase || router.query.case === 'bonus' ? [] : payments} metrics={[]} open onOpenChange={() => {}} onRefresh={async () => {}} onSaved={async () => {}} /> : null}</main>
+  const previewSubmission: AdminSubmission = earningsCase ? { ...submission,
+    title: 'TikTok post · Earnings preview', analyticsStorageKey: earningsCheck.storageKey, audienceCheck: earningsCheck,
+    status: 'pending', approvedAmountCents: null, reviewRequestedAt: null, viewCountThreshold: 100000, usAudiencePercent: 62,
+    adminViewCountThreshold: null, adminUsAudiencePercent: null,
+  } : reviewSubmission
+  return <main className="p-8"><p>Local sample only. No production writes.</p><output aria-label="Saved review payload">{saved}</output>{ready && router.isReady ? <ReviewDialog key={String(router.query.case)} target={{ resource: 'submission', item: previewSubmission }} payments={detailedCase || earningsCase || router.query.case === 'bonus' ? [] : payments} metrics={[]} open onOpenChange={() => {}} onRefresh={async () => {}} onSaved={async () => {}} initialTab={earningsCase ? 'earnings' : 'video'} /> : null}</main>
 }
 export function getServerSideProps() { return process.env.NODE_ENV === 'production' ? { notFound: true } : { props: {} } }
