@@ -1,13 +1,66 @@
 import { useState } from 'react'
-import { ArrowUpRight, Check, Link2 } from '@/components/ui/mogging-glyphs'
+import { toast } from 'sonner'
+import { ArrowUpRight, Check } from '@/components/ui/mogging-glyphs'
 import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
 import { BioLinkTracker } from './bio-link-tracker'
 import type { AdminAccount, AdminDashboard, AdminSubmission } from './creator-types'
+import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { creatorAccountLabel } from '@/components/creator/types'
 import { activityDate, lastActiveLabel } from '@/lib/admin/bio-link-tracker'
 import { hasLaunchCampaignBonuses } from '@/lib/creator/campaign-launch'
+import { referralCode } from '@/lib/creator/sprints'
 import { cn } from '@/lib/utils'
+
+function AccountReferral({ account }: { account: AdminAccount }) {
+  const { trackingLinkUrl, trackingLinkSlug, trackingLinkActive } = account
+  if (!trackingLinkUrl) {
+    return <p className="mt-4 border-t border-zinc-200 pt-3 text-xs text-zinc-500">No referral link or code</p>
+  }
+
+  const code = referralCode({ publicUrl: trackingLinkUrl, slug: trackingLinkSlug ?? '' })
+  const platform = account.platform === 'tiktok' ? 'TikTok' : 'Instagram'
+  const accountLabel = `${platform} ${creatorAccountLabel(account)}`
+  const fields = [
+    { label: 'Referral code', value: code },
+    { label: 'Referral link', value: trackingLinkUrl },
+  ] as const
+
+  async function copyValue(value: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(value)
+      toast.success(`${label} copied`)
+    } catch {
+      toast.error(`Select and copy the ${label.toLowerCase()}`)
+    }
+  }
+
+  return <div className="mt-4 border-t border-zinc-200 pt-2">
+    <div className="space-y-1">
+      {fields.map(({ label, value }) => (
+        <div key={label} className="flex items-center justify-between gap-2">
+          <div className="min-w-0 text-xs">
+            <p className="mb-1 text-zinc-500">{label}</p>
+            <p className="select-text [overflow-wrap:anywhere]">
+              {label === 'Referral link' ? (
+                <a href={trackingLinkUrl} target="_blank" rel="noopener noreferrer" className="text-sky-700 underline underline-offset-4">{trackingLinkUrl}</a>
+              ) : value ? (
+                <code className="rounded bg-zinc-100 px-1 py-0.5 font-semibold text-zinc-800">{value}</code>
+              ) : 'Unavailable'}
+            </p>
+          </div>
+          {value ? (
+            <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 px-2.5 text-xs text-sky-700 sm:h-9"
+              aria-label={`Copy ${label.toLowerCase()} for ${accountLabel}`} onClick={() => void copyValue(value, label)}>
+              Copy
+            </Button>
+          ) : null}
+        </div>
+      ))}
+    </div>
+    <p className="mt-1 text-[11px] text-zinc-500">Link {trackingLinkActive ? 'active' : 'inactive'}</p>
+  </div>
+}
 
 export function SocialAccountsPanel({ data, onReviewAccount, onSelectSubmission }: {
   data: AdminDashboard
@@ -51,10 +104,8 @@ export function AccountOverview({ account, data, onReviewAccount, onSelectSubmis
         <div className="flex items-center gap-3"><SkeletonAvatar src={item.avatarUrl} alt="" size={44} className="size-11 rounded-full bg-zinc-100" fallback={<span className="grid size-full place-items-center text-zinc-500">{creatorAccountLabel(item).replace(/^@/, '').charAt(0).toUpperCase()}</span>} /><div className="min-w-0"><h4 className="break-words text-sm font-semibold">{creatorAccountLabel(item)}</h4><p className="mt-1 text-xs text-zinc-500">{item.platform === 'tiktok' ? 'TikTok' : 'Instagram'} · {item.connectionMethod === 'oauth' ? 'OAuth' : 'Manual'}</p></div></div>
         <div className="mt-3 flex flex-wrap gap-2 text-[11px]"><span className="rounded-full bg-zinc-100 px-2 py-1 text-zinc-600">{item.status === 'approved' ? 'Approved' : item.status === 'missing_information' ? 'Needs information' : 'Pending review'}</span>{item.id === account.id ? <span className="rounded-full bg-sky-100 px-2 py-1 text-sky-800">Selected account</span> : null}</div>
         <dl className="mt-4 grid grid-cols-3 gap-2 text-xs"><div><dt className="text-zinc-500">Videos</dt><dd className="mt-1 font-semibold tabular-nums">{videos.length}</dd></div><div><dt className="text-zinc-500">Bio verified</dt><dd className="mt-1 font-semibold tabular-nums">{verified}/{eligible.length}</dd></div><div><dt className="text-zinc-500">Link clicks</dt><dd className="mt-1 font-semibold tabular-nums">{(item.attribution?.clicks || 0).toLocaleString()}</dd></div></dl>
-        <div className="mt-3 flex flex-col items-start gap-1">{profileUrl ? <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 text-xs font-medium text-sky-700 underline underline-offset-4">Open profile<ArrowUpRight className="size-3.5" /></a> : <p className="py-3 text-xs text-zinc-400">Profile URL not provided</p>}
-          {item.trackingLinkUrl ? <a href={item.trackingLinkUrl} target="_blank" rel="noopener noreferrer" className="flex min-h-11 max-w-full items-center gap-2 text-xs text-sky-700 underline underline-offset-4"><Link2 className="size-3.5 shrink-0" /><span className="break-all">{item.trackingLinkUrl}</span></a> : <p className="text-xs text-zinc-400">No tracking link</p>}
-        </div>
-        {item.trackingLinkUrl ? <p className="mt-1 text-[11px] text-zinc-500">Tracking link {item.trackingLinkActive ? 'active' : 'inactive'}</p> : null}
+        <AccountReferral account={item} />
+        <div className="mt-3 flex flex-col items-start">{profileUrl ? <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 text-xs font-medium text-sky-700 underline underline-offset-4">Open profile<ArrowUpRight className="size-3.5" /></a> : <p className="py-3 text-xs text-zinc-400">Profile URL not provided</p>}</div>
         {item.reviewNote ? <p className="mt-3 whitespace-pre-wrap break-words text-xs leading-5 text-zinc-600">{item.reviewNote}</p> : null}
         <button type="button" onClick={() => onReviewAccount(item)} className="mt-4 min-h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs font-medium hover:bg-zinc-50 focus-visible:outline-sky-500">Review account & analytics</button>
       </article>
