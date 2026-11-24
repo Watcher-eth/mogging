@@ -22,7 +22,6 @@ import { AnalysisStory } from "@/components/landing/analysis-story";
 import { EvaluationStats } from "@/components/landing/evaluation-stats";
 import { SeoHead } from "@/components/app/seo-head";
 import { FooterLinks, PublicFooter } from "@/components/app/public-footer";
-import { appStoreUrl, siteUrl } from "@/lib/seo";
 import { phonePwaEntryPath } from '@/lib/homepage-routing';
 import { isPhoneUserAgent } from '@/lib/analysis/phone-layout';
 import { usePhoneLayout } from '@/hooks/use-phone-layout';
@@ -71,25 +70,6 @@ function NewHomepage({ assignment, preview, phoneEntry, ios, android }: Props) {
         title={locale === "en" || !locale ? "Mogging App | Face Analysis & Personalized Routines" : t("seo.title")}
         description={t("seo.description")}
         path="/"
-        structuredData={{
-          "@context": "https://schema.org",
-          "@graph": [
-            {
-              "@type": "WebSite",
-              "@id": `${siteUrl}/#website`,
-              name: "Mogging",
-              url: `${siteUrl}/`,
-            },
-            {
-              "@type": "Organization",
-              "@id": `${siteUrl}/#organization`,
-              name: "Mogging",
-              url: `${siteUrl}/`,
-              logo: `${siteUrl}/favicon.png`,
-              sameAs: [appStoreUrl],
-            },
-          ],
-        }}
       />
       <div ref={sections} className="[--feature-spacing:88px] lg:[--feature-spacing:104px]">
         <main

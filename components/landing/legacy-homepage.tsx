@@ -7,7 +7,6 @@ import { LazyMotion, domAnimation } from 'motion/react'
 import * as m from 'motion/react-m'
 import { useHomepageEntrance } from './use-homepage-entrance'
 import { SeoHead } from '@/components/app/seo-head'
-import { appStoreUrl, siteUrl } from '@/lib/seo'
 import { EvaluationPreview, ProtocolPreview, ProgressPreview } from './mobile-preview'
 import { useEffect, useRef } from 'react'
 import type { LandingAssignment } from '@/lib/analytics/landing'
@@ -42,13 +41,6 @@ export default function LegacyHomepage({assignment, preview, ios, android}: {ass
         title="Mogging App | Face Analysis & Personalized Routines"
         description="Discover Mogging, the comprehensive face analysis app. Get detailed facial reports, personalized routines, and track your progress. Download Mogging for iPhone."
         path="/"
-        structuredData={{
-          '@context': 'https://schema.org',
-          '@graph': [
-            { '@type': 'WebSite', '@id': `${siteUrl}/#website`, name: 'Mogging', url: `${siteUrl}/` },
-            { '@type': 'Organization', '@id': `${siteUrl}/#organization`, name: 'Mogging', url: `${siteUrl}/`, logo: `${siteUrl}/favicon.png`, sameAs: [appStoreUrl] },
-          ],
-        }}
       />
 
       <main ref={sections} className="min-h-[calc(100vh-5rem)] overflow-hidden bg-white text-black">

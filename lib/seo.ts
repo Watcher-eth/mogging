@@ -1,3 +1,5 @@
+import { locales } from './i18n/locales'
+
 // Match the production host redirect. Preview URLs must never become canonicals.
 export const siteUrl = 'https://www.mogging.com'
 export const appStoreUrl = 'https://apps.apple.com/us/app/mogging-face-rating/id6771414050'
@@ -19,6 +21,13 @@ export function canonicalUrl(path: string) {
   const preferredPath = ({ '/app': '/', '/de-AT': '/de', '/de-CH': '/de', '/es-419': '/es' } as Record<string, string>)[pathname] ?? pathname
   return `${siteUrl}${preferredPath}`
 }
+
+export const homeAlternates = locales.flatMap(locale => {
+  const path = locale === 'en' ? '/' : `/${locale}`
+  const url = canonicalUrl(path)
+  // Regional copies are consolidated to the canonical language homepage.
+  return url === `${siteUrl}${path}` ? [{ locale, url }] : []
+})
 
 export function robotsForPath(path: string) {
   const pathname = path.split(/[?#]/)[0].replace(/\/+$/, '') || '/'
@@ -42,14 +51,41 @@ export const pageLastModified: Record<string, string> = {
   '/how-face-analysis-works': '2026-10-28',
 }
 
-export const mobileApplicationSchema = {
+const organizationId = `${siteUrl}/#organization`
+const websiteId = `${siteUrl}/#website`
+export const mobileApplicationId = `${siteUrl}/#ios-app`
+const methodologyId = `${siteUrl}/how-face-analysis-works#article`
+
+export const homepageSchema = {
   '@context': 'https://schema.org',
-  '@type': 'MobileApplication',
-  '@id': `${siteUrl}/#ios-app`,
-  name: 'Mogging',
-  url: `${siteUrl}/`,
-  operatingSystem: 'iOS',
-  applicationCategory: 'LifestyleApplication',
-  installUrl: appStoreUrl,
-  publisher: { '@id': `${siteUrl}/#organization` },
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': organizationId,
+      name: 'Mogging',
+      url: `${siteUrl}/`,
+      logo: `${siteUrl}/favicon.png`,
+    },
+    {
+      '@type': 'WebSite',
+      '@id': websiteId,
+      name: 'Mogging',
+      url: `${siteUrl}/`,
+      publisher: { '@id': organizationId },
+      about: { '@id': mobileApplicationId },
+    },
+    {
+      '@type': 'MobileApplication',
+      '@id': mobileApplicationId,
+      name: 'Mogging',
+      url: `${siteUrl}/`,
+      sameAs: appStoreUrl,
+      installUrl: appStoreUrl,
+      operatingSystem: 'iOS',
+      applicationCategory: 'LifestyleApplication',
+      description: 'Mogging analyzes facial features from a photo and provides a detailed report, a personalized routine, and saved evaluations for tracking progress.',
+      publisher: { '@id': organizationId },
+      subjectOf: { '@id': methodologyId },
+    },
+  ],
 }

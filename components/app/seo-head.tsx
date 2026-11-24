@@ -1,7 +1,6 @@
 import Head from 'next/head'
-import { locales } from '@/lib/i18n/locales'
 import { useRouter } from 'next/router'
-import { canonicalUrl as getCanonicalUrl, robotsForPath, serializeJsonLd, mobileApplicationSchema, siteUrl, socialImageForPath } from '@/lib/seo'
+import { canonicalUrl as getCanonicalUrl, homeAlternates, homepageSchema, robotsForPath, serializeJsonLd, siteUrl, socialImageForPath } from '@/lib/seo'
 
 type SeoHeadProps = {
   title?: string
@@ -26,21 +25,18 @@ export function SeoHead({
   const canonicalUrl = getCanonicalUrl(currentPath)
   const image = socialImageForPath(router.pathname)
   const imageUrl = new URL(image.path, siteUrl).href
-
+  const schema = structuredData ?? (router.pathname === '/' ? homepageSchema : undefined)
 
   return (
     <Head>
       <meta key="robots" name="robots" content={router.locale && router.locale !== 'en' && router.pathname !== '/' ? 'noindex, follow' : robotsForPath(router.pathname)} />
-      {structuredData ? (
-        <script key="structured-data" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />
-      ) : null}
-      {router.pathname === '/' && (
-        <script key="mobile-application" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(mobileApplicationSchema) }} />
+      {schema && (
+        <script key="structured-data" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }} />
       )}
       <title key="title">{title}</title>
       <meta key="description" name="description" content={description} />
       {router.pathname !== '/analysis' && router.pathname !== '/app/home' && <meta key="apple-itunes-app" name="apple-itunes-app" content={`app-id=${iosAppStoreId}, app-argument=${canonicalUrl}`} />}
-      {router.pathname === '/' && locales.map(locale => <link key={`alternate-${locale}`} rel="alternate" hrefLang={locale} href={`${siteUrl}${locale === 'en' ? '/' : `/${locale}`}`} />)}
+      {router.pathname === '/' && homeAlternates.map(({ locale, url }) => <link key={`alternate-${locale}`} rel="alternate" hrefLang={locale} href={url} />)}
       {router.pathname === '/' && <link key="alternate-default" rel="alternate" hrefLang="x-default" href={`${siteUrl}/`} />}
       <link key="canonical" rel="canonical" href={canonicalUrl} />
       <link key="favicon" rel="icon" type="image/png" href="/favicon.png" />

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { canonicalUrl, publicPaths, robotsForPath, serializeJsonLd, socialImageForPath } from './seo'
+import { canonicalUrl, homeAlternates, homepageSchema, mobileApplicationId, publicPaths, robotsForPath, serializeJsonLd, socialImageForPath } from './seo'
 
 test('all routes use Og1 except the leaderboard', () => {
   for (const path of [...publicPaths.filter(path => path !== '/leaderboard'), '/creator/cta-generator', '/share/[token]', '/404', '/new-route']) {
@@ -22,6 +22,21 @@ describe('search indexing policy', () => {
     expect(canonicalUrl('/de-CH/')).toBe('https://www.mogging.com/de')
     expect(canonicalUrl('/es-419')).toBe('https://www.mogging.com/es')
     expect(canonicalUrl('/fr')).toBe('https://www.mogging.com/fr')
+  })
+
+  test('only advertises canonical language homepages as alternates', () => {
+    expect(homeAlternates.map(({ locale }) => locale)).toEqual(['en', 'de', 'es', 'fr', 'zh-Hans'])
+    for (const { url } of homeAlternates) {
+      expect(canonicalUrl(new URL(url).pathname)).toBe(url)
+    }
+  })
+
+  test('links the Mogging website, publisher, and iOS listing', () => {
+    const app = homepageSchema['@graph'].find(node => node['@id'] === mobileApplicationId)
+    expect(app?.installUrl).toContain('id6771414050')
+    expect(app?.sameAs).toBe(app?.installUrl)
+    expect(homepageSchema['@graph'].some(node => node['@id'] === app?.publisher?.['@id'])).toBe(true)
+    expect(app?.subjectOf?.['@id']).toBe('https://www.mogging.com/how-face-analysis-works#article')
   })
 
   test('keeps all sitemap routes indexable', () => {

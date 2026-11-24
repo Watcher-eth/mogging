@@ -5,7 +5,7 @@ import { LazyMotion, domAnimation, useReducedMotion } from 'motion/react'
 import * as m from 'motion/react-m'
 import { ArrowUpRight } from '@/components/ui/mogging-glyphs'
 import { SeoHead } from '@/components/app/seo-head'
-import { canonicalUrl, siteUrl } from '@/lib/seo'
+import { canonicalUrl, mobileApplicationId, siteUrl } from '@/lib/seo'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionChevron } from '@/components/ui/accordion'
 import styles from './guide-page.module.css'
 
@@ -22,7 +22,7 @@ export function GuidePage({ title, description, path, eyebrow, heading, intro, v
   return <LazyMotion features={domAnimation}>
     <SeoHead title={`${title} | Mogging`} description={description} path={path} structuredData={{
       '@context': 'https://schema.org', '@graph': [
-        { '@type': 'Article', '@id': `${url}#article`, headline: title, description, mainEntityOfPage: url, inLanguage: 'en', author: { '@type': 'Organization', name: 'Mogging', url: `${siteUrl}/` }, publisher: { '@type': 'Organization', name: 'Mogging', url: `${siteUrl}/` } },
+        { '@type': 'Article', '@id': `${url}#article`, headline: title, description, mainEntityOfPage: url, inLanguage: 'en', ...(path === '/how-face-analysis-works' && { about: { '@id': mobileApplicationId } }), author: { '@type': 'Organization', name: 'Mogging', url: `${siteUrl}/` }, publisher: { '@type': 'Organization', name: 'Mogging', url: `${siteUrl}/` } },
         { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Mogging', item: `${siteUrl}/` }, { '@type': 'ListItem', position: 2, name: title, item: url }] },
       ],
     }} />
